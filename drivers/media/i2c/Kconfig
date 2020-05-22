@@ -699,6 +699,14 @@ config VIDEO_ST_VGXY61
 source "drivers/media/i2c/ccs/Kconfig"
 source "drivers/media/i2c/et8ek8/Kconfig"
 
+config VIDEO_DUMMY_SENSOR
+	tristate "Dummy sensor support"
+	help
+	  This is a V4L2 sensor driver for CSI2 sources that have no actual
+	  controls but needs to hook into a V4L2 CSI2 receiver subdevice.
+	  To do that it allows any format and resolution to be requested, but
+	  it is only stored rather than actioned.
+
 endif
 
 menu "Lens drivers"
