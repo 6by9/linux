@@ -46,6 +46,10 @@ enum imx290_clk_index {
 #define IMX290_HMAX_LOW 0x301c
 #define IMX290_HMAX_HIGH 0x301d
 #define IMX290_HMAX_MAX 0xffff
+
+#define IMX290_EXPOSURE_MIN 1
+#define IMX290_EXPOSURE_STEP 1
+#define IMX290_EXPOSURE_LOW 0x3020
 #define IMX290_PGCTRL 0x308c
 #define IMX290_PHY_LANE_NUM 0x3407
 #define IMX290_CSI_LANE_MODE 0x3443
@@ -151,6 +155,7 @@ struct imx290 {
 	struct v4l2_ctrl *pixel_rate;
 	struct v4l2_ctrl *hblank;
 	struct v4l2_ctrl *vblank;
+	struct v4l2_ctrl *exposure;
 	struct v4l2_ctrl *hflip;
 	struct v4l2_ctrl *vflip;
 
@@ -557,6 +562,26 @@ static int imx290_set_gain(struct imx290 *imx290, u32 value)
 	return ret;
 }
 
+static int imx290_set_exposure(struct imx290 *imx290, u32 value)
+{
+	u32 exposure = (imx290->current_mode->height + imx290->vblank->val) -
+						value - 1;
+	int ret;
+
+	ret = imx290_write_reg(imx290, IMX290_EXPOSURE_LOW, exposure & 0xFF);
+	if (!ret)
+		ret = imx290_write_reg(imx290, IMX290_EXPOSURE_LOW + 1,
+				       (exposure >> 8) & 0xFF);
+	if (!ret)
+		ret = imx290_write_reg(imx290, IMX290_EXPOSURE_LOW + 2,
+				       (exposure >> 16) & 0xFF);
+
+	if (ret)
+		dev_err(imx290->dev, "Unable to write exposure\n");
+
+	return ret;
+}
+
 static int imx290_set_hmax(struct imx290 *imx290, u32 val)
 {
 	u32 hmax = val + imx290->current_mode->width;
@@ -590,6 +615,24 @@ static int imx290_set_vmax(struct imx290 *imx290, u32 val)
 	if (ret)
 		dev_err(imx290->dev, "Unable to write vmax\n");
 
+	/*
+	 * Changing vblank changes the allowed range for exposure.
+	 * We don't supply the current exposure as default here as it
+	 * may lie outside the new range. We will reset it just below.
+	 */
+	__v4l2_ctrl_modify_range(imx290->exposure,
+				 IMX290_EXPOSURE_MIN,
+				 vmax - 2,
+				 IMX290_EXPOSURE_STEP,
+				 vmax - 2);
+
+	/*
+	 * Becuse of the way exposure works for this sensor, updating
+	 * vblank causes the effective exposure to change, so we must
+	 * set it back to the "new" correct value.
+	 */
+	imx290_set_exposure(imx290, imx290->exposure->val);
+
 	return ret;
 }
 
@@ -621,6 +664,9 @@ static int imx290_set_ctrl(struct v4l2_ctrl *ctrl)
 	switch (ctrl->id) {
 	case V4L2_CID_ANALOGUE_GAIN:
 		ret = imx290_set_gain(imx290, ctrl->val);
+		break;
+	case V4L2_CID_EXPOSURE:
+		ret = imx290_set_exposure(imx290, ctrl->val);
 		break;
 
 	case V4L2_CID_HBLANK:
@@ -819,6 +865,13 @@ static int imx290_set_fmt(struct v4l2_subdev *sd,
 						 IMX290_VMAX_MAX - mode->height,
 						 1,
 						 mode->vmax - mode->height);
+
+		if (imx290->exposure)
+			__v4l2_ctrl_modify_range(imx290->exposure,
+						 IMX290_EXPOSURE_MIN,
+						 mode->vmax - 2,
+						 IMX290_EXPOSURE_STEP,
+						 mode->vmax - 2);
 	}
 
 	*format = fmt->format;
@@ -1138,7 +1191,7 @@ static int imx290_ctrl_init(struct imx290 *imx290)
 	if (ret < 0)
 		return ret;
 
-	v4l2_ctrl_handler_init(&imx290->ctrls, 10);
+	v4l2_ctrl_handler_init(&imx290->ctrls, 11);
 	imx290->ctrls.lock = &imx290->lock;
 
 	v4l2_ctrl_new_std(&imx290->ctrls, &imx290_ctrl_ops,
@@ -1155,6 +1208,13 @@ static int imx290_ctrl_init(struct imx290 *imx290)
 					   mode->vmax - mode->height,
 					   IMX290_VMAX_MAX - mode->height, 1,
 					   mode->vmax - mode->height);
+
+	imx290->exposure = v4l2_ctrl_new_std(&imx290->ctrls, &imx290_ctrl_ops,
+					     V4L2_CID_EXPOSURE,
+					     IMX290_EXPOSURE_MIN,
+					     mode->vmax - 2,
+					     IMX290_EXPOSURE_STEP,
+					     mode->vmax - 2);
 
 	imx290->hflip = v4l2_ctrl_new_std(&imx290->ctrls, &imx290_ctrl_ops,
 					  V4L2_CID_HFLIP, 0, 1, 1, 0);
