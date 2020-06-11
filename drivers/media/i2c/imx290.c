@@ -36,6 +36,7 @@ enum imx290_clk_index {
 #define IMX290_STANDBY 0x3000
 #define IMX290_REGHOLD 0x3001
 #define IMX290_XMSTA 0x3002
+#define IMX290_FLIP_WINMODE 0x3007
 #define IMX290_FR_FDG_SEL 0x3009
 #define IMX290_BLKLEVEL_LOW 0x300a
 #define IMX290_BLKLEVEL_HIGH 0x300b
@@ -150,6 +151,8 @@ struct imx290 {
 	struct v4l2_ctrl *pixel_rate;
 	struct v4l2_ctrl *hblank;
 	struct v4l2_ctrl *vblank;
+	struct v4l2_ctrl *hflip;
+	struct v4l2_ctrl *vflip;
 
 	struct mutex lock;
 };
@@ -609,6 +612,7 @@ static int imx290_set_ctrl(struct v4l2_ctrl *ctrl)
 	struct imx290 *imx290 = container_of(ctrl->handler,
 					     struct imx290, ctrls);
 	int ret = 0;
+	u8 val;
 
 	/* V4L2 controls values will be applied only when power is already up */
 	if (!pm_runtime_get_if_in_use(imx290->dev))
@@ -624,6 +628,17 @@ static int imx290_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_VBLANK:
 		ret = imx290_set_vmax(imx290, ctrl->val);
+		break;
+
+	case V4L2_CID_HFLIP:
+	case V4L2_CID_VFLIP:
+		/* WINMODE is in bits [6:4], so need to read-modify-write */
+		ret = imx290_read_reg(imx290, IMX290_FLIP_WINMODE, &val);
+		if (ret)
+			break;
+		val &= ~0x03;
+		val |= imx290->vflip->val | (imx290->hflip->val << 1);
+		ret = imx290_write_reg(imx290, IMX290_FLIP_WINMODE, val);
 		break;
 
 	case V4L2_CID_TEST_PATTERN:
@@ -982,6 +997,9 @@ static int imx290_set_stream(struct v4l2_subdev *sd, int enable)
 		imx290_stop_streaming(imx290);
 		pm_runtime_put(imx290->dev);
 	}
+	/* vflip and hflip cannot change during streaming */
+	__v4l2_ctrl_grab(imx290->vflip, enable);
+	__v4l2_ctrl_grab(imx290->hflip, enable);
 
 unlock_and_return:
 
@@ -1120,7 +1138,7 @@ static int imx290_ctrl_init(struct imx290 *imx290)
 	if (ret < 0)
 		return ret;
 
-	v4l2_ctrl_handler_init(&imx290->ctrls, 8);
+	v4l2_ctrl_handler_init(&imx290->ctrls, 10);
 	imx290->ctrls.lock = &imx290->lock;
 
 	v4l2_ctrl_new_std(&imx290->ctrls, &imx290_ctrl_ops,
@@ -1137,6 +1155,11 @@ static int imx290_ctrl_init(struct imx290 *imx290)
 					   mode->vmax - mode->height,
 					   IMX290_VMAX_MAX - mode->height, 1,
 					   mode->vmax - mode->height);
+
+	imx290->hflip = v4l2_ctrl_new_std(&imx290->ctrls, &imx290_ctrl_ops,
+					  V4L2_CID_HFLIP, 0, 1, 1, 0);
+	imx290->vflip = v4l2_ctrl_new_std(&imx290->ctrls, &imx290_ctrl_ops,
+					  V4L2_CID_VFLIP, 0, 1, 1, 0);
 
 	imx290->link_freq =
 		v4l2_ctrl_new_int_menu(&imx290->ctrls, &imx290_ctrl_ops,
