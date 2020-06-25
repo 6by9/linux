@@ -28,6 +28,11 @@
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-subdev.h>
 
+enum imx290_clk_index {
+	CLK_37_125,
+	CLK_74_25,
+};
+
 #define IMX290_STANDBY 0x3000
 #define IMX290_REGHOLD 0x3001
 #define IMX290_XMSTA 0x3002
@@ -112,11 +117,16 @@ struct imx290_mode {
 
 	const struct imx290_regval *data;
 	u32 data_size;
+
+	/* Clock setup can vary. Index as enum imx290_clk_index */
+	const struct imx290_regval *clk_data[2];
+	u32 clk_size;
 };
 
 struct imx290 {
 	struct device *dev;
 	struct clk *xclk;
+	u32 xclk_freq;
 	struct regmap *regmap;
 	u8 nlanes;
 	u8 bpp;
@@ -176,8 +186,6 @@ static const struct imx290_regval imx290_global_init_settings[] = {
 	{ 0x3018, 0x65 },
 	{ 0x3019, 0x04 },
 	{ 0x301a, 0x00 },
-	{ 0x3444, 0x20 },
-	{ 0x3445, 0x25 },
 	{ 0x303a, 0x0c },
 	{ 0x3040, 0x00 },
 	{ 0x3041, 0x00 },
@@ -231,6 +239,30 @@ static const struct imx290_regval imx290_global_init_settings[] = {
 	{ 0x33b3, 0x04 },
 };
 
+static const struct imx290_regval imx290_37_125mhz_clock_1080p[] = {
+	{ 0x305c, 0x18 },
+	{ 0x305d, 0x03 },
+	{ 0x305e, 0x20 },
+	{ 0x305f, 0x01 },
+	{ 0x315e, 0x1a },
+	{ 0x3164, 0x1a },
+	{ 0x3444, 0x20 },
+	{ 0x3445, 0x25 },
+	{ 0x3480, 0x49 },
+};
+
+static const struct imx290_regval imx290_74_250mhz_clock_1080p[] = {
+	{ 0x305c, 0x0c },
+	{ 0x305d, 0x03 },
+	{ 0x305e, 0x10 },
+	{ 0x305f, 0x01 },
+	{ 0x315e, 0x1b },
+	{ 0x3164, 0x1b },
+	{ 0x3444, 0x40 },
+	{ 0x3445, 0x4a },
+	{ 0x3480, 0x92 },
+};
+
 static const struct imx290_regval imx290_1080p_settings[] = {
 	/* mode settings */
 	{ 0x3007, 0x00 },
@@ -242,13 +274,6 @@ static const struct imx290_regval imx290_1080p_settings[] = {
 	{ 0x3419, 0x04 },
 	{ 0x3012, 0x64 },
 	{ 0x3013, 0x00 },
-	{ 0x305c, 0x18 },
-	{ 0x305d, 0x03 },
-	{ 0x305e, 0x20 },
-	{ 0x305f, 0x01 },
-	{ 0x315e, 0x1a },
-	{ 0x3164, 0x1a },
-	{ 0x3480, 0x49 },
 	/* data rate settings */
 	{ 0x3405, 0x10 },
 	{ 0x3446, 0x57 },
@@ -269,6 +294,30 @@ static const struct imx290_regval imx290_1080p_settings[] = {
 	{ 0x3455, 0x00 },
 };
 
+static const struct imx290_regval imx290_37_125mhz_clock_720p[] = {
+	{ 0x305c, 0x20 },
+	{ 0x305d, 0x00 },
+	{ 0x305e, 0x20 },
+	{ 0x305f, 0x01 },
+	{ 0x315e, 0x1a },
+	{ 0x3164, 0x1a },
+	{ 0x3444, 0x20 },
+	{ 0x3445, 0x25 },
+	{ 0x3480, 0x49 },
+};
+
+static const struct imx290_regval imx290_74_250mhz_clock_720p[] = {
+	{ 0x305c, 0x10 },
+	{ 0x305d, 0x00 },
+	{ 0x305e, 0x10 },
+	{ 0x305f, 0x01 },
+	{ 0x315e, 0x1b },
+	{ 0x3164, 0x1b },
+	{ 0x3444, 0x40 },
+	{ 0x3445, 0x4a },
+	{ 0x3480, 0x92 },
+};
+
 static const struct imx290_regval imx290_720p_settings[] = {
 	/* mode settings */
 	{ 0x3007, 0x10 },
@@ -280,13 +329,6 @@ static const struct imx290_regval imx290_720p_settings[] = {
 	{ 0x3419, 0x02 },
 	{ 0x3012, 0x64 },
 	{ 0x3013, 0x00 },
-	{ 0x305c, 0x20 },
-	{ 0x305d, 0x00 },
-	{ 0x305e, 0x20 },
-	{ 0x305f, 0x01 },
-	{ 0x315e, 0x1a },
-	{ 0x3164, 0x1a },
-	{ 0x3480, 0x49 },
 	/* data rate settings */
 	{ 0x3405, 0x10 },
 	{ 0x3446, 0x4f },
@@ -372,6 +414,11 @@ static const struct imx290_mode imx290_modes_2lanes[] = {
 		.link_freq_index = FREQ_INDEX_1080P,
 		.data = imx290_1080p_settings,
 		.data_size = ARRAY_SIZE(imx290_1080p_settings),
+		.clk_data = {
+			[CLK_37_125] = imx290_37_125mhz_clock_1080p,
+			[CLK_74_25] = imx290_74_250mhz_clock_1080p,
+		},
+		.clk_size = ARRAY_SIZE(imx290_37_125mhz_clock_1080p),
 	},
 	{
 		.width = 1280,
@@ -380,6 +427,11 @@ static const struct imx290_mode imx290_modes_2lanes[] = {
 		.link_freq_index = FREQ_INDEX_720P,
 		.data = imx290_720p_settings,
 		.data_size = ARRAY_SIZE(imx290_720p_settings),
+		.clk_data = {
+			[CLK_37_125] = imx290_37_125mhz_clock_720p,
+			[CLK_74_25] = imx290_74_250mhz_clock_720p,
+		},
+		.clk_size = ARRAY_SIZE(imx290_37_125mhz_clock_720p),
 	},
 };
 
@@ -391,6 +443,11 @@ static const struct imx290_mode imx290_modes_4lanes[] = {
 		.link_freq_index = FREQ_INDEX_1080P,
 		.data = imx290_1080p_settings,
 		.data_size = ARRAY_SIZE(imx290_1080p_settings),
+		.clk_data = {
+			[CLK_37_125] = imx290_37_125mhz_clock_1080p,
+			[CLK_74_25] = imx290_74_250mhz_clock_1080p,
+		},
+		.clk_size = ARRAY_SIZE(imx290_37_125mhz_clock_1080p),
 	},
 	{
 		.width = 1280,
@@ -399,6 +456,11 @@ static const struct imx290_mode imx290_modes_4lanes[] = {
 		.link_freq_index = FREQ_INDEX_720P,
 		.data = imx290_720p_settings,
 		.data_size = ARRAY_SIZE(imx290_720p_settings),
+		.clk_data = {
+			[CLK_37_125] = imx290_37_125mhz_clock_720p,
+			[CLK_74_25] = imx290_74_250mhz_clock_720p,
+		},
+		.clk_size = ARRAY_SIZE(imx290_37_125mhz_clock_720p),
 	},
 };
 
@@ -802,6 +864,8 @@ static int imx290_set_hmax(struct imx290 *imx290, u32 val)
 /* Start streaming */
 static int imx290_start_streaming(struct imx290 *imx290)
 {
+	enum imx290_clk_index clk_idx = imx290->xclk_freq == 37125000 ?
+					CLK_37_125 : CLK_74_25;
 	int ret;
 
 	/* Set init register settings */
@@ -810,6 +874,14 @@ static int imx290_start_streaming(struct imx290 *imx290)
 						imx290_global_init_settings));
 	if (ret < 0) {
 		dev_err(imx290->dev, "Could not set init registers\n");
+		return ret;
+	}
+
+	ret = imx290_set_register_array(imx290,
+					imx290->current_mode->clk_data[clk_idx],
+					imx290->current_mode->clk_size);
+	if (ret < 0) {
+		dev_err(imx290->dev, "Could not set clock registers\n");
 		return ret;
 	}
 
@@ -1081,7 +1153,6 @@ static int imx290_probe(struct i2c_client *client)
 	};
 	const struct of_device_id *match;
 	struct imx290 *imx290;
-	u32 xclk_freq;
 	s64 fq;
 	int ret;
 
@@ -1150,21 +1221,21 @@ static int imx290_probe(struct i2c_client *client)
 	}
 
 	ret = fwnode_property_read_u32(dev_fwnode(dev), "clock-frequency",
-				       &xclk_freq);
+				       &imx290->xclk_freq);
 	if (ret) {
 		dev_err(dev, "Could not get xclk frequency\n");
 		goto free_err;
 	}
 
 	/* external clock must be 37.125 MHz */
-	if (xclk_freq != 37125000) {
+	if (imx290->xclk_freq != 37125000 && imx290->xclk_freq != 74250000) {
 		dev_err(dev, "External clock frequency %u is not supported\n",
-			xclk_freq);
+			imx290->xclk_freq);
 		ret = -EINVAL;
 		goto free_err;
 	}
 
-	ret = clk_set_rate(imx290->xclk, xclk_freq);
+	ret = clk_set_rate(imx290->xclk, imx290->xclk_freq);
 	if (ret) {
 		dev_err(dev, "Could not set xclk frequency\n");
 		goto free_err;
