@@ -863,23 +863,9 @@ static inline u8 imx290_get_link_freq_index(struct imx290 *imx290)
 	return imx290->current_mode->link_freq_index;
 }
 
-static s64 imx290_get_link_freq(struct imx290 *imx290)
-{
-	u8 index = imx290_get_link_freq_index(imx290);
-
-	return *(imx290_link_freqs_ptr(imx290) + index);
-}
-
 static u64 imx290_calc_pixel_rate(struct imx290 *imx290)
 {
-	s64 link_freq = imx290_get_link_freq(imx290);
-	u8 nlanes = imx290->nlanes;
-	u64 pixel_rate;
-
-	/* pixel rate = link_freq * 2 * nr_of_lanes / bits_per_sample */
-	pixel_rate = link_freq * 2 * nlanes;
-	do_div(pixel_rate, imx290->bpp);
-	return pixel_rate;
+	return 148500000;
 }
 
 static int imx290_set_fmt(struct v4l2_subdev *sd,
@@ -1438,8 +1424,7 @@ static int imx290_probe(struct i2c_client *client)
 
 	/*
 	 * Initialize the frame format. In particular, imx290->current_mode
-	 * and imx290->bpp are set to defaults: imx290_calc_pixel_rate() call
-	 * below relies on these fields.
+	 * and imx290->bpp are set to defaults.
 	 */
 	imx290_entity_init_cfg(&imx290->sd, NULL);
 
