@@ -124,8 +124,11 @@ struct imx290_mode {
 	u32 vmax;
 	u8 link_freq_index;
 
-	const struct imx290_regval *data;
-	u32 data_size;
+	const struct imx290_regval *mode_data;
+	u32 mode_data_size;
+	const struct imx290_regval *lane_data;
+	u32 lane_data_size;
+
 
 	/* Clock setup can vary. Index as enum imx290_clk_index */
 	const struct imx290_regval *clk_data[2];
@@ -275,8 +278,9 @@ static const struct imx290_regval imx290_74_250mhz_clock_1080p[] = {
 	{ 0x3480, 0x92 },
 };
 
-static const struct imx290_regval imx290_1080p_settings[] = {
+static const struct imx290_regval imx290_1080p_common_settings[] = {
 	/* mode settings */
+	{ IMX290_FR_FDG_SEL, 0x01 },
 	{ 0x3007, 0x00 },
 	{ 0x303a, 0x0c },
 	{ 0x3414, 0x0a },
@@ -286,8 +290,36 @@ static const struct imx290_regval imx290_1080p_settings[] = {
 	{ 0x3419, 0x04 },
 	{ 0x3012, 0x64 },
 	{ 0x3013, 0x00 },
+};
+
+static const struct imx290_regval imx290_1080p_2lane_settings[] = {
+	{ 0x3405, 0x00 },
 	/* data rate settings */
+	{ IMX290_PHY_LANE_NUM, 0x01 },
+	{ IMX290_CSI_LANE_MODE, 0x01 },
+	{ 0x3446, 0x77 },
+	{ 0x3447, 0x00 },
+	{ 0x3448, 0x67 },
+	{ 0x3449, 0x00 },
+	{ 0x344a, 0x47 },
+	{ 0x344b, 0x00 },
+	{ 0x344c, 0x37 },
+	{ 0x344d, 0x00 },
+	{ 0x344e, 0x3f },
+	{ 0x344f, 0x00 },
+	{ 0x3450, 0xff },
+	{ 0x3451, 0x00 },
+	{ 0x3452, 0x3f },
+	{ 0x3453, 0x00 },
+	{ 0x3454, 0x37 },
+	{ 0x3455, 0x00 },
+};
+
+static const struct imx290_regval imx290_1080p_4lane_settings[] = {
 	{ 0x3405, 0x10 },
+	/* data rate settings */
+	{ IMX290_PHY_LANE_NUM, 0x03 },
+	{ IMX290_CSI_LANE_MODE, 0x03 },
 	{ 0x3446, 0x57 },
 	{ 0x3447, 0x00 },
 	{ 0x3448, 0x37 },
@@ -330,8 +362,9 @@ static const struct imx290_regval imx290_74_250mhz_clock_720p[] = {
 	{ 0x3480, 0x92 },
 };
 
-static const struct imx290_regval imx290_720p_settings[] = {
+static const struct imx290_regval imx290_720p_common_settings[] = {
 	/* mode settings */
+	{ IMX290_FR_FDG_SEL, 0x01 },
 	{ 0x3007, 0x10 },
 	{ 0x303a, 0x06 },
 	{ 0x3414, 0x04 },
@@ -341,8 +374,36 @@ static const struct imx290_regval imx290_720p_settings[] = {
 	{ 0x3419, 0x02 },
 	{ 0x3012, 0x64 },
 	{ 0x3013, 0x00 },
+};
+
+static const struct imx290_regval imx290_720p_2lane_settings[] = {
+	{ 0x3405, 0x00 },
+	{ IMX290_PHY_LANE_NUM, 0x01 },
+	{ IMX290_CSI_LANE_MODE, 0x01 },
 	/* data rate settings */
+	{ 0x3446, 0x67 },
+	{ 0x3447, 0x00 },
+	{ 0x3448, 0x57 },
+	{ 0x3449, 0x00 },
+	{ 0x344a, 0x2f },
+	{ 0x344b, 0x00 },
+	{ 0x344c, 0x27 },
+	{ 0x344d, 0x00 },
+	{ 0x344e, 0x2f },
+	{ 0x344f, 0x00 },
+	{ 0x3450, 0xbf },
+	{ 0x3451, 0x00 },
+	{ 0x3452, 0x2f },
+	{ 0x3453, 0x00 },
+	{ 0x3454, 0x27 },
+	{ 0x3455, 0x00 },
+};
+
+static const struct imx290_regval imx290_720p_4lane_settings[] = {
 	{ 0x3405, 0x10 },
+	{ IMX290_PHY_LANE_NUM, 0x03 },
+	{ IMX290_CSI_LANE_MODE, 0x03 },
+	/* data rate settings */
 	{ 0x3446, 0x4f },
 	{ 0x3447, 0x00 },
 	{ 0x3448, 0x2f },
@@ -422,11 +483,13 @@ static const struct imx290_mode imx290_modes_2lanes[] = {
 	{
 		.width = 1920,
 		.height = 1080,
-		.hmax = 0x1130,
+		.hmax = 0x0898,
 		.vmax = 0x0465,
 		.link_freq_index = FREQ_INDEX_1080P,
-		.data = imx290_1080p_settings,
-		.data_size = ARRAY_SIZE(imx290_1080p_settings),
+		.mode_data = imx290_1080p_common_settings,
+		.mode_data_size = ARRAY_SIZE(imx290_1080p_common_settings),
+		.lane_data = imx290_1080p_2lane_settings,
+		.lane_data_size = ARRAY_SIZE(imx290_1080p_2lane_settings),
 		.clk_data = {
 			[CLK_37_125] = imx290_37_125mhz_clock_1080p,
 			[CLK_74_25] = imx290_74_250mhz_clock_1080p,
@@ -436,11 +499,13 @@ static const struct imx290_mode imx290_modes_2lanes[] = {
 	{
 		.width = 1280,
 		.height = 720,
-		.hmax = 0x19c8,
+		.hmax = 0x0ce4,
 		.vmax = 0x02ee,
 		.link_freq_index = FREQ_INDEX_720P,
-		.data = imx290_720p_settings,
-		.data_size = ARRAY_SIZE(imx290_720p_settings),
+		.mode_data = imx290_720p_common_settings,
+		.mode_data_size = ARRAY_SIZE(imx290_720p_common_settings),
+		.lane_data = imx290_720p_2lane_settings,
+		.lane_data_size = ARRAY_SIZE(imx290_720p_2lane_settings),
 		.clk_data = {
 			[CLK_37_125] = imx290_37_125mhz_clock_720p,
 			[CLK_74_25] = imx290_74_250mhz_clock_720p,
@@ -456,8 +521,10 @@ static const struct imx290_mode imx290_modes_4lanes[] = {
 		.hmax = 0x0898,
 		.vmax = 0x0465,
 		.link_freq_index = FREQ_INDEX_1080P,
-		.data = imx290_1080p_settings,
-		.data_size = ARRAY_SIZE(imx290_1080p_settings),
+		.mode_data = imx290_1080p_common_settings,
+		.mode_data_size = ARRAY_SIZE(imx290_1080p_common_settings),
+		.lane_data = imx290_1080p_4lane_settings,
+		.lane_data_size = ARRAY_SIZE(imx290_1080p_4lane_settings),
 		.clk_data = {
 			[CLK_37_125] = imx290_37_125mhz_clock_1080p,
 			[CLK_74_25] = imx290_74_250mhz_clock_1080p,
@@ -470,8 +537,10 @@ static const struct imx290_mode imx290_modes_4lanes[] = {
 		.hmax = 0x0ce4,
 		.vmax = 0x02ee,
 		.link_freq_index = FREQ_INDEX_720P,
-		.data = imx290_720p_settings,
-		.data_size = ARRAY_SIZE(imx290_720p_settings),
+		.mode_data = imx290_720p_common_settings,
+		.mode_data_size = ARRAY_SIZE(imx290_720p_common_settings),
+		.lane_data = imx290_720p_4lane_settings,
+		.lane_data_size = ARRAY_SIZE(imx290_720p_4lane_settings),
 		.clk_data = {
 			[CLK_37_125] = imx290_37_125mhz_clock_720p,
 			[CLK_74_25] = imx290_74_250mhz_clock_720p,
@@ -1014,8 +1083,18 @@ static int imx290_start_streaming(struct imx290 *imx290)
 	}
 
 	/* Apply default values of current mode */
-	ret = imx290_set_register_array(imx290, imx290->current_mode->data,
-					imx290->current_mode->data_size);
+	ret = imx290_set_register_array(imx290,
+					imx290->current_mode->mode_data,
+					imx290->current_mode->mode_data_size);
+	if (ret < 0) {
+		dev_err(imx290->dev, "Could not set current mode\n");
+		return ret;
+	}
+
+	/* Apply lane config registers of current mode */
+	ret = imx290_set_register_array(imx290,
+					imx290->current_mode->lane_data,
+					imx290->current_mode->lane_data_size);
 	if (ret < 0) {
 		dev_err(imx290->dev, "Could not set current mode\n");
 		return ret;
@@ -1078,49 +1157,6 @@ static int imx290_get_regulators(struct device *dev, struct imx290 *imx290)
 				       imx290->supplies);
 }
 
-static int imx290_set_data_lanes(struct imx290 *imx290)
-{
-	int ret = 0, laneval, frsel;
-
-	switch (imx290->nlanes) {
-	case 2:
-		laneval = 0x01;
-		frsel = 0x02;
-		break;
-	case 4:
-		laneval = 0x03;
-		frsel = 0x01;
-		break;
-	default:
-		/*
-		 * We should never hit this since the data lane count is
-		 * validated in probe itself
-		 */
-		dev_err(imx290->dev, "Lane configuration not supported\n");
-		ret = -EINVAL;
-		goto exit;
-	}
-
-	ret = imx290_write_reg(imx290, IMX290_PHY_LANE_NUM, laneval);
-	if (ret) {
-		dev_err(imx290->dev, "Error setting Physical Lane number register\n");
-		goto exit;
-	}
-
-	ret = imx290_write_reg(imx290, IMX290_CSI_LANE_MODE, laneval);
-	if (ret) {
-		dev_err(imx290->dev, "Error setting CSI Lane mode register\n");
-		goto exit;
-	}
-
-	ret = imx290_write_reg(imx290, IMX290_FR_FDG_SEL, frsel);
-	if (ret)
-		dev_err(imx290->dev, "Error setting FR/FDG SEL register\n");
-
-exit:
-	return ret;
-}
-
 static int imx290_power_on(struct device *dev)
 {
 	struct v4l2_subdev *sd = dev_get_drvdata(dev);
@@ -1144,9 +1180,6 @@ static int imx290_power_on(struct device *dev)
 	usleep_range(1, 2);
 	gpiod_set_value_cansleep(imx290->rst_gpio, 0);
 	usleep_range(30000, 31000);
-
-	/* Set data lane count */
-	imx290_set_data_lanes(imx290);
 
 	return 0;
 }
