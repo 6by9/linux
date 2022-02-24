@@ -1378,11 +1378,20 @@ static const struct acpi_device_id ov2740_acpi_ids[] = {
 
 MODULE_DEVICE_TABLE(acpi, ov2740_acpi_ids);
 
+#if IS_ENABLED(CONFIG_OF)
+static const struct of_device_id ov2740_of_match[] = {
+	{ .compatible = "ovti,ov2740" },
+	{ /* sentinel */ },
+};
+MODULE_DEVICE_TABLE(of, ov2740_of_match);
+#endif
+
 static struct i2c_driver ov2740_i2c_driver = {
 	.driver = {
 		.name = "ov2740",
 		.pm = &ov2740_pm_ops,
 		.acpi_match_table = ov2740_acpi_ids,
+		.of_match_table = of_match_ptr(ov2740_of_match),
 	},
 	.probe_new = ov2740_probe,
 	.remove = ov2740_remove,
