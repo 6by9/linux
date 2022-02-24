@@ -78,6 +78,15 @@
 /* OTP registers from sensor */
 #define OV2740_REG_OTP_CUSTOMER		0x7010
 
+/* OV2740 native and active pixel array size */
+#define OV2740_NATIVE_WIDTH		1932U
+#define OV2740_NATIVE_HEIGHT		1092U
+
+#define OV2740_PIXEL_ARRAY_LEFT		0U
+#define OV2740_PIXEL_ARRAY_TOP		0U
+#define OV2740_PIXEL_ARRAY_WIDTH	1932U
+#define OV2740_PIXEL_ARRAY_HEIGHT	1092U
+
 /* regulator supplies */
 static const char * const ov2740_supply_names[] = {
 	"avdd",		/* Analog power */
@@ -130,6 +139,9 @@ struct ov2740_mode {
 
 	/* Link frequency needed for this resolution */
 	u32 link_freq_index;
+
+	/* Crop region */
+	struct v4l2_rect crop;
 
 	/* Sensor register settings for this resolution */
 	const struct ov2740_reg_list reg_list;
@@ -330,6 +342,12 @@ static const struct ov2740_mode supported_modes[] = {
 			.regs = mode_1932x1092_regs,
 		},
 		.link_freq_index = OV2740_LINK_FREQ_360MHZ_INDEX,
+		.crop = {
+			.left		= OV2740_PIXEL_ARRAY_LEFT,
+			.top		= OV2740_PIXEL_ARRAY_TOP,
+			.width		= OV2740_PIXEL_ARRAY_WIDTH,
+			.height		= OV2740_PIXEL_ARRAY_HEIGHT,
+		},
 	},
 };
 
@@ -639,6 +657,21 @@ static void ov2740_update_pad_format(const struct ov2740_mode *mode,
 	fmt->height = mode->height;
 	fmt->code = MEDIA_BUS_FMT_SGRBG10_1X10;
 	fmt->field = V4L2_FIELD_NONE;
+}
+
+static const struct v4l2_rect *
+__ov2740_get_pad_crop(struct ov2740 *ov2740,
+		      struct v4l2_subdev_state *sd_state,
+		      unsigned int pad, enum v4l2_subdev_format_whence which)
+{
+	switch (which) {
+	case V4L2_SUBDEV_FORMAT_TRY:
+		return v4l2_subdev_get_try_crop(&ov2740->sd, sd_state, pad);
+	case V4L2_SUBDEV_FORMAT_ACTIVE:
+		return &ov2740->cur_mode->crop;
+	}
+
+	return NULL;
 }
 
 static int ov2740_load_otp_data(struct nvm_data *nvm)
@@ -979,6 +1012,43 @@ static int ov2740_enum_frame_size(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int ov2740_get_selection(struct v4l2_subdev *sd,
+				struct v4l2_subdev_state *sd_state,
+				struct v4l2_subdev_selection *sel)
+{
+	switch (sel->target) {
+	case V4L2_SEL_TGT_CROP: {
+		struct ov2740 *ov2740 = to_ov2740(sd);
+
+		mutex_lock(&ov2740->mutex);
+		sel->r = *__ov2740_get_pad_crop(ov2740, sd_state, sel->pad,
+						sel->which);
+		mutex_unlock(&ov2740->mutex);
+
+		return 0;
+	}
+
+	case V4L2_SEL_TGT_NATIVE_SIZE:
+		sel->r.top = 0;
+		sel->r.left = 0;
+		sel->r.width = OV2740_NATIVE_WIDTH;
+		sel->r.height = OV2740_NATIVE_HEIGHT;
+
+		return 0;
+
+	case V4L2_SEL_TGT_CROP_DEFAULT:
+	case V4L2_SEL_TGT_CROP_BOUNDS:
+		sel->r.top = OV2740_PIXEL_ARRAY_TOP;
+		sel->r.left = OV2740_PIXEL_ARRAY_LEFT;
+		sel->r.width = OV2740_PIXEL_ARRAY_WIDTH;
+		sel->r.height = OV2740_PIXEL_ARRAY_HEIGHT;
+
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 static int ov2740_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
 	struct ov2740 *ov2740 = to_ov2740(sd);
@@ -1000,6 +1070,7 @@ static const struct v4l2_subdev_pad_ops ov2740_pad_ops = {
 	.get_fmt = ov2740_get_format,
 	.enum_mbus_code = ov2740_enum_mbus_code,
 	.enum_frame_size = ov2740_enum_frame_size,
+	.get_selection = ov2740_get_selection,
 };
 
 static const struct v4l2_subdev_ops ov2740_subdev_ops = {
