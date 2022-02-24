@@ -10,6 +10,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/nvmem-provider.h>
 #include <linux/regmap.h>
+#include <linux/regulator/consumer.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-fwnode.h>
@@ -76,6 +77,15 @@
 #define CUSTOMER_USE_OTP_SIZE		0x100
 /* OTP registers from sensor */
 #define OV2740_REG_OTP_CUSTOMER		0x7010
+
+/* regulator supplies */
+static const char * const ov2740_supply_names[] = {
+	"avdd",		/* Analog power */
+	"dovdd",	/* Digital I/O power */
+	"dvdd",		/* Digital core power */
+};
+
+#define OV2740_NUM_SUPPLIES ARRAY_SIZE(ov2740_supply_names)
 
 struct nvm_data {
 	struct i2c_client *client;
@@ -348,6 +358,7 @@ struct ov2740 {
 	struct nvm_data *nvm;
 
 	struct clk *clk;
+	struct regulator_bulk_data supplies[OV2740_NUM_SUPPLIES];
 };
 
 static inline struct ov2740 *to_ov2740(struct v4l2_subdev *subdev)
@@ -732,9 +743,22 @@ static int ov2740_power_on(struct device *dev)
 	struct ov2740 *ov2740 = to_ov2740(sd);
 	int ret;
 
+	ret = regulator_bulk_enable(OV2740_NUM_SUPPLIES, ov2740->supplies);
+	if (ret < 0) {
+		dev_err(dev, "Failed to enable regulators\n");
+		return ret;
+	}
+
 	ret = clk_prepare_enable(ov2740->clk);
-	if (ret)
+	if (ret) {
 		dev_err(dev, "failed to enable clock\n");
+		goto err_disable_regulators;
+	}
+
+	return 0;
+
+err_disable_regulators:
+	regulator_bulk_disable(OV2740_NUM_SUPPLIES, ov2740->supplies);
 
 	return ret;
 }
@@ -745,6 +769,8 @@ static int ov2740_power_off(struct device *dev)
 	struct ov2740 *ov2740 = to_ov2740(sd);
 
 	clk_disable_unprepare(ov2740->clk);
+
+	regulator_bulk_disable(OV2740_NUM_SUPPLIES, ov2740->supplies);
 
 	return 0;
 }
@@ -1040,6 +1066,14 @@ static int ov2740_check_hwcfg(struct device *dev, struct ov2740 *ov2740)
 		dev_err(dev, "external clock %d is not supported", mclk);
 		return -EINVAL;
 	}
+
+	for (i = 0; i < OV2740_NUM_SUPPLIES; i++)
+		ov2740->supplies[i].supply = ov2740_supply_names[i];
+
+	ret = devm_regulator_bulk_get(dev, OV2740_NUM_SUPPLIES,
+				      ov2740->supplies);
+	if (ret)
+		return ret;
 
 	ep = fwnode_graph_get_next_endpoint(fwnode, NULL);
 	if (!ep)
