@@ -551,11 +551,12 @@ static int ov2740_init_controls(struct ov2740 *ov2740)
 	const struct ov2740_mode *cur_mode;
 	s64 exposure_max, h_blank, pixel_rate;
 	u32 vblank_min, vblank_max, vblank_default;
+	struct v4l2_fwnode_device_properties props;
 	int size;
 	int ret = 0;
 
 	ctrl_hdlr = &ov2740->ctrl_handler;
-	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 8);
+	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 10);
 	if (ret)
 		return ret;
 
@@ -606,6 +607,11 @@ static int ov2740_init_controls(struct ov2740 *ov2740)
 				     V4L2_CID_TEST_PATTERN,
 				     ARRAY_SIZE(ov2740_test_pattern_menu) - 1,
 				     0, 0, ov2740_test_pattern_menu);
+
+	v4l2_fwnode_device_parse(ov2740->sd.dev, &props);
+
+	v4l2_ctrl_new_fwnode_properties(ctrl_hdlr, &ov2740_ctrl_ops,
+					&props);
 
 	if (ctrl_hdlr->error)
 		return ctrl_hdlr->error;
