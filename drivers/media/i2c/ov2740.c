@@ -3,6 +3,7 @@
 
 #include <asm/unaligned.h>
 #include <linux/acpi.h>
+#include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
@@ -345,6 +346,8 @@ struct ov2740 {
 
 	/* NVM data inforamtion */
 	struct nvm_data *nvm;
+
+	struct clk *clk;
 };
 
 static inline struct ov2740 *to_ov2740(struct v4l2_subdev *subdev)
@@ -603,6 +606,7 @@ static int ov2740_init_controls(struct ov2740 *ov2740)
 				     V4L2_CID_TEST_PATTERN,
 				     ARRAY_SIZE(ov2740_test_pattern_menu) - 1,
 				     0, 0, ov2740_test_pattern_menu);
+
 	if (ctrl_hdlr->error)
 		return ctrl_hdlr->error;
 
@@ -714,6 +718,29 @@ err:
 	nvm->nvm_buffer = NULL;
 
 	return ret;
+}
+
+static int ov2740_power_on(struct device *dev)
+{
+	struct v4l2_subdev *sd = dev_get_drvdata(dev);
+	struct ov2740 *ov2740 = to_ov2740(sd);
+	int ret;
+
+	ret = clk_prepare_enable(ov2740->clk);
+	if (ret)
+		dev_err(dev, "failed to enable clock\n");
+
+	return ret;
+}
+
+static int ov2740_power_off(struct device *dev)
+{
+	struct v4l2_subdev *sd = dev_get_drvdata(dev);
+	struct ov2740 *ov2740 = to_ov2740(sd);
+
+	clk_disable_unprepare(ov2740->clk);
+
+	return 0;
 }
 
 static int ov2740_start_streaming(struct ov2740 *ov2740)
@@ -975,7 +1002,7 @@ static int ov2740_identify_module(struct ov2740 *ov2740)
 	return 0;
 }
 
-static int ov2740_check_hwcfg(struct device *dev)
+static int ov2740_check_hwcfg(struct device *dev, struct ov2740 *ov2740)
 {
 	struct fwnode_handle *ep;
 	struct fwnode_handle *fwnode = dev_fwnode(dev);
@@ -989,9 +1016,19 @@ static int ov2740_check_hwcfg(struct device *dev)
 	if (!fwnode)
 		return -ENXIO;
 
-	ret = fwnode_property_read_u32(fwnode, "clock-frequency", &mclk);
-	if (ret)
-		return ret;
+	ov2740->clk = devm_clk_get_optional(dev, NULL);
+	if (IS_ERR(ov2740->clk))
+		return dev_err_probe(dev, PTR_ERR(ov2740->clk),
+				     "error getting clock\n");
+	if (!ov2740->clk) {
+		dev_dbg(dev, "no clock provided, using clock-frequency property\n");
+
+		ret = fwnode_property_read_u32(fwnode, "clock-frequency", &mclk);
+		if (ret)
+			return ret;
+	} else {
+		mclk = clk_get_rate(ov2740->clk);
+	}
 
 	if (mclk != OV2740_MCLK) {
 		dev_err(dev, "external clock %d is not supported", mclk);
@@ -1050,6 +1087,10 @@ static int ov2740_remove(struct i2c_client *client)
 	media_entity_cleanup(&sd->entity);
 	v4l2_ctrl_handler_free(sd->ctrl_handler);
 	pm_runtime_disable(&client->dev);
+	if (!pm_runtime_status_suspended(&client->dev))
+		ov2740_power_off(&client->dev);
+	pm_runtime_set_suspended(&client->dev);
+
 	mutex_destroy(&ov2740->mutex);
 
 	return 0;
@@ -1138,22 +1179,27 @@ static int ov2740_probe(struct i2c_client *client)
 	struct ov2740 *ov2740;
 	int ret = 0;
 
-	ret = ov2740_check_hwcfg(&client->dev);
+	ov2740 = devm_kzalloc(&client->dev, sizeof(*ov2740), GFP_KERNEL);
+	if (!ov2740)
+		return -ENOMEM;
+
+	ret = ov2740_check_hwcfg(&client->dev, ov2740);
 	if (ret) {
 		dev_err(&client->dev, "failed to check HW configuration: %d",
 			ret);
 		return ret;
 	}
 
-	ov2740 = devm_kzalloc(&client->dev, sizeof(*ov2740), GFP_KERNEL);
-	if (!ov2740)
-		return -ENOMEM;
-
 	v4l2_i2c_subdev_init(&ov2740->sd, client, &ov2740_subdev_ops);
+
+	ret = ov2740_power_on(&client->dev);
+	if (ret)
+		return ret;
+
 	ret = ov2740_identify_module(ov2740);
 	if (ret) {
 		dev_err(&client->dev, "failed to find sensor: %d", ret);
-		return ret;
+		goto probe_error_power_down;
 	}
 
 	mutex_init(&ov2740->mutex);
@@ -1203,11 +1249,15 @@ probe_error_v4l2_ctrl_handler_free:
 	v4l2_ctrl_handler_free(ov2740->sd.ctrl_handler);
 	mutex_destroy(&ov2740->mutex);
 
+probe_error_power_down:
+	ov2740_power_off(&client->dev);
+
 	return ret;
 }
 
 static const struct dev_pm_ops ov2740_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(ov2740_suspend, ov2740_resume)
+	SET_RUNTIME_PM_OPS(ov2740_power_off, ov2740_power_on, NULL)
 };
 
 static const struct acpi_device_id ov2740_acpi_ids[] = {
