@@ -207,6 +207,24 @@
 # define PV_INT_HSYNC_START			BIT(0)
 
 #define PV_STAT					0x2c
+/* PV4 - write these bits to clear */
+/* Overflow on HVS */
+# define PV_STAT_HVS_OF				BIT(10)
+/* Underflow on PV to display controller */
+# define PV_STAT_PV_UF				BIT(9)
+/* Underflow on HVS */
+# define PV_STAT_HVS_UF				BIT(8)
+# define PV_STAT_RESET		(PV_STAT_HVS_OF |		\
+				 PV_STAT_PV_UF |		\
+				 PV_STAT_HVS_UF)
+
+/* PV5 - write to PV_STAT_CLR to clear */
+/* Overflow on HVS */
+# define PV5_STAT_HVS_OF			BIT(11)
+/* Underflow on PV to display controller */
+# define PV5_STAT_PV_UF				BIT(10)
+/* Underflow on HVS */
+# define PV5_STAT_HVS_UF			BIT(9)
 
 #define PV_HACT_ACT				0x30
 
@@ -214,6 +232,14 @@
 # define PV_MUX_CFG_RGB_PIXEL_MUX_MODE_MASK	VC4_MASK(5, 2)
 # define PV_MUX_CFG_RGB_PIXEL_MUX_MODE_SHIFT	2
 # define PV_MUX_CFG_RGB_PIXEL_MUX_MODE_NO_SWAP	8
+
+#define PV_STAT_CLR				0x60
+# define PV_STAT_CLR_OF_CLR			BIT(2)
+# define PV_STAT_CLR_PV_UF_CLR			BIT(1)
+# define PV_STAT_CLR_HVS_UF_CLR			BIT(0)
+# define PV_STAT_CLR_RESET	(PV_STAT_CLR_OF_CLR |		\
+				 PV_STAT_CLR_PV_UF_CLR |	\
+				 PV_STAT_CLR_HVS_UF_CLR)
 
 #define SCALER_CHANNELS_COUNT			3
 

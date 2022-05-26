@@ -65,6 +65,7 @@ static const struct debugfs_reg32 crtc_regs[] = {
 	VC4_REG32(PV_INTSTAT),
 	VC4_REG32(PV_STAT),
 	VC4_REG32(PV_HACT_ACT),
+	VC4_REG32(PV_STAT_CLR),
 };
 
 static unsigned int
@@ -468,12 +469,22 @@ static int vc4_crtc_disable(struct drm_crtc *crtc,
 	struct vc4_crtc *vc4_crtc = to_vc4_crtc(crtc);
 	struct drm_device *dev = crtc->dev;
 	struct vc4_dev *vc4 = to_vc4_dev(dev);
+	const struct vc4_pv_data *pv_data = vc4_crtc_to_vc4_pv_data(vc4_crtc);
 	int ret;
 
 	CRTC_WRITE(PV_V_CONTROL,
 		   CRTC_READ(PV_V_CONTROL) & ~PV_VCONTROL_VIDEN);
 	ret = wait_for(!(CRTC_READ(PV_V_CONTROL) & PV_VCONTROL_VIDEN), 1);
 	WARN_ONCE(ret, "Timeout waiting for !PV_VCONTROL_VIDEN\n");
+
+	/* Ensure the PV to display controller FIFO is empty before disabling */
+	if (pv_data->pv5) {
+		CRTC_WRITE(PV_STAT_CLR, PV_STAT_CLR_RESET);
+		ret = wait_for(!(CRTC_READ(PV_STAT) & PV5_STAT_HVS_UF), 1);
+	} else {
+		CRTC_WRITE(PV_STAT, PV_STAT_RESET);
+		ret = wait_for(!(CRTC_READ(PV_STAT) & PV_STAT_HVS_UF), 1);
+	}
 
 	/*
 	 * This delay is needed to avoid to get a pixel stuck in an
@@ -1158,6 +1169,7 @@ static const struct vc4_pv_data bcm2711_pv0_data = {
 		[0] = VC4_ENCODER_TYPE_DSI0,
 		[1] = VC4_ENCODER_TYPE_DPI,
 	},
+	.pv5 = true,
 };
 
 static const struct vc4_pv_data bcm2711_pv1_data = {
@@ -1172,6 +1184,7 @@ static const struct vc4_pv_data bcm2711_pv1_data = {
 		[0] = VC4_ENCODER_TYPE_DSI1,
 		[1] = VC4_ENCODER_TYPE_SMI,
 	},
+	.pv5 = true,
 };
 
 static const struct vc4_pv_data bcm2711_pv2_data = {
@@ -1185,6 +1198,7 @@ static const struct vc4_pv_data bcm2711_pv2_data = {
 	.encoder_types = {
 		[0] = VC4_ENCODER_TYPE_HDMI0,
 	},
+	.pv5 = true,
 };
 
 static const struct vc4_pv_data bcm2711_pv3_data = {
@@ -1198,6 +1212,7 @@ static const struct vc4_pv_data bcm2711_pv3_data = {
 	.encoder_types = {
 		[PV_CONTROL_CLK_SELECT_VEC] = VC4_ENCODER_TYPE_VEC,
 	},
+	.pv5 = true,
 };
 
 static const struct vc4_pv_data bcm2711_pv4_data = {
@@ -1211,6 +1226,7 @@ static const struct vc4_pv_data bcm2711_pv4_data = {
 	.encoder_types = {
 		[0] = VC4_ENCODER_TYPE_HDMI1,
 	},
+	.pv5 = true,
 };
 
 static const struct of_device_id vc4_crtc_dt_match[] = {

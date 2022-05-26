@@ -495,6 +495,9 @@ struct vc4_pv_data {
 	enum vc4_encoder_type encoder_types[4];
 	const char *debugfs_name;
 
+	/* Pixel valve found on 2711 or later */
+	bool pv5;
+
 };
 
 struct vc5_gamma_entry {
