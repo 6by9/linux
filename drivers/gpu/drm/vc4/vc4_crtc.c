@@ -484,11 +484,17 @@ static int vc4_crtc_disable(struct drm_crtc *crtc,
 	/* Ensure the PV to display controller FIFO is empty before disabling */
 	if (pv_data->pv5) {
 		CRTC_WRITE(PV_STAT_CLR, PV_STAT_CLR_RESET);
-		ret = wait_for(!(CRTC_READ(PV_STAT) & PV5_STAT_HVS_UF), 1);
+		ret = wait_for((CRTC_READ(PV_STAT) & PV5_STAT_HVS_UF), 16000);
 	} else {
+		unsigned int start = jiffies;
+
 		CRTC_WRITE(PV_STAT, PV_STAT_RESET);
-		ret = wait_for(!(CRTC_READ(PV_STAT) & PV_STAT_HVS_UF), 1);
+		while (!(CRTC_READ(PV_STAT) & PV_STAT_HVS_UF) && (jiffies - start < 50))
+			usleep_range(1000, 1500);
+		ret = (CRTC_READ(PV_STAT) & PV_STAT_HVS_UF);
+//		ret = wait_for((CRTC_READ(PV_STAT) & PV_STAT_HVS_UF), 16000);
 	}
+	WARN(ret, "Timeout waiting for PV_STAT\n");
 
 	/*
 	 * This delay is needed to avoid to get a pixel stuck in an
