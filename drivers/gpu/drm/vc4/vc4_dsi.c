@@ -815,7 +815,22 @@ static void vc4_dsi_bridge_disable(struct drm_bridge *bridge,
 				   struct drm_bridge_state *state)
 {
 	struct vc4_dsi *dsi = bridge_to_vc4_dsi(bridge);
+	struct drm_atomic_state *drm_state = state->base.state;
+	struct drm_connector *connector;
+	const struct drm_crtc_helper_funcs *funcs;
+	struct drm_crtc *crtc;
 	u32 disp0_ctrl;
+
+	/*
+	 * DSI needs the Pixel valve to be disabled before the DSI block.
+	 * Call it manually.
+	 */
+	connector = drm_atomic_get_new_connector_for_encoder(drm_state,
+							     bridge->encoder);
+	crtc = drm_atomic_get_new_connector_state(drm_state, connector)->crtc;
+
+	funcs = crtc->helper_private;
+	funcs->atomic_disable(crtc, drm_state);
 
 	disp0_ctrl = DSI_PORT_READ(DISP0_CTRL);
 	disp0_ctrl &= ~DSI_DISP0_ENABLE;
