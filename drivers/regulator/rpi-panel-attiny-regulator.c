@@ -300,7 +300,7 @@ static int attiny_i2c_probe(struct i2c_client *i2c,
 	ret = attiny_i2c_read(i2c, REG_ID, &data);
 	if (ret < 0) {
 		dev_err(&i2c->dev, "Failed to read REG_ID reg: %d\n", ret);
-		goto error;
+		//goto error;
 	}
 
 	switch (data) {
@@ -309,8 +309,8 @@ static int attiny_i2c_probe(struct i2c_client *i2c,
 		break;
 	default:
 		dev_err(&i2c->dev, "Unknown Atmel firmware revision: 0x%02x\n", data);
-		ret = -ENODEV;
-		goto error;
+		//ret = -ENODEV;
+		//goto error;
 	}
 
 	regmap_write(regmap, REG_POWERON, 0);
