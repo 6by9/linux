@@ -102,8 +102,25 @@ static inline struct tc358762 *bridge_to_tc358762(struct drm_bridge *bridge)
 	return container_of(bridge, struct tc358762, bridge);
 }
 
-static int tc358762_init(struct tc358762 *ctx)
+static int tc358762_init(struct tc358762 *ctx, struct drm_bridge_state *old_state)
 {
+	struct drm_atomic_state *state = old_state->base.state;
+	struct drm_bridge *bridge = &ctx->bridge;
+	struct drm_connector *connector;
+	struct drm_crtc *crtc;
+	const struct drm_crtc_state *crtc_state;
+	const struct drm_display_mode *mode;
+
+	/*
+	 * Retrieve the CRTC adjusted mode. This requires a little dance to go
+	 * from the bridge to the encoder, to the connector and to the CRTC.
+	 */
+	connector = drm_atomic_get_new_connector_for_encoder(state,
+							     bridge->encoder);
+	crtc = drm_atomic_get_new_connector_state(state, connector)->crtc;
+	crtc_state = drm_atomic_get_new_crtc_state(state, crtc);
+	mode = &crtc_state->adjusted_mode;
+
 	tc358762_write(ctx, DSI_LANEENABLE,
 		       LANEENABLE_L0EN | LANEENABLE_CLEN);
 	tc358762_write(ctx, PPI_D0S_CLRSIPOCOUNT, 5);
@@ -112,8 +129,17 @@ static int tc358762_init(struct tc358762 *ctx)
 	tc358762_write(ctx, PPI_D1S_ATMR, 0);
 	tc358762_write(ctx, PPI_LPTXTIMECNT, LPX_PERIOD);
 
+	tc358762_write(ctx, 0x424, ((mode->htotal - mode->hsync_end) << 16) +
+				    mode->hsync_end - mode->hsync_start);
+	tc358762_write(ctx, 0x428, ((mode->hsync_start - mode->hdisplay) << 16) +
+				    mode->hdisplay);
+	tc358762_write(ctx, 0x42C, ((mode->vtotal - mode->vsync_end) << 16) +
+				    mode->vsync_end - mode->vsync_start);
+	tc358762_write(ctx, 0x430, ((mode->vsync_start - mode->vdisplay) << 16) +
+				    mode->vdisplay);
+
 	tc358762_write(ctx, SPICMR, 0x00);
-	tc358762_write(ctx, LCDCTRL, 0x00100150);
+	tc358762_write(ctx, LCDCTRL, 0x00100152);
 	tc358762_write(ctx, SYSCTRL, 0x040f);
 	msleep(100);
 
@@ -155,7 +181,7 @@ static void tc358762_pre_enable(struct drm_bridge *bridge,
 	if (ret < 0)
 		dev_err(ctx->dev, "error enabling regulators (%d)\n", ret);
 
-	ret = tc358762_init(ctx);
+	ret = tc358762_init(ctx, state);
 	if (ret < 0)
 		dev_err(ctx->dev, "error initializing bridge (%d)\n", ret);
 
