@@ -501,6 +501,20 @@ static const struct v4l2_ctrl_ops imx290_ctrl_ops = {
 	.s_ctrl = imx290_set_ctrl,
 };
 
+static struct v4l2_mbus_framefmt *
+imx290_get_pad_format(struct imx290 *imx290, struct v4l2_subdev_state *state,
+		      u32 which)
+{
+	switch (which) {
+	case V4L2_SUBDEV_FORMAT_TRY:
+		return v4l2_subdev_get_try_format(&imx290->sd, state, 0);
+	case V4L2_SUBDEV_FORMAT_ACTIVE:
+		return &imx290->current_format;
+	default:
+		return NULL;
+	}
+}
+
 static int imx290_enum_mbus_code(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_state *sd_state,
 				 struct v4l2_subdev_mbus_code_enum *code)
@@ -546,12 +560,7 @@ static int imx290_get_fmt(struct v4l2_subdev *sd,
 
 	mutex_lock(&imx290->lock);
 
-	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY)
-		framefmt = v4l2_subdev_get_try_format(&imx290->sd, sd_state,
-						      fmt->pad);
-	else
-		framefmt = &imx290->current_format;
-
+	framefmt = imx290_get_pad_format(imx290, sd_state, fmt->which);
 	fmt->format = *framefmt;
 
 	mutex_unlock(&imx290->lock);
@@ -611,10 +620,9 @@ static int imx290_set_fmt(struct v4l2_subdev *sd,
 	fmt->format.code = imx290->formats[i].code;
 	fmt->format.field = V4L2_FIELD_NONE;
 
-	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-		format = v4l2_subdev_get_try_format(sd, sd_state, fmt->pad);
-	} else {
-		format = &imx290->current_format;
+	format = imx290_get_pad_format(imx290, sd_state, fmt->which);
+
+	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
 		imx290->current_mode = mode;
 		imx290->bpp = imx290->formats[i].bpp;
 
