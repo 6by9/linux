@@ -509,7 +509,7 @@ static int imx290_set_ctrl(struct v4l2_ctrl *ctrl)
 		return 0;
 
 	switch (ctrl->id) {
-	case V4L2_CID_GAIN:
+	case V4L2_CID_ANALOGUE_GAIN:
 		ret = imx290_set_gain(imx290, ctrl->val);
 		break;
 	case V4L2_CID_TEST_PATTERN:
@@ -1009,7 +1009,7 @@ static int imx290_ctrl_init(struct imx290 *imx290)
 	imx290->ctrls.lock = &imx290->lock;
 
 	v4l2_ctrl_new_std(&imx290->ctrls, &imx290_ctrl_ops,
-			  V4L2_CID_GAIN, 0, 72, 1, 0);
+			  V4L2_CID_ANALOGUE_GAIN, 0, 72, 1, 0);
 
 	imx290->link_freq =
 		v4l2_ctrl_new_int_menu(&imx290->ctrls, &imx290_ctrl_ops,
