@@ -4148,6 +4148,13 @@ Params: disable-touch           Disables the touch controller
         rotate                  Display rotation {0,90,180,270} (default 0)
 
 
+Name:   vc4-kms-dpi-hyperpixel35
+Info:   Enable the KMS drivers for the Pimoroni HyperPixel 3.5 DPI display.
+        Requires vc4-kms-v3d to be loaded.
+Load:   dtoverlay=vc4-kms-dpi-hyperpixel35,<param>=<val>
+Params: rotate                  Display rotation {0,90,180,270} (default 0)
+
+
 Name:   vc4-kms-dpi-hyperpixel4
 Info:   Enable the KMS drivers for the Pimoroni HyperPixel4 DPI display.
         Requires vc4-kms-v3d to be loaded.

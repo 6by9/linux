@@ -1,0 +1,12 @@
+/*
+ * vc4-kms-dpi-hyperpixel35-overlay.dts
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include "vc4-kms-dpi-hyperpixel.dtsi"
+
+&panel {
+	compatible = "pimoroni,hyperpixel35";
+};
