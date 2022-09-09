@@ -2839,6 +2839,21 @@ Params: rotation                Mounting rotation of the camera sensor (0 or
                                 Compute Module (CSI0, i2c_vc, and cam0_reg).
 
 
+Name:   ov2740
+Info:   Omnivision OV2740 camera module.
+        Uses Unicam 1, which is the standard camera connector on most Pi
+        variants.
+Load:   dtoverlay=ov2740,<param>=<val>
+Params: rotation                Mounting rotation of the camera sensor (0 or
+                                180, default 0)
+        orientation             Sensor orientation (0 = front, 1 = rear,
+                                2 = external, default external)
+        media-controller        Configure use of Media Controller API for
+                                configuring the sensor (default on)
+        cam0                    Adopt the default configuration for CAM0 on a
+                                Compute Module (CSI0, i2c_vc, and cam0_reg).
+
+
 Name:   ov5647
 Info:   Omnivision OV5647 camera module.
         Uses Unicam 1, which is the standard camera connector on most Pi
