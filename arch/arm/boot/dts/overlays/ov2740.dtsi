@@ -1,0 +1,25 @@
+cam_node: ov2740@36 {
+	compatible = "ovti,ov2740";
+	reg = <0x36>;
+	status = "disabled";
+
+	clocks = <&cam1_clk>;
+
+	avdd-supply = <&cam1_reg>;
+	dovdd-supply = <&cam_dummy_reg>;
+	dvdd-supply = <&cam_dummy_reg>;
+
+	rotation = <0>;
+	orientation = <2>;
+
+	port {
+		cam_endpoint: endpoint {
+			clock-lanes = <0>;
+			data-lanes = <1 2>;
+			clock-noncontinuous;
+			link-frequencies =
+				/bits/ 64 <360000000>;
+		};
+	};
+};
+
