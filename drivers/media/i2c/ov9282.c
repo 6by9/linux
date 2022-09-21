@@ -11,6 +11,7 @@
 #include <linux/i2c.h>
 #include <linux/module.h>
 #include <linux/pm_runtime.h>
+#include <linux/regulator/consumer.h>
 
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-fwnode.h>
@@ -61,6 +62,14 @@
 
 #define OV9282_REG_MIN		0x00
 #define OV9282_REG_MAX		0xfffff
+
+static const char * const ov9282_supply_names[] = {
+	"avdd",		/* Analog power */
+	"dovdd",	/* Digital I/O power */
+	"dvdd",		/* Digital core power */
+};
+
+#define OV9282_NUM_SUPPLIES ARRAY_SIZE(ov9282_supply_names)
 
 /**
  * struct ov9282_reg - ov9282 sensor register
@@ -130,6 +139,7 @@ struct ov9282 {
 	struct media_pad pad;
 	struct gpio_desc *reset_gpio;
 	struct clk *inclk;
+	struct regulator_bulk_data supplies[OV9282_NUM_SUPPLIES];
 	struct v4l2_ctrl_handler ctrl_handler;
 	bool noncontinuous_clock;
 	struct v4l2_ctrl *link_freq_ctrl;
@@ -793,6 +803,18 @@ static int ov9282_detect(struct ov9282 *ov9282)
 	return 0;
 }
 
+static int ov9282_configure_regulators(struct ov9282 *ov9282)
+{
+	unsigned int i;
+
+	for (i = 0; i < OV9282_NUM_SUPPLIES; i++)
+		ov9282->supplies[i].supply = ov9282_supply_names[i];
+
+	return devm_regulator_bulk_get(ov9282->dev,
+				       OV9282_NUM_SUPPLIES,
+				       ov9282->supplies);
+}
+
 /**
  * ov9282_parse_hw_config() - Parse HW configuration and check if supported
  * @ov9282: pointer to ov9282 device
@@ -827,6 +849,12 @@ static int ov9282_parse_hw_config(struct ov9282 *ov9282)
 	if (IS_ERR(ov9282->inclk)) {
 		dev_err(ov9282->dev, "could not get inclk");
 		return PTR_ERR(ov9282->inclk);
+	}
+
+	ret = ov9282_configure_regulators(ov9282);
+	if (ret) {
+		dev_err(ov9282->dev, "Failed to get power regulators\n");
+		return ret;
 	}
 
 	rate = clk_get_rate(ov9282->inclk);
@@ -903,6 +931,12 @@ static int ov9282_power_on(struct device *dev)
 	struct ov9282 *ov9282 = to_ov9282(sd);
 	int ret;
 
+	ret = regulator_bulk_enable(OV9282_NUM_SUPPLIES, ov9282->supplies);
+	if (ret < 0) {
+		dev_err(dev, "Failed to enable regulators\n");
+		return ret;
+	}
+
 	usleep_range(400, 600);
 
 	gpiod_set_value_cansleep(ov9282->reset_gpio, 1);
@@ -919,6 +953,8 @@ static int ov9282_power_on(struct device *dev)
 
 error_reset:
 	gpiod_set_value_cansleep(ov9282->reset_gpio, 0);
+
+	regulator_bulk_disable(OV9282_NUM_SUPPLIES, ov9282->supplies);
 
 	return ret;
 }
@@ -937,6 +973,8 @@ static int ov9282_power_off(struct device *dev)
 	gpiod_set_value_cansleep(ov9282->reset_gpio, 0);
 
 	clk_disable_unprepare(ov9282->inclk);
+
+	regulator_bulk_disable(OV9282_NUM_SUPPLIES, ov9282->supplies);
 
 	return 0;
 }
