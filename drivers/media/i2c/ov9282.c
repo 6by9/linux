@@ -46,6 +46,10 @@
 /* Group hold register */
 #define OV9282_REG_HOLD		0x3308
 
+#define OV9282_REG_TIMING_FORMAT_1	0x3820
+#define OV9282_REG_TIMING_FORMAT_2	0x3821
+#define OV9282_FLIP_BIT			BIT(2)
+
 #define OV9282_REG_MIPI_CTRL00	0x4800
 #define OV9282_GATED_CLOCK	BIT(5)
 
@@ -440,6 +444,38 @@ error_release_group_hold:
 	return ret;
 }
 
+static int ov9282_set_ctrl_hflip(struct ov9282 *ov9282, int value)
+{
+	u32 current_val;
+	int ret = ov9282_read_reg(ov9282, OV9282_REG_TIMING_FORMAT_2, 1,
+				  &current_val);
+	if (!ret) {
+		if (value)
+			current_val |= OV9282_FLIP_BIT;
+		else
+			current_val &= ~OV9282_FLIP_BIT;
+		return ov9282_write_reg(ov9282, OV9282_REG_TIMING_FORMAT_2, 1,
+					current_val);
+	}
+	return ret;
+}
+
+static int ov9282_set_ctrl_vflip(struct ov9282 *ov9282, int value)
+{
+	u32 current_val;
+	int ret = ov9282_read_reg(ov9282, OV9282_REG_TIMING_FORMAT_1, 1,
+				  &current_val);
+	if (!ret) {
+		if (value)
+			current_val |= OV9282_FLIP_BIT;
+		else
+			current_val &= ~OV9282_FLIP_BIT;
+		return ov9282_write_reg(ov9282, OV9282_REG_TIMING_FORMAT_1, 1,
+					current_val);
+	}
+	return ret;
+}
+
 /**
  * ov9282_set_ctrl() - Set subdevice control
  * @ctrl: pointer to v4l2_ctrl structure
@@ -484,7 +520,6 @@ static int ov9282_set_ctrl(struct v4l2_ctrl *ctrl)
 
 	switch (ctrl->id) {
 	case V4L2_CID_EXPOSURE:
-
 		exposure = ctrl->val;
 		analog_gain = ov9282->again_ctrl->val;
 
@@ -493,11 +528,16 @@ static int ov9282_set_ctrl(struct v4l2_ctrl *ctrl)
 
 		ret = ov9282_update_exp_gain(ov9282, exposure, analog_gain);
 
-
 		break;
 	case V4L2_CID_VBLANK:
 		lpfr = ov9282->vblank + ov9282->cur_mode->height;
 		ret = ov9282_write_reg(ov9282, OV9282_REG_LPFR, 2, lpfr);
+		break;
+	case V4L2_CID_HFLIP:
+		ret = ov9282_set_ctrl_hflip(ov9282, ctrl->val);
+		break;
+	case V4L2_CID_VFLIP:
+		ret = ov9282_set_ctrl_vflip(ov9282, ctrl->val);
 		break;
 	default:
 		dev_err(ov9282->dev, "Invalid control %d", ctrl->id);
@@ -996,7 +1036,7 @@ static int ov9282_init_controls(struct ov9282 *ov9282)
 	u32 lpfr;
 	int ret;
 
-	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 8);
+	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 10);
 	if (ret)
 		return ret;
 
@@ -1029,6 +1069,12 @@ static int ov9282_init_controls(struct ov9282 *ov9282)
 						mode->vblank_min,
 						mode->vblank_max,
 						1, mode->vblank);
+
+	v4l2_ctrl_new_std(ctrl_hdlr, &ov9282_ctrl_ops, V4L2_CID_VFLIP,
+			  0, 1, 1, 1);
+
+	v4l2_ctrl_new_std(ctrl_hdlr, &ov9282_ctrl_ops, V4L2_CID_HFLIP,
+			  0, 1, 1, 1);
 
 	/* Read only controls */
 	v4l2_ctrl_new_std(ctrl_hdlr, &ov9282_ctrl_ops, V4L2_CID_PIXEL_RATE,
