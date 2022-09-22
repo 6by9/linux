@@ -45,6 +45,9 @@
 /* Group hold register */
 #define OV9282_REG_HOLD		0x3308
 
+#define OV9282_REG_MIPI_CTRL00	0x4800
+#define OV9282_GATED_CLOCK	BIT(5)
+
 /* Input clock rate */
 #define OV9282_INCLK_RATE	24000000
 
@@ -128,6 +131,7 @@ struct ov9282 {
 	struct gpio_desc *reset_gpio;
 	struct clk *inclk;
 	struct v4l2_ctrl_handler ctrl_handler;
+	bool noncontinuous_clock;
 	struct v4l2_ctrl *link_freq_ctrl;
 	struct v4l2_ctrl *hblank_ctrl;
 	struct v4l2_ctrl *vblank_ctrl;
@@ -201,7 +205,6 @@ static const struct ov9282_reg common_regs[] = {
 	{0x4601, 0x04},
 	{0x470f, 0x00},
 	{0x4f07, 0x00},
-	{0x4800, 0x20},
 	{0x5000, 0x9f},
 	{0x5001, 0x00},
 	{0x5e00, 0x00},
@@ -674,6 +677,14 @@ static int ov9282_start_streaming(struct ov9282 *ov9282)
 		return ret;
 	}
 
+	ret = ov9282_write_reg(ov9282, OV9282_REG_MIPI_CTRL00, 1,
+			       ov9282->noncontinuous_clock ?
+					OV9282_GATED_CLOCK : 0);
+	if (ret) {
+		dev_err(ov9282->dev, "fail to write MIPI_CTRL00");
+		return ret;
+	}
+
 	/* Write sensor mode registers */
 	reg_list = &ov9282->cur_mode->reg_list;
 	ret = ov9282_write_regs(ov9282, reg_list->regs, reg_list->num_of_regs);
@@ -832,6 +843,9 @@ static int ov9282_parse_hw_config(struct ov9282 *ov9282)
 	fwnode_handle_put(ep);
 	if (ret)
 		return ret;
+
+	ov9282->noncontinuous_clock =
+		bus_cfg.bus.mipi_csi2.flags & V4L2_MBUS_CSI2_NONCONTINUOUS_CLOCK;
 
 	if (bus_cfg.bus.mipi_csi2.num_data_lanes != OV9282_NUM_DATA_LANES) {
 		dev_err(ov9282->dev,
