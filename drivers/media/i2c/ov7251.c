@@ -43,8 +43,6 @@
 #define OV7251_HTS			0x3a0
 #define OV7251_VTS_HIGH			0x380e
 #define OV7251_VTS_LOW			0x380f
-#define OV7251_VTS_MIN_OFFSET		92
-#define OV7251_VTS_MAX			0x7fff
 #define OV7251_TIMING_FORMAT1		0x3820
 #define OV7251_TIMING_FORMAT1_VFLIP	BIT(2)
 #define OV7251_TIMING_FORMAT2		0x3821
@@ -138,7 +136,6 @@ struct ov7251 {
 	struct v4l2_ctrl_handler ctrls;
 	struct v4l2_ctrl *exposure;
 	struct v4l2_ctrl *hblank;
-	struct v4l2_ctrl *vblank;
 
 	/* Cached register values */
 	u8 aec_pk_manual;
@@ -691,19 +688,6 @@ static int ov7251_set_vflip(struct ov7251 *ov7251, s32 value)
 	return ret;
 }
 
-static int ov7251_set_vblank(struct ov7251 *ov7251, s32 value)
-{
-	u16 reg;
-	u8 val[2];
-
-	reg = OV7251_VTS_HIGH;
-	value += ov7251->current_mode->height;
-	val[0] = (value & 0xff00) >> 8; /* goes to OV7251_VTS_HIGH */
-	val[1] = value & 0xff;          /* goes to OV7251_VTS_LOW */
-
-	return ov7251_write_seq_regs(ov7251, reg, val, 2);
-}
-
 static int ov7251_set_test_pattern(struct ov7251 *ov7251, s32 value)
 {
 	u8 val = ov7251->pre_isp_00;
@@ -730,20 +714,9 @@ static int ov7251_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct ov7251 *ov7251 = container_of(ctrl->handler,
 					     struct ov7251, ctrls);
-	s64 max;
 	int ret;
 
 	/* v4l2_ctrl_lock() locks our mutex */
-	switch (ctrl->id) {
-	case V4L2_CID_VBLANK:
-		/* Update max exposure while meeting expected vblanking */
-		max = ov7251->current_mode->height + ctrl->val - OV7251_EXPOSURE_OFFSET;
-		__v4l2_ctrl_modify_range(ov7251->exposure,
-					 ov7251->exposure->minimum, max,
-					 ov7251->exposure->step,
-					 ov7251->exposure->default_value);
-		break;
-	}
 
 	if (!pm_runtime_get_if_in_use(ov7251->dev))
 		return 0;
@@ -763,9 +736,6 @@ static int ov7251_s_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_VFLIP:
 		ret = ov7251_set_vflip(ov7251, ctrl->val);
-		break;
-	case V4L2_CID_VBLANK:
-		ret = ov7251_set_vblank(ov7251, ctrl->val);
 		break;
 	default:
 		ret = -EINVAL;
@@ -1060,6 +1030,14 @@ static int ov7251_s_stream(struct v4l2_subdev *subdev, int enable)
 				ov7251->current_mode->height);
 			goto err_power_down;
 		}
+		ret = ov7251_write_reg(ov7251, OV7251_VTS_HIGH,
+				       ov7251->current_ival->vts >> 8);
+		if (ret)
+			goto err_power_down;
+		ret = ov7251_write_reg(ov7251, OV7251_VTS_LOW,
+				       ov7251->current_ival->vts & 0xff);
+		if (ret)
+			goto err_power_down;
 		ret = __v4l2_ctrl_handler_setup(&ov7251->ctrls);
 		if (ret < 0) {
 			dev_err(ov7251->dev, "could not sync v4l2 controls\n");
@@ -1110,13 +1088,12 @@ static int ov7251_set_frame_interval(struct v4l2_subdev *subdev,
 		ret = __v4l2_ctrl_modify_range(ov7251->exposure, 1,
 					       new_ival->vts -
 							OV7251_EXPOSURE_OFFSET,
-					       1, ov7251->exposure->val);
+					       1, ov7251->current_mode->exposure_def);
 		if (ret < 0)
 			goto exit;
 
-		ret = __v4l2_ctrl_s_ctrl(ov7251->vblank,
-					 new_ival->vts -
-						ov7251->current_mode->height);
+		ret = __v4l2_ctrl_s_ctrl(ov7251->exposure,
+					 ov7251->current_mode->exposure_def);
 		if (ret < 0)
 			goto exit;
 
@@ -1256,7 +1233,7 @@ static int ov7251_probe(struct i2c_client *client)
 	struct v4l2_ctrl *ctrl;
 	struct ov7251 *ov7251;
 	unsigned int rate = 0;
-	u32 h_blank, v_blank, v_blank_max;
+	u32 h_blank;
 	int ret;
 	int i;
 
@@ -1337,7 +1314,7 @@ static int ov7251_probe(struct i2c_client *client)
 	ov7251->current_mode = &ov7251_mode_info_data[0];
 	ov7251->current_ival = &ov7251_frame_ival_info_data[0];
 
-	v4l2_ctrl_handler_init(&ov7251->ctrls, 11);
+	v4l2_ctrl_handler_init(&ov7251->ctrls, 10);
 	ov7251->ctrls.lock = &ov7251->lock;
 
 	v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
@@ -1367,13 +1344,6 @@ static int ov7251_probe(struct i2c_client *client)
 					   h_blank, 1, h_blank);
 	if (ov7251->hblank)
 		ov7251->hblank->flags |= V4L2_CTRL_FLAG_READ_ONLY;
-
-	v_blank = ov7251->current_ival->vts - ov7251->current_mode->height;
-	v_blank_max = OV7251_VTS_MAX - ov7251->current_mode->width;
-	ov7251->vblank = v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
-					   V4L2_CID_VBLANK,
-					   OV7251_VTS_MIN_OFFSET,
-					   v_blank_max, 1, v_blank);
 
 	ov7251->sd.ctrl_handler = &ov7251->ctrls;
 
