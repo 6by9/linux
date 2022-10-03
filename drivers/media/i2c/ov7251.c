@@ -382,7 +382,7 @@ static const s64 link_freq[] = {
 
 static const s64 pixel_rates[] = {
 	[OV7251_LINK_FREQ_240_MHZ] = 48000000,
-	[OV7251_LINK_FREQ_319_2_MHZ] = 63840000,
+	[OV7251_LINK_FREQ_319_2_MHZ] = 48000000,
 };
 
 static const struct ov7251_mode_info ov7251_mode_info_data[] = {
