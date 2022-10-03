@@ -145,7 +145,6 @@ struct ov7251 {
 	struct v4l2_ctrl *pixel_clock;
 	struct v4l2_ctrl *link_freq;
 	struct v4l2_ctrl *exposure;
-	struct v4l2_ctrl *gain;
 	struct v4l2_ctrl *hblank;
 	struct v4l2_ctrl *vblank;
 
@@ -1247,10 +1246,6 @@ static int ov7251_set_format(struct v4l2_subdev *sd,
 		if (ret < 0)
 			goto exit;
 
-		ret = __v4l2_ctrl_s_ctrl(ov7251->gain, 16);
-		if (ret < 0)
-			goto exit;
-
 		vblank_max = OV7251_TIMING_MAX_VTS - new_mode->height;
 		vblank_def = new_mode->vts - new_mode->height;
 		ret = __v4l2_ctrl_modify_range(ov7251->vblank,
@@ -1417,10 +1412,6 @@ static int ov7251_set_frame_interval(struct v4l2_subdev *subdev,
 		if (ret < 0)
 			goto exit;
 
-		ret = __v4l2_ctrl_s_ctrl(ov7251->gain, 16);
-		if (ret < 0)
-			goto exit;
-
 		ov7251->current_mode = new_mode;
 	}
 
@@ -1552,8 +1543,8 @@ static int ov7251_init_ctrls(struct ov7251 *ov7251)
 			  V4L2_CID_VFLIP, 0, 1, 1, 0);
 	ov7251->exposure = v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
 					     V4L2_CID_EXPOSURE, 1, 32, 1, 32);
-	ov7251->gain = v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
-					 V4L2_CID_GAIN, 16, 1023, 1, 16);
+	v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops, V4L2_CID_GAIN,
+			  16, 1023, 1, 16);
 	v4l2_ctrl_new_std_menu_items(&ov7251->ctrls, &ov7251_ctrl_ops,
 				     V4L2_CID_TEST_PATTERN,
 				     ARRAY_SIZE(ov7251_test_pattern_menu) - 1,
