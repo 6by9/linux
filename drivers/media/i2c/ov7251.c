@@ -968,17 +968,6 @@ static int ov7251_set_format(struct v4l2_subdev *sd,
 	__crop->height = new_mode->height;
 
 	if (format->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
-		ret = __v4l2_ctrl_modify_range(ov7251->exposure,
-					       1, new_mode->exposure_max,
-					       1, new_mode->exposure_def);
-		if (ret < 0)
-			goto exit;
-
-		ret = __v4l2_ctrl_s_ctrl(ov7251->exposure,
-					 new_mode->exposure_def);
-		if (ret < 0)
-			goto exit;
-
 		vblank_max = OV7251_TIMING_MAX_VTS - new_mode->height;
 		vblank_min = new_mode->vts_min - new_mode->height;
 		vblank_def = new_mode->vts_def - new_mode->height;
