@@ -3,7 +3,7 @@
  * VideoCore Shared Memory driver using CMA.
  *
  * Copyright: 2018, Raspberry Pi (Trading) Ltd
- * Dave Stevenson <dave.stevenson@raspberrypi.org>
+ * Dave Stevenson <dave.stevenson@raspberrypi.com>
  *
  * Based on vmcs_sm driver from Broadcom Corporation for some API,
  * and taking some code for buffer allocation and dmabuf handling from
@@ -14,7 +14,7 @@
  */
 
 /* ---- Include Files ----------------------------------------------------- */
-#include <linux/cdev.h>
+//#include <linux/cdev.h>
 #include <linux/device.h>
 #include <linux/debugfs.h>
 #include <linux/dma-mapping.h>
@@ -40,12 +40,8 @@
 
 #include "vc_sm.h"
 #include "vc_sm_knl.h"
-#include <linux/broadcom/vc_sm_cma_ioctl.h>
 
 /* ---- Private Constants and Types --------------------------------------- */
-
-#define DEVICE_NAME		"vcsm-cma"
-#define DEVICE_MINOR		0
 
 #define VC_SM_RESOURCE_NAME_DEFAULT       "sm-host-resource"
 
@@ -54,11 +50,6 @@
 
 /* Private file data associated with each opened device. */
 struct vc_sm_privdata_t {
-	pid_t pid;                      /* PID of creator. */
-
-	int restart_sys;		/* Tracks restart on interrupt. */
-	enum vc_sm_msg_type int_action;	/* Interrupted action. */
-	u32 int_trans_id;		/* Interrupted transaction. */
 };
 
 typedef int (*VC_SM_SHOW) (struct seq_file *s, void *v);
@@ -82,14 +73,16 @@ struct sm_state_t {
 	struct mutex map_lock;          /* Global map lock. */
 	struct list_head buffer_list;	/* List of buffer. */
 
-	struct vc_sm_privdata_t *data_knl;  /* Kernel internal data tracking. */
-	struct vc_sm_privdata_t *vpu_allocs; /* All allocations from the VPU */
 	struct dentry *dir_root;	/* Debug fs entries root. */
 	struct sm_pde_t dir_state;	/* Debug fs entries state sub-tree. */
 
 	bool require_released_callback;	/* VPU will send a released msg when it
 					 * has finished with a resource.
 					 */
+
+	/* State for transactions */
+	int restart_sys;		/* Tracks restart on interrupt. */
+	enum vc_sm_msg_type int_action;	/* Interrupted action. */
 	u32 int_trans_id;		/* Interrupted transaction. */
 };
 
@@ -208,8 +201,7 @@ static int vc_sm_cma_global_state_show(struct seq_file *s, void *v)
  * Adds a buffer to the private data list which tracks all the allocated
  * data.
  */
-static void vc_sm_add_resource(struct vc_sm_privdata_t *privdata,
-			       struct vc_sm_buffer *buffer)
+static void vc_sm_add_resource(struct vc_sm_buffer *buffer)
 {
 	mutex_lock(&sm_state->map_lock);
 	list_add(&buffer->global_buffer_list, &sm_state->buffer_list);
@@ -314,25 +306,6 @@ static void vc_sm_release_resource(struct vc_sm_buffer *buffer)
 
 defer:
 	mutex_unlock(&buffer->lock);
-}
-
-/* Create support for private data tracking. */
-static struct vc_sm_privdata_t *vc_sm_cma_create_priv_data(pid_t id)
-{
-	char alloc_name[32];
-	struct vc_sm_privdata_t *file_data = NULL;
-
-	/* Allocate private structure. */
-	file_data = kzalloc(sizeof(*file_data), GFP_KERNEL);
-
-	if (!file_data)
-		return NULL;
-
-	snprintf(alloc_name, sizeof(alloc_name), "%d", id);
-
-	file_data->pid = id;
-
-	return file_data;
 }
 
 /* Dma_buf operations for chaining through to an imported dma_buf */
@@ -452,7 +425,7 @@ static const struct dma_buf_ops dma_buf_import_ops = {
 
 /* Import a dma_buf to be shared with VC. */
 int
-vc_sm_cma_import_dmabuf_internal(struct vc_sm_privdata_t *private,
+vc_sm_cma_import_dmabuf_internal(struct sm_state_t *state,
 				 struct dma_buf *dma_buf,
 				 int fd,
 				 struct dma_buf **imported_buf)
@@ -533,8 +506,8 @@ vc_sm_cma_import_dmabuf_internal(struct vc_sm_privdata_t *private,
 		pr_debug("[%s]: requesting import memory action restart (trans_id: %u)\n",
 			 __func__, sm_state->int_trans_id);
 		ret = -ERESTARTSYS;
-		private->restart_sys = -EINTR;
-		private->int_action = VC_SM_MSG_TYPE_IMPORT;
+		sm_state->restart_sys = -EINTR;
+		sm_state->int_action = VC_SM_MSG_TYPE_IMPORT;
 		goto error;
 	} else if (status || !result.res_handle) {
 		pr_debug("[%s]: failed to import memory on videocore (status: %u, trans_id: %u)\n",
@@ -549,7 +522,6 @@ vc_sm_cma_import_dmabuf_internal(struct vc_sm_privdata_t *private,
 	       min(sizeof(buffer->name), sizeof(import.name) - 1));
 
 	/* Keep track of the buffer we created. */
-	buffer->private = private;
 	buffer->vc_handle = result.res_handle;
 	buffer->size = import.size;
 	buffer->vpu_state = VPU_MAPPED;
@@ -578,7 +550,7 @@ vc_sm_cma_import_dmabuf_internal(struct vc_sm_privdata_t *private,
 		goto error;
 	}
 
-	vc_sm_add_resource(private, buffer);
+	vc_sm_add_resource(buffer);
 
 	*imported_buf = buffer->dma_buf;
 
@@ -643,140 +615,6 @@ vc_sm_vpu_event(struct sm_instance *instance, struct vc_sm_result_t *reply,
 	}
 }
 
-/* Userspace handling */
-/*
- * Open the device.  Creates a private state to help track all allocation
- * associated with this device.
- */
-static int vc_sm_cma_open(struct inode *inode, struct file *file)
-{
-	/* Make sure the device was started properly. */
-	if (!sm_state) {
-		pr_err("[%s]: invalid device\n", __func__);
-		return -EPERM;
-	}
-
-	file->private_data = vc_sm_cma_create_priv_data(current->tgid);
-	if (!file->private_data) {
-		pr_err("[%s]: failed to create data tracker\n", __func__);
-
-		return -ENOMEM;
-	}
-
-	return 0;
-}
-
-/*
- * Close the vcsm-cma device.
- * All allocations are file descriptors to the dmabuf objects, so we will get
- * the clean up request on those as those are cleaned up.
- */
-static int vc_sm_cma_release(struct inode *inode, struct file *file)
-{
-	struct vc_sm_privdata_t *file_data =
-	    (struct vc_sm_privdata_t *)file->private_data;
-	int ret = 0;
-
-	/* Make sure the device was started properly. */
-	if (!sm_state || !file_data) {
-		pr_err("[%s]: invalid device\n", __func__);
-		ret = -EPERM;
-		goto out;
-	}
-
-	pr_debug("[%s]: using private data %p\n", __func__, file_data);
-
-	/* Terminate the private data. */
-	kfree(file_data);
-
-out:
-	return ret;
-}
-
-static long vc_sm_cma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
-{
-	int ret = 0;
-	unsigned int cmdnr = _IOC_NR(cmd);
-	struct vc_sm_privdata_t *file_data = (struct vc_sm_privdata_t *)file->private_data;
-
-	/* Validate we can work with this device. */
-	if (!sm_state || !file_data) {
-		pr_err("[%s]: invalid device\n", __func__);
-		return -EPERM;
-	}
-
-	/* Action is a re-post of a previously interrupted action? */
-	if (file_data->restart_sys == -EINTR) {
-		pr_debug("[%s]: clean up of action %u (trans_id: %u) following EINTR\n",
-			 __func__, file_data->int_action,
-			 file_data->int_trans_id);
-
-		file_data->restart_sys = 0;
-	}
-
-	/* Now process the command. */
-	switch (cmdnr) {
-	case VC_SM_CMA_CMD_IMPORT_DMABUF:
-	{
-		struct vc_sm_cma_ioctl_import_dmabuf ioparam;
-		struct dma_buf *new_dmabuf;
-
-		/* Get the parameter data. */
-		if (copy_from_user
-		    (&ioparam, (void *)arg, sizeof(ioparam)) != 0) {
-			pr_err("[%s]: failed to copy-from-user for cmd %x\n",
-			       __func__, cmdnr);
-			ret = -EFAULT;
-			break;
-		}
-
-		ret = vc_sm_cma_import_dmabuf_internal(file_data,
-						       NULL,
-						       ioparam.dmabuf_fd,
-						       &new_dmabuf);
-
-		if (!ret) {
-			struct vc_sm_buffer *buf = new_dmabuf->priv;
-
-			ioparam.size = buf->size;
-			ioparam.handle = dma_buf_fd(new_dmabuf,
-						    O_CLOEXEC);
-			ioparam.vc_handle = buf->vc_handle;
-			ioparam.dma_addr = buf->dma_addr;
-
-			if (ioparam.handle < 0 ||
-			    (copy_to_user((void *)arg, &ioparam,
-					  sizeof(ioparam)) != 0)) {
-				dma_buf_put(new_dmabuf);
-				/* FIXME: Release allocation */
-				ret = -EFAULT;
-			}
-		}
-		break;
-	}
-
-	default:
-		pr_debug("[%s]: cmd %x tgid %u, owner %u\n", __func__, cmdnr,
-			 current->tgid, file_data->pid);
-
-		ret = -EINVAL;
-		break;
-	}
-
-	return ret;
-}
-
-/* Device operations that we managed in this driver. */
-static const struct file_operations vc_sm_ops = {
-	.owner = THIS_MODULE,
-	.unlocked_ioctl = vc_sm_cma_ioctl,
-#ifdef CONFIG_COMPAT
-	.compat_ioctl = vc_sm_cma_compat_ioctl,
-#endif
-	.open = vc_sm_cma_open,
-	.release = vc_sm_cma_release,
-};
-
 /* Driver load/unload functions */
 /* Videocore connected.  */
 static void vc_sm_connected_init(void)
@@ -829,26 +667,6 @@ static void vc_sm_connected_init(void)
 
 	INIT_LIST_HEAD(&sm_state->buffer_list);
 
-	/* Create a shared memory device. */
-	sm_state->misc_dev.minor = MISC_DYNAMIC_MINOR;
-	sm_state->misc_dev.name = DEVICE_NAME;
-	sm_state->misc_dev.fops = &vc_sm_ops;
-	sm_state->misc_dev.parent = NULL;
-	/* Temporarily set as 666 until udev rules have been sorted */
-	sm_state->misc_dev.mode = 0666;
-	ret = misc_register(&sm_state->misc_dev);
-	if (ret) {
-		pr_err("vcsm-cma: failed to register misc device.\n");
-		goto err_remove_debugfs;
-	}
-
-	sm_state->data_knl = vc_sm_cma_create_priv_data(0);
-	if (!sm_state->data_knl) {
-		pr_err("[%s]: failed to create kernel private data tracker\n",
-		       __func__);
-		goto err_remove_misc_dev;
-	}
-
 	version.version = 2;
 	ret = vc_sm_cma_vchi_client_version(sm_state->sm_handle, &version,
 					    &version_result,
@@ -862,12 +680,6 @@ static void vc_sm_connected_init(void)
 	sm_inited = 1;
 	pr_info("[%s]: installed successfully\n", __func__);
 	return;
-
-err_remove_misc_dev:
-	misc_deregister(&sm_state->misc_dev);
-err_remove_debugfs:
-	debugfs_remove_recursive(sm_state->dir_root);
-	vc_sm_cma_vchi_stop(&sm_state->sm_handle);
 }
 
 /* Driver loading. */
@@ -968,7 +780,7 @@ int vc_sm_cma_import_dmabuf(struct dma_buf *src_dmabuf, void **handle)
 		return -EPERM;
 	}
 
-	ret = vc_sm_cma_import_dmabuf_internal(sm_state->data_knl, src_dmabuf,
+	ret = vc_sm_cma_import_dmabuf_internal(sm_state, src_dmabuf,
 					       -1, &new_dma_buf);
 
 	if (!ret) {
@@ -994,7 +806,7 @@ static struct platform_driver bcm2835_vcsm_cma_driver = {
 	.probe = bcm2835_vc_sm_cma_probe,
 	.remove = bcm2835_vc_sm_cma_remove,
 	.driver = {
-		   .name = DEVICE_NAME,
+		   .name = "vcsm-cma",
 		   .owner = THIS_MODULE,
 		   },
 };

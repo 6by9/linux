@@ -29,9 +29,6 @@ enum vc_sm_vpu_mapping_state {
 	VPU_UNMAPPING
 };
 
-struct vc_sm_imported {
-};
-
 struct vc_sm_buffer {
 	struct list_head global_buffer_list;	/* Global list of buffers. */
 
@@ -60,7 +57,6 @@ struct vc_sm_buffer {
 
 	struct vc_sm_privdata_t *private;
 
-	struct vc_sm_imported import;
 	struct dma_buf *imported_dma_buf;
 	struct dma_buf_attachment *attach;
 	struct sg_table *sgt;
