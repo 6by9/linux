@@ -1,0 +1,123 @@
+# SPDX-License-Identifier: GPL-2.0
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/media/i2c/ovti,ov7251.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: OmniVision OV7251 Image Sensor Device Tree Bindings
+
+maintainers:
+  - Todor Tomov <todor.too@gmail.com>
+
+allOf:
+  - $ref: /schemas/media/video-interface-devices.yaml#
+
+properties:
+  compatible:
+    const: ovti,ov7251
+
+  reg:
+    maxItems: 1
+
+  clocks:
+    description: XCLK Input Clock
+
+  clock-names:
+    const: xclk
+
+  clock-frequency:
+    description:
+      Frequency of the xvclk clock in Hertz.
+
+  vdda-supply:
+    description: Analog voltage supply, 2.8 volts
+
+  vddd-supply:
+    description: Digital core voltage supply, 1.5 volts
+
+  vdddo-supply:
+    description: Digital I/O voltage supply, 1.8 volts
+
+  enable-gpios:
+    maxItems: 1
+    description: >
+      Reference to the GPIO to enable the sensor.
+      This corresponds to the hardware pin XSHUTDOWN which is physically
+      active low.
+
+  rotation:
+    enum:
+      - 0
+      - 180
+
+  port:
+    description: Digital Output Port
+    $ref: /schemas/graph.yaml#/$defs/port-base
+    additionalProperties: false
+
+    properties:
+      endpoint:
+        $ref: /schemas/media/video-interfaces.yaml#
+        unevaluatedProperties: false
+
+        properties:
+          clock-lanes:
+            const: 0
+
+          data-lanes:
+            minItems: 1
+            maxItems: 1
+
+          bus-width:
+            enum: [8, 10]
+
+          data-shift:
+            enum: [0, 2]
+
+required:
+  - compatible
+  - reg
+  - clocks
+  - clock-names
+  - clock-frequency
+  - vdda-supply
+  - vddd-supply
+  - vdddo-supply
+  - enable-gpios
+  - port
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/gpio/gpio.h>
+
+    i2c {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        ov7251: camera-sensor@60 {
+          compatible = "ovti,ov7251";
+          reg = <0x60>;
+          enable-gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;
+          pinctrl-names = "default";
+          pinctrl-0 = <&camera_bw_default>;
+
+          clocks = <&clks 200>;
+          clock-names = "xclk";
+          clock-frequency = <24000000>;
+
+          vdddo-supply = <&camera_dovdd_1v8>;
+          vdda-supply = <&camera_avdd_2v8>;
+          vddd-supply = <&camera_dvdd_1v2>;
+
+          port {
+            ov7251_ep: endpoint {
+              clock-lanes = <0>;
+              data-lanes = <1>;
+              remote-endpoint = <&csi0_ep>;
+            };
+          };
+        };
+    };
+...
