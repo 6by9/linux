@@ -83,7 +83,6 @@ required:
   - vdda-supply
   - vddd-supply
   - vdddo-supply
-  - enable-gpios
   - port
 
 additionalProperties: false
