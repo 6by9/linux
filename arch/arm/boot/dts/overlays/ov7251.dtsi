@@ -22,7 +22,7 @@ cam_node: ov7251@60 {
 			data-lanes = <1>;
 			clock-noncontinuous;
 			link-frequencies =
-				/bits/ 64 <240000000>;
+				/bits/ 64 <319200000>;
 		};
 	};
 };
