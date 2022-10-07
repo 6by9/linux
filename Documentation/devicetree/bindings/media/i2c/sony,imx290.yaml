@@ -19,8 +19,9 @@ description: |-
 
 properties:
   compatible:
-    enum:
-      - sony,imx290
+    - enum:
+        - sony,imx290
+        - sony,imx290-mono
 
   reg:
     maxItems: 1
