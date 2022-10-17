@@ -215,6 +215,8 @@ struct imx290 {
 	struct v4l2_ctrl *hblank;
 	struct v4l2_ctrl *vblank;
 	struct v4l2_ctrl *exposure;
+	struct v4l2_ctrl *hflip;
+	struct v4l2_ctrl *vflip;
 
 	struct mutex lock;
 };
@@ -639,6 +641,20 @@ static int imx290_set_ctrl(struct v4l2_ctrl *ctrl)
 		ret = imx290_write(imx290, IMX290_SHS1, val, NULL);
 		break;
 
+	case V4L2_CID_HFLIP:
+	case V4L2_CID_VFLIP:
+		/* WINMODE is in bits [6:4], so need to read-modify-write */
+		ret = imx290_read(imx290, IMX290_CTRL_07, &val);
+		if (ret)
+			break;
+		val &= ~(IMX290_VREVERSE | IMX290_HREVERSE);
+		if (imx290->vflip->val)
+			val |= IMX290_VREVERSE;
+		if (imx290->hflip->val)
+			val |= IMX290_HREVERSE;
+		ret = imx290_write(imx290, IMX290_CTRL_07, val, NULL);
+		break;
+
 	case V4L2_CID_TEST_PATTERN:
 		if (ctrl->val) {
 			imx290_write(imx290, IMX290_BLKLEVEL, 0, &ret);
@@ -992,6 +1008,10 @@ static int imx290_set_stream(struct v4l2_subdev *sd, int enable)
 		pm_runtime_put(imx290->dev);
 	}
 
+	/* vflip and hflip cannot change during streaming */
+	__v4l2_ctrl_grab(imx290->vflip, enable);
+	__v4l2_ctrl_grab(imx290->hflip, enable);
+
 unlock_and_return:
 
 	return ret;
@@ -1171,6 +1191,11 @@ static int imx290_ctrl_init(struct imx290 *imx290)
 					   blank,
 					   IMX290_VMAX_MAX - mode->height, 1,
 					   blank);
+
+	imx290->hflip = v4l2_ctrl_new_std(&imx290->ctrls, &imx290_ctrl_ops,
+					  V4L2_CID_HFLIP, 0, 1, 1, 0);
+	imx290->vflip = v4l2_ctrl_new_std(&imx290->ctrls, &imx290_ctrl_ops,
+					  V4L2_CID_VFLIP, 0, 1, 1, 0);
 
 	v4l2_ctrl_new_fwnode_properties(&imx290->ctrls, &imx290_ctrl_ops,
 					&props);
