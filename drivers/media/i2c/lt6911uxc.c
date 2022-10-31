@@ -46,6 +46,8 @@ MODULE_PARM_DESC(debug, "debug level (0-3)");
 #define LT6911UXC_CID_AUDIO_SAMPLING_RATE (V4L2_CID_USER_LT6911UXC_BASE + 1)
 #define LT6911UXC_CID_AUDIO_PRESENT       (V4L2_CID_USER_LT6911UXC_BASE + 2)
 
+#define POLL_INTERVAL_MS 1000
+
 /* v4l2 dv timings */
 static struct v4l2_dv_timings default_timing = V4L2_DV_BT_CEA_1920X1080P60;
 
@@ -64,15 +66,9 @@ static const struct v4l2_dv_timings_cap lt6911uxc_timings_cap_4kp30 = {
 		V4L2_DV_BT_CAP_REDUCED_BLANKING)
 };
 
-struct lt6911uxc_platform_data {
-	/* GPIOs */
-	int reset_gpio;
-};
-
 struct lt6911uxc_state {
 	struct i2c_client *i2c_client;
 	struct v4l2_subdev sd;
-	struct lt6911uxc_platform_data *pdata;
 	struct media_pad pad;
 	struct mutex lock;
 	struct v4l2_ctrl_handler ctrl_handler;
@@ -87,6 +83,9 @@ struct lt6911uxc_state {
 	struct v4l2_dv_timings timings;
 	struct v4l2_dv_timings detected_timings;/* timings detected from phy */
 	u32 mbus_fmt_code;			/* current media bus format */
+	u8 csi_lanes_in_use;
+	struct timer_list timer;
+	struct work_struct work_i2c_poll;
 };
 
 static const struct v4l2_event lt6911uxc_ev_source_change = {
@@ -448,6 +447,7 @@ static void lt6911uxc_hdmi_int_handler(struct lt6911uxc_state *state,
 
 		/* MIPI */ 
 		lanes = lt6911uxc_i2c_rd8(&state->sd, MIPI_LANES);
+		state->csi_lanes_in_use = lanes;
 		dev_dbg(dev, "MIPI lanes %d\n", lanes);
 
 		lt6911uxc_csi_enable(&state->sd, true);
@@ -542,6 +542,21 @@ static irqreturn_t lt6911uxc_irq_handler(int irq, void *dev_id)
 	lt6911uxc_isr(sd, &handled);
 
 	return handled ? IRQ_HANDLED : IRQ_NONE;
+}
+
+static void lt6911uxc_irq_poll_timer(struct timer_list *t)
+{
+struct lt6911uxc_state *state = from_timer(state, t, timer);
+unsigned int msecs = POLL_INTERVAL_MS;
+schedule_work(&state->work_i2c_poll);
+mod_timer(&state->timer, jiffies + msecs_to_jiffies(msecs));
+}
+
+static void lt6911uxc_work_i2c_poll(struct work_struct *work)
+{
+	struct lt6911uxc_state *state = container_of(work, struct lt6911uxc_state, work_i2c_poll);
+	bool handled;
+	lt6911uxc_isr(&state->sd, &handled);
 }
 
 /* ------ VIDEO OPS --------------------------------------------------------- */
@@ -658,14 +673,9 @@ static int lt6911uxc_get_fmt(struct v4l2_subdev *sd,
 	fmt->height = state->timings.bt.height;
 	fmt->field  = V4L2_FIELD_NONE;
 	fmt->colorspace = V4L2_COLORSPACE_SRGB;
+	fmt->ycbcr_enc = V4L2_YCBCR_ENC_601;
+	fmt->quantization = V4L2_QUANTIZATION_LIM_RANGE;
 
-	switch (fmt->code) {
-	case MEDIA_BUS_FMT_UYVY8_1X16:
-	default:
-		fmt->ycbcr_enc = V4L2_YCBCR_ENC_601;
-		fmt->quantization = V4L2_QUANTIZATION_LIM_RANGE;
-		break;
-	}
 	return 0;
 }
 
@@ -734,6 +744,43 @@ static int lt6911uxc_dv_timings_cap(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int lt6911uxc_get_mbus_config(struct v4l2_subdev *sd,
+				unsigned int pad,
+				struct v4l2_mbus_config *cfg)
+{
+	struct lt6911uxc_state *state = to_state(sd);
+	const u32 mask = V4L2_MBUS_CSI2_LANE_MASK;
+
+	cfg->type = V4L2_MBUS_CSI2_DPHY;
+	cfg->flags = (state->csi_lanes_in_use << __ffs(mask)) & mask;
+
+	/* In DT mode, only report the number of active lanes */
+	if (sd->dev->of_node)
+		return 0;
+
+	/* Support for non-continuous CSI-2 clock is missing in pdate mode */
+	cfg->flags |= V4L2_MBUS_CSI2_CONTINUOUS_CLOCK;
+
+	switch (state->csi_lanes_in_use) {
+	case 1:
+		cfg->flags |= V4L2_MBUS_CSI2_1_LANE;
+		break;
+	case 2:
+		cfg->flags |= V4L2_MBUS_CSI2_2_LANE;
+		break;
+	case 3:
+		cfg->flags |= V4L2_MBUS_CSI2_3_LANE;
+		break;
+	case 4:
+		cfg->flags |= V4L2_MBUS_CSI2_4_LANE;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int lt6911uxc_enum_dv_timings(struct v4l2_subdev *sd,
 		struct v4l2_enum_dv_timings *timings)
 {
@@ -782,6 +829,7 @@ static const struct v4l2_subdev_pad_ops lt6911uxc_pad_ops = {
 	.enum_mbus_code		= lt6911uxc_enum_mbus_code,
 	.dv_timings_cap		= lt6911uxc_dv_timings_cap,
 	.enum_dv_timings	= lt6911uxc_enum_dv_timings,
+	.get_mbus_config 	= lt6911uxc_get_mbus_config,
 };
 
 static struct v4l2_subdev_ops lt6911uxc_ops = {
@@ -841,45 +889,22 @@ static const struct of_device_id lt6911uxc_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, lt6911uxc_of_match);
 
-static struct lt6911uxc_platform_data* lt6911uxc_parse_dt(
+static int lt6911uxc_parse_dt(
 						struct i2c_client *client)
 {
-	struct device_node *node = client->dev.of_node;
-	struct lt6911uxc_platform_data *pdata;
-	const struct of_device_id *match;
-	int gpio;
-
-	match = of_match_device(lt6911uxc_of_match, &client->dev);
+	const struct of_device_id *match = of_match_device(lt6911uxc_of_match, &client->dev);
 	if (!match) {
 		dev_err(&client->dev,
 			"Driver has not been loaded from an of_match\n");
-		return NULL;
+		return 0;
 	}
-	pdata = devm_kzalloc(&client->dev, 
-			     sizeof(struct lt6911uxc_platform_data), GFP_KERNEL);
-
-	gpio = of_get_named_gpio(node, "reset-gpio", 0);
-	if(gpio < 0) {
-		if(gpio == -EPROBE_DEFER) {
-			dev_err(&client->dev, "reset-gpio read failed: (%d)\n",
-				gpio);
-			goto prop_err;
-		}
-		dev_info(&client->dev, "reset-gpio not found, ignoring\n");
-	}
-	pdata->reset_gpio = gpio;
-	return pdata;
-
-prop_err:
-	dev_err(&client->dev, "Could not parse DT parameters\n");
-	devm_kfree(&client->dev, pdata);
-	return NULL;
+	return 1;
 }
 #else
-static struct lt6911uxc_platform_data* lt6911uxc_parse_dt(
+static int lt6911uxc_parse_dt(
 						struct i2c_client *client)
 {
-	return NULL;
+	return 0;
 }
 #endif
 
@@ -896,8 +921,7 @@ static int lt6911uxc_probe(struct i2c_client *client,
 	if (!state)
 		return -ENOMEM;
 
-	state->pdata = lt6911uxc_parse_dt(client);
-	if (!state->pdata)
+	if (!lt6911uxc_parse_dt(client))
 		return -ENODEV;
 
 	state->i2c_client = client;
@@ -923,6 +947,11 @@ static int lt6911uxc_probe(struct i2c_client *client,
 				client->irq);
 			return err;
 		}
+	} else {
+		INIT_WORK(&state->work_i2c_poll, lt6911uxc_work_i2c_poll);
+		timer_setup(&state->timer, lt6911uxc_irq_poll_timer, 0);
+		state->timer.expires = jiffies + msecs_to_jiffies(POLL_INTERVAL_MS);
+		add_timer(&state->timer);
 	}
 
 	/* custom v4l2 controls */
