@@ -8,6 +8,7 @@
 #include <linux/pm_runtime.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <asm/unaligned.h>
 
 #define IMX208_REG_MODE_SELECT		0x0100
@@ -798,7 +799,13 @@ static const struct v4l2_subdev_pad_ops imx208_pad_ops = {
 	.enum_frame_size = imx208_enum_frame_size,
 };
 
+static const struct v4l2_subdev_core_ops imx208_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_ops imx208_subdev_ops = {
+	.core = &imx208_core_ops,
 	.video = &imx208_video_ops,
 	.pad = &imx208_pad_ops,
 };
@@ -1021,7 +1028,8 @@ static int imx208_probe(struct i2c_client *client)
 
 	/* Initialize subdev */
 	imx208->sd.internal_ops = &imx208_internal_ops;
-	imx208->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	imx208->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			    V4L2_SUBDEV_FL_HAS_EVENTS;
 	imx208->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
 	/* Initialize source pad */
