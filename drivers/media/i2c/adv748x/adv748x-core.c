@@ -587,6 +587,9 @@ void adv748x_subdev_init(struct v4l2_subdev *sd, struct adv748x_state *state,
 {
 	v4l2_subdev_init(sd, ops);
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	if (ops->core && ops->core->subscribe_event &&
+	    ops->core->unsubscribe_event)
+		sd->flags |= V4L2_SUBDEV_FL_HAS_EVENTS;
 
 	/* the owner is the same as the i2c_client's driver owner */
 	sd->owner = state->dev->driver->owner;

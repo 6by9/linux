@@ -233,11 +233,17 @@ static const struct v4l2_subdev_pad_ops adv748x_csi2_pad_ops = {
 	.get_mbus_config = adv748x_csi2_get_mbus_config,
 };
 
+static const struct v4l2_subdev_core_ops adv748x_csi2_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 /* -----------------------------------------------------------------------------
  * v4l2_subdev_ops
  */
 
 static const struct v4l2_subdev_ops adv748x_csi2_ops = {
+	.core = &adv748x_csi2_core_ops,
 	.video = &adv748x_csi2_video_ops,
 	.pad = &adv748x_csi2_pad_ops,
 };

@@ -14,6 +14,7 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-dv-timings.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-ioctl.h>
 
 #include "adv748x.h"
@@ -390,11 +391,17 @@ static const struct v4l2_subdev_pad_ops adv748x_afe_pad_ops = {
 	.get_fmt = adv748x_afe_get_format,
 };
 
+static const struct v4l2_subdev_core_ops adv748x_afe_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 /* -----------------------------------------------------------------------------
  * v4l2_subdev_ops
  */
 
 static const struct v4l2_subdev_ops adv748x_afe_ops = {
+	.core = &adv748x_afe_core_ops,
 	.video = &adv748x_afe_video_ops,
 	.pad = &adv748x_afe_pad_ops,
 };
