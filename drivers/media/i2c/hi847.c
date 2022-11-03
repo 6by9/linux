@@ -9,6 +9,7 @@
 #include <linux/pm_runtime.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 
 #define HI847_REG_VALUE_08BIT		1
@@ -2791,6 +2792,11 @@ static int hi847_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops hi847_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops hi847_video_ops = {
 	.s_stream = hi847_set_stream,
 };
@@ -2803,6 +2809,7 @@ static const struct v4l2_subdev_pad_ops hi847_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops hi847_subdev_ops = {
+	.core = &hi847_core_ops,
 	.video = &hi847_video_ops,
 	.pad = &hi847_pad_ops,
 };
@@ -2947,7 +2954,8 @@ static int hi847_probe(struct i2c_client *client)
 	}
 
 	hi847->sd.internal_ops = &hi847_internal_ops;
-	hi847->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	hi847->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			   V4L2_SUBDEV_FL_HAS_EVENTS;
 	hi847->sd.entity.ops = &hi847_subdev_entity_ops;
 	hi847->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 	hi847->pad.flags = MEDIA_PAD_FL_SOURCE;
