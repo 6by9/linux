@@ -14,6 +14,7 @@
 #include <linux/regulator/consumer.h>
 
 #include <media/v4l2-ctrls.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-subdev.h>
 
@@ -1001,6 +1002,11 @@ done_endpoint_free:
 }
 
 /* V4l2 subdevice ops */
+static const struct v4l2_subdev_core_ops imx412_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops imx412_video_ops = {
 	.s_stream = imx412_set_stream,
 };
@@ -1014,6 +1020,7 @@ static const struct v4l2_subdev_pad_ops imx412_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops imx412_subdev_ops = {
+	.core = &imx412_core_ops,
 	.video = &imx412_video_ops,
 	.pad = &imx412_pad_ops,
 };
@@ -1215,7 +1222,8 @@ static int imx412_probe(struct i2c_client *client)
 	}
 
 	/* Initialize subdev */
-	imx412->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	imx412->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			    V4L2_SUBDEV_FL_HAS_EVENTS;
 	imx412->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
 	/* Initialize source pad */
