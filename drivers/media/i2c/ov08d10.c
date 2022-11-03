@@ -10,6 +10,7 @@
 #include <linux/regulator/consumer.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 
 #define OV08D10_SCLK			144000000ULL
@@ -1295,6 +1296,11 @@ static int ov08d10_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops ov08d10_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops ov08d10_video_ops = {
 	.s_stream = ov08d10_set_stream,
 };
@@ -1307,6 +1313,7 @@ static const struct v4l2_subdev_pad_ops ov08d10_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops ov08d10_subdev_ops = {
+	.core = &ov08d10_core_ops,
 	.video = &ov08d10_video_ops,
 	.pad = &ov08d10_pad_ops,
 };
@@ -1465,7 +1472,8 @@ static int ov08d10_probe(struct i2c_client *client)
 	}
 
 	ov08d10->sd.internal_ops = &ov08d10_internal_ops;
-	ov08d10->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	ov08d10->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			     V4L2_SUBDEV_FL_HAS_EVENTS;
 	ov08d10->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 	ov08d10->pad.flags = MEDIA_PAD_FL_SOURCE;
 	ret = media_entity_pads_init(&ov08d10->sd.entity, 1, &ov08d10->pad);
