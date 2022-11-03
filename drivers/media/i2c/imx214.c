@@ -16,6 +16,7 @@
 #include <linux/regulator/consumer.h>
 #include <media/media-entity.h>
 #include <media/v4l2-ctrls.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-subdev.h>
 
@@ -526,6 +527,8 @@ static int imx214_g_register(struct v4l2_subdev *subdev,
 #endif
 
 static const struct v4l2_subdev_core_ops imx214_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
 #ifdef CONFIG_VIDEO_ADV_DEBUG
 	.g_register = imx214_g_register,
 	.s_register = imx214_s_register,
@@ -1049,7 +1052,8 @@ static int imx214_probe(struct i2c_client *client)
 	mutex_init(&imx214->mutex);
 	imx214->ctrls.lock = &imx214->mutex;
 
-	imx214->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	imx214->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			    V4L2_SUBDEV_FL_HAS_EVENTS;
 	imx214->pad.flags = MEDIA_PAD_FL_SOURCE;
 	imx214->sd.dev = &client->dev;
 	imx214->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
