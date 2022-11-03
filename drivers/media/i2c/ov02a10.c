@@ -13,6 +13,7 @@
 #include <media/media-entity.h>
 #include <media/v4l2-async.h>
 #include <media/v4l2-ctrls.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-subdev.h>
 
@@ -706,6 +707,11 @@ static int ov02a10_set_ctrl(struct v4l2_ctrl *ctrl)
 	return ret;
 }
 
+static const struct v4l2_subdev_core_ops ov02a10_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops ov02a10_video_ops = {
 	.s_stream = ov02a10_s_stream,
 };
@@ -719,6 +725,7 @@ static const struct v4l2_subdev_pad_ops ov02a10_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops ov02a10_subdev_ops = {
+	.core	= &ov02a10_core_ops,
 	.video	= &ov02a10_video_ops,
 	.pad	= &ov02a10_pad_ops,
 };
@@ -932,7 +939,8 @@ static int ov02a10_probe(struct i2c_client *client)
 	}
 
 	/* Initialize subdev */
-	ov02a10->subdev.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	ov02a10->subdev.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+				 V4L2_SUBDEV_FL_HAS_EVENTS;
 	ov02a10->subdev.entity.ops = &ov02a10_subdev_entity_ops;
 	ov02a10->subdev.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 	ov02a10->pad.flags = MEDIA_PAD_FL_SOURCE;
