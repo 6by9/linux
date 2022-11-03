@@ -9,6 +9,7 @@
 #include <linux/pm_runtime.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 
 #define HI556_REG_VALUE_08BIT		1
@@ -1009,6 +1010,11 @@ static int hi556_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops hi556_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops hi556_video_ops = {
 	.s_stream = hi556_set_stream,
 };
@@ -1021,6 +1027,7 @@ static const struct v4l2_subdev_pad_ops hi556_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops hi556_subdev_ops = {
+	.core = &hi556_core_ops,
 	.video = &hi556_video_ops,
 	.pad = &hi556_pad_ops,
 };
@@ -1150,7 +1157,8 @@ static int hi556_probe(struct i2c_client *client)
 	}
 
 	hi556->sd.internal_ops = &hi556_internal_ops;
-	hi556->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	hi556->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			   V4L2_SUBDEV_FL_HAS_EVENTS;
 	hi556->sd.entity.ops = &hi556_subdev_entity_ops;
 	hi556->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 	hi556->pad.flags = MEDIA_PAD_FL_SOURCE;
