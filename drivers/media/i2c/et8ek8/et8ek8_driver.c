@@ -29,6 +29,7 @@
 #include <media/media-entity.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-subdev.h>
 
 #include "et8ek8_reg.h"
@@ -1348,6 +1349,8 @@ static const struct v4l2_subdev_video_ops et8ek8_video_ops = {
 };
 
 static const struct v4l2_subdev_core_ops et8ek8_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
 	.s_power = et8ek8_set_power,
 };
 
@@ -1434,7 +1437,8 @@ static int et8ek8_probe(struct i2c_client *client)
 	mutex_init(&sensor->power_lock);
 
 	v4l2_i2c_subdev_init(&sensor->subdev, client, &et8ek8_ops);
-	sensor->subdev.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	sensor->subdev.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+				V4L2_SUBDEV_FL_HAS_EVENTS;
 	sensor->subdev.internal_ops = &et8ek8_internal_ops;
 
 	sensor->subdev.entity.function = MEDIA_ENT_F_CAM_SENSOR;
