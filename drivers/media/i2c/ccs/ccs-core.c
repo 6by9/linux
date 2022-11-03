@@ -27,6 +27,7 @@
 #include <linux/v4l2-mediabus.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <uapi/linux/ccs.h>
 
 #include "ccs.h"
@@ -3100,6 +3101,11 @@ static int ccs_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops ccs_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops ccs_video_ops = {
 	.s_stream = ccs_set_stream,
 	.pre_streamon = ccs_pre_streamon,
@@ -3120,6 +3126,7 @@ static const struct v4l2_subdev_sensor_ops ccs_sensor_ops = {
 };
 
 static const struct v4l2_subdev_ops ccs_ops = {
+	.core = &ccs_core_ops,
 	.video = &ccs_video_ops,
 	.pad = &ccs_pad_ops,
 	.sensor = &ccs_sensor_ops,
