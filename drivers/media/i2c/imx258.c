@@ -9,6 +9,7 @@
 #include <linux/pm_runtime.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <asm/unaligned.h>
 
 #define IMX258_REG_VALUE_08BIT		1
@@ -1124,6 +1125,11 @@ static int imx258_identify_module(struct imx258 *imx258)
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops imx258_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops imx258_video_ops = {
 	.s_stream = imx258_set_stream,
 };
@@ -1136,6 +1142,7 @@ static const struct v4l2_subdev_pad_ops imx258_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops imx258_subdev_ops = {
+	.core = &imx258_core_ops,
 	.video = &imx258_video_ops,
 	.pad = &imx258_pad_ops,
 };
@@ -1306,7 +1313,8 @@ static int imx258_probe(struct i2c_client *client)
 
 	/* Initialize subdev */
 	imx258->sd.internal_ops = &imx258_internal_ops;
-	imx258->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	imx258->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			    V4L2_SUBDEV_FL_HAS_EVENTS;
 	imx258->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
 	/* Initialize source pad */
