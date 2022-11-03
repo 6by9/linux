@@ -7,6 +7,7 @@
 #include <linux/pm_runtime.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 
 #define OV13B10_REG_VALUE_08BIT		1
@@ -1165,6 +1166,11 @@ static int ov13b10_identify_module(struct ov13b10 *ov13b)
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops ov13b10_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops ov13b10_video_ops = {
 	.s_stream = ov13b10_set_stream,
 };
@@ -1177,6 +1183,7 @@ static const struct v4l2_subdev_pad_ops ov13b10_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops ov13b10_subdev_ops = {
+	.core = &ov13b10_core_ops,
 	.video = &ov13b10_video_ops,
 	.pad = &ov13b10_pad_ops,
 };
@@ -1411,7 +1418,8 @@ static int ov13b10_probe(struct i2c_client *client)
 
 	/* Initialize subdev */
 	ov13b->sd.internal_ops = &ov13b10_internal_ops;
-	ov13b->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	ov13b->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			   V4L2_SUBDEV_FL_HAS_EVENTS;
 	ov13b->sd.entity.ops = &ov13b10_subdev_entity_ops;
 	ov13b->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
