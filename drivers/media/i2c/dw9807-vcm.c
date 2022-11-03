@@ -9,6 +9,7 @@
 #include <linux/pm_runtime.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 
 #define DW9807_MAX_FOCUS_POS	1023
 /*
@@ -140,12 +141,19 @@ static int dw9807_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops dw9807_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_internal_ops dw9807_int_ops = {
 	.open = dw9807_open,
 	.close = dw9807_close,
 };
 
-static const struct v4l2_subdev_ops dw9807_ops = { };
+static const struct v4l2_subdev_ops dw9807_ops = {
+	.core = dw9807_core_ops,
+};
 
 static void dw9807_subdev_cleanup(struct dw9807_device *dw9807_dev)
 {
@@ -186,7 +194,8 @@ static int dw9807_probe(struct i2c_client *client)
 		return -ENOMEM;
 
 	v4l2_i2c_subdev_init(&dw9807_dev->sd, client, &dw9807_ops);
-	dw9807_dev->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	dw9807_dev->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+				V4L2_SUBDEV_FL_HAS_EVENTS;
 	dw9807_dev->sd.internal_ops = &dw9807_int_ops;
 
 	rval = dw9807_init_controls(dw9807_dev);
