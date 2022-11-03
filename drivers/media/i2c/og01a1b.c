@@ -9,6 +9,7 @@
 #include <linux/pm_runtime.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 
 #define OG01A1B_REG_VALUE_08BIT		1
@@ -902,6 +903,11 @@ static int og01a1b_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops og01a1b_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops og01a1b_video_ops = {
 	.s_stream = og01a1b_set_stream,
 };
@@ -914,6 +920,7 @@ static const struct v4l2_subdev_pad_ops og01a1b_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops og01a1b_subdev_ops = {
+	.core = &og01a1b_core_ops,
 	.video = &og01a1b_video_ops,
 	.pad = &og01a1b_pad_ops,
 };
@@ -1059,7 +1066,8 @@ static int og01a1b_probe(struct i2c_client *client)
 	}
 
 	og01a1b->sd.internal_ops = &og01a1b_internal_ops;
-	og01a1b->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	og01a1b->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			     V4L2_SUBDEV_FL_HAS_EVENTS;
 	og01a1b->sd.entity.ops = &og01a1b_subdev_entity_ops;
 	og01a1b->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 	og01a1b->pad.flags = MEDIA_PAD_FL_SOURCE;
