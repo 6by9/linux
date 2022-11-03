@@ -13,6 +13,7 @@
 #include <linux/regulator/consumer.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 
 #define HI846_MEDIA_BUS_FORMAT		MEDIA_BUS_FMT_SGBRG10_1X10
@@ -1911,6 +1912,11 @@ static int hi846_init_cfg(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops hi846_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops hi846_video_ops = {
 	.s_stream = hi846_set_stream,
 };
@@ -1925,6 +1931,7 @@ static const struct v4l2_subdev_pad_ops hi846_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops hi846_subdev_ops = {
+	.core = &hi846_core_ops,
 	.video = &hi846_video_ops,
 	.pad = &hi846_pad_ops,
 };
@@ -2105,7 +2112,8 @@ static int hi846_probe(struct i2c_client *client)
 		goto err_power_off;
 	}
 
-	hi846->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	hi846->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			   V4L2_SUBDEV_FL_HAS_EVENTS;
 	hi846->sd.entity.ops = &hi846_subdev_entity_ops;
 	hi846->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 	hi846->pad.flags = MEDIA_PAD_FL_SOURCE;
