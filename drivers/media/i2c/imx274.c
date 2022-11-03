@@ -25,6 +25,7 @@
 
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-subdev.h>
 
@@ -1921,6 +1922,11 @@ static int imx274_enum_mbus_code(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops imx274_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_pad_ops imx274_pad_ops = {
 	.enum_mbus_code = imx274_enum_mbus_code,
 	.get_fmt = imx274_get_fmt,
@@ -1936,6 +1942,7 @@ static const struct v4l2_subdev_video_ops imx274_video_ops = {
 };
 
 static const struct v4l2_subdev_ops imx274_subdev_ops = {
+	.core = &imx274_core_ops,
 	.pad = &imx274_pad_ops,
 	.video = &imx274_video_ops,
 };
