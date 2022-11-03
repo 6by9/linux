@@ -9,6 +9,7 @@
 #include <media/v4l2-async.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-subdev.h>
 
@@ -389,7 +390,14 @@ static const struct v4l2_subdev_internal_ops dw9768_int_ops = {
 	.close = dw9768_close,
 };
 
-static const struct v4l2_subdev_ops dw9768_ops = { };
+static const struct v4l2_subdev_core_ops dw9768_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
+static const struct v4l2_subdev_ops dw9768_ops = {
+	.core = &dw9768_core_ops,
+};
 
 static int dw9768_init_controls(struct dw9768 *dw9768)
 {
@@ -460,7 +468,8 @@ static int dw9768_probe(struct i2c_client *client)
 		goto err_free_handler;
 
 	/* Initialize subdev */
-	dw9768->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	dw9768->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			    V4L2_SUBDEV_FL_HAS_EVENTS;
 	dw9768->sd.internal_ops = &dw9768_int_ops;
 
 	ret = media_entity_pads_init(&dw9768->sd.entity, 0, NULL);
