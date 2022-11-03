@@ -25,6 +25,7 @@
 #include <linux/gpio/consumer.h>
 #include <media/i2c/adp1653.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 
 #define TIMEOUT_MAX		820000
 #define TIMEOUT_STEP		54600
@@ -360,6 +361,8 @@ static int adp1653_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 }
 
 static const struct v4l2_subdev_core_ops adp1653_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
 	.s_power = adp1653_set_power,
 };
 
@@ -490,7 +493,8 @@ static int adp1653_probe(struct i2c_client *client,
 
 	v4l2_i2c_subdev_init(&flash->subdev, client, &adp1653_ops);
 	flash->subdev.internal_ops = &adp1653_internal_ops;
-	flash->subdev.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	flash->subdev.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			       V4L2_SUBDEV_FL_HAS_EVENTS;
 
 	ret = adp1653_init_controls(flash);
 	if (ret)
