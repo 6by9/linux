@@ -25,6 +25,7 @@
 #include <linux/types.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 
 #define OV5693_REG_8BIT(n)			((1 << 16) | (n))
@@ -1184,6 +1185,11 @@ static int ov5693_enum_frame_size(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops ov5693_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops ov5693_video_ops = {
 	.s_stream = ov5693_s_stream,
 	.g_frame_interval = ov5693_g_frame_interval,
@@ -1199,6 +1205,7 @@ static const struct v4l2_subdev_pad_ops ov5693_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops ov5693_ops = {
+	.core = &ov5693_core_ops,
 	.video = &ov5693_video_ops,
 	.pad = &ov5693_pad_ops,
 };
@@ -1440,7 +1447,8 @@ static int ov5693_probe(struct i2c_client *client)
 		return dev_err_probe(&client->dev, ret,
 				     "Error fetching regulators\n");
 
-	ov5693->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	ov5693->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			    V4L2_SUBDEV_FL_HAS_EVENTS;
 	ov5693->pad.flags = MEDIA_PAD_FL_SOURCE;
 	ov5693->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
