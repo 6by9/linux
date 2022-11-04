@@ -19,6 +19,7 @@
 #include <media/i2c/lm3560.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 
 /* registers definitions */
 #define REG_ENABLE		0x10
@@ -336,8 +337,13 @@ static int lm3560_init_controls(struct lm3560_flash *flash,
 }
 
 /* initialize device */
+static const struct v4l2_subdev_core_ops lm3560_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_ops lm3560_ops = {
-	.core = NULL,
+	.core = lm3560_core_ops,
 };
 
 static const struct regmap_config lm3560_regmap = {
@@ -353,7 +359,8 @@ static int lm3560_subdev_init(struct lm3560_flash *flash,
 	int rval;
 
 	v4l2_i2c_subdev_init(&flash->subdev_led[led_no], client, &lm3560_ops);
-	flash->subdev_led[led_no].flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	flash->subdev_led[led_no].flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+					   V4L2_SUBDEV_FL_HAS_EVENTS;
 	strscpy(flash->subdev_led[led_no].name, led_name,
 		sizeof(flash->subdev_led[led_no].name));
 	rval = lm3560_init_controls(flash, led_no);
