@@ -12,6 +12,7 @@
 #include <linux/regulator/consumer.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 
 #define OV8856_REG_VALUE_08BIT		1
@@ -2313,6 +2314,11 @@ static int ov8856_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops ov8856_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops ov8856_video_ops = {
 	.s_stream = ov8856_set_stream,
 };
@@ -2325,6 +2331,7 @@ static const struct v4l2_subdev_pad_ops ov8856_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops ov8856_subdev_ops = {
+	.core = &ov8856_core_ops,
 	.video = &ov8856_video_ops,
 	.pad = &ov8856_pad_ops,
 };
@@ -2498,7 +2505,8 @@ static int ov8856_probe(struct i2c_client *client)
 	}
 
 	ov8856->sd.internal_ops = &ov8856_internal_ops;
-	ov8856->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	ov8856->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			    V4L2_SUBDEV_FL_HAS_EVENTS;
 	ov8856->sd.entity.ops = &ov8856_subdev_entity_ops;
 	ov8856->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 	ov8856->pad.flags = MEDIA_PAD_FL_SOURCE;
