@@ -11,6 +11,7 @@
 #include <linux/regmap.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 
 #define OV2740_LINK_FREQ_360MHZ		360000000ULL
@@ -963,6 +964,11 @@ static int ov2740_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops ov2740_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops ov2740_video_ops = {
 	.s_stream = ov2740_set_stream,
 };
@@ -975,6 +981,7 @@ static const struct v4l2_subdev_pad_ops ov2740_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops ov2740_subdev_ops = {
+	.core = &ov2740_core_ops,
 	.video = &ov2740_video_ops,
 	.pad = &ov2740_pad_ops,
 };
@@ -1179,7 +1186,8 @@ static int ov2740_probe(struct i2c_client *client)
 	}
 
 	ov2740->sd.internal_ops = &ov2740_internal_ops;
-	ov2740->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	ov2740->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			    V4L2_SUBDEV_FL_HAS_EVENTS;
 	ov2740->sd.entity.ops = &ov2740_subdev_entity_ops;
 	ov2740->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 	ov2740->pad.flags = MEDIA_PAD_FL_SOURCE;
