@@ -22,6 +22,7 @@
 #include <media/v4l2-common.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-ioctl.h>
 
@@ -1088,6 +1089,8 @@ static int isl7998x_set_ctrl(struct v4l2_ctrl *ctrl)
 }
 
 static const struct v4l2_subdev_core_ops isl7998x_subdev_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
 #ifdef CONFIG_VIDEO_ADV_DEBUG
 	.g_register	= isl7998x_g_register,
 	.s_register	= isl7998x_s_register,
@@ -1512,7 +1515,8 @@ static int isl7998x_probe(struct i2c_client *client)
 	isl7998x->nr_inputs = nr_inputs;
 
 	v4l2_i2c_subdev_init(&isl7998x->subdev, client, &isl7998x_subdev_ops);
-	isl7998x->subdev.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	isl7998x->subdev.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+				  V4L2_SUBDEV_FL_HAS_EVENTS;
 
 	ret = isl7998x_mc_init(isl7998x);
 	if (ret < 0)
