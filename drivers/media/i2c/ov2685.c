@@ -17,6 +17,7 @@
 #include <media/media-entity.h>
 #include <media/v4l2-async.h>
 #include <media/v4l2-ctrls.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-subdev.h>
 
 #define CHIP_ID				0x2685
@@ -580,6 +581,11 @@ static int ov2685_set_ctrl(struct v4l2_ctrl *ctrl)
 	return ret;
 }
 
+static const struct v4l2_subdev_core_ops ov2685_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops ov2685_video_ops = {
 	.s_stream = ov2685_s_stream,
 };
@@ -592,6 +598,7 @@ static const struct v4l2_subdev_pad_ops ov2685_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops ov2685_subdev_ops = {
+	.core	= &ov2685_core_ops,
 	.video	= &ov2685_video_ops,
 	.pad	= &ov2685_pad_ops,
 };
@@ -762,7 +769,8 @@ static int ov2685_probe(struct i2c_client *client,
 
 #ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
 	ov2685->subdev.internal_ops = &ov2685_internal_ops;
-	ov2685->subdev.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	ov2685->subdev.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+				V4L2_SUBDEV_FL_HAS_EVENTS;
 #endif
 #if defined(CONFIG_MEDIA_CONTROLLER)
 	ov2685->pad.flags = MEDIA_PAD_FL_SOURCE;
