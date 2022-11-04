@@ -17,6 +17,7 @@
 #include <media/media-entity.h>
 #include <media/v4l2-async.h>
 #include <media/v4l2-ctrls.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-subdev.h>
 
 #ifndef V4L2_CID_DIGITAL_GAIN
@@ -1081,6 +1082,11 @@ static const struct v4l2_subdev_internal_ops ov5695_internal_ops = {
 };
 #endif
 
+static const struct v4l2_subdev_core_ops ov5695_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops ov5695_video_ops = {
 	.s_stream = ov5695_s_stream,
 };
@@ -1093,6 +1099,7 @@ static const struct v4l2_subdev_pad_ops ov5695_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops ov5695_subdev_ops = {
+	.core	= &ov5695_core_ops,
 	.video	= &ov5695_video_ops,
 	.pad	= &ov5695_pad_ops,
 };
@@ -1325,7 +1332,7 @@ static int ov5695_probe(struct i2c_client *client,
 
 #ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
 	sd->internal_ops = &ov5695_internal_ops;
-	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE | V4L2_SUBDEV_FL_HAS_EVENTS;
 #endif
 #if defined(CONFIG_MEDIA_CONTROLLER)
 	ov5695->pad.flags = MEDIA_PAD_FL_SOURCE;
