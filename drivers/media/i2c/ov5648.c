@@ -15,6 +15,7 @@
 #include <linux/videodev2.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-image-sizes.h>
 #include <media/v4l2-mediabus.h>
@@ -2359,6 +2360,11 @@ static int ov5648_enum_frame_interval(struct v4l2_subdev *subdev,
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops ov5648_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_pad_ops ov5648_subdev_pad_ops = {
 	.enum_mbus_code		= ov5648_enum_mbus_code,
 	.get_fmt		= ov5648_get_fmt,
@@ -2368,6 +2374,7 @@ static const struct v4l2_subdev_pad_ops ov5648_subdev_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops ov5648_subdev_ops = {
+	.core		= &ov5648_core_ops,
 	.video		= &ov5648_subdev_video_ops,
 	.pad		= &ov5648_subdev_pad_ops,
 };
@@ -2532,7 +2539,7 @@ static int ov5648_probe(struct i2c_client *client)
 	subdev = &sensor->subdev;
 	v4l2_i2c_subdev_init(subdev, client, &ov5648_subdev_ops);
 
-	subdev->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	subdev->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE | V4L2_SUBDEV_FL_HAS_EVENTS;
 	subdev->entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
 	pad = &sensor->pad;
