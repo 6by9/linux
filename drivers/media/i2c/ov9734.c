@@ -9,6 +9,7 @@
 #include <linux/pm_runtime.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 
 #define OV9734_LINK_FREQ_180MHZ		180000000ULL
@@ -828,6 +829,11 @@ static int ov9734_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops ov9734_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_video_ops ov9734_video_ops = {
 	.s_stream = ov9734_set_stream,
 };
@@ -840,6 +846,7 @@ static const struct v4l2_subdev_pad_ops ov9734_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops ov9734_subdev_ops = {
+	.core = &ov9734_core_ops,
 	.video = &ov9734_video_ops,
 	.pad = &ov9734_pad_ops,
 };
@@ -974,7 +981,8 @@ static int ov9734_probe(struct i2c_client *client)
 	}
 
 	ov9734->sd.internal_ops = &ov9734_internal_ops;
-	ov9734->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	ov9734->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			    V4L2_SUBDEV_FL_HAS_EVENTS;
 	ov9734->sd.entity.ops = &ov9734_subdev_entity_ops;
 	ov9734->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 	ov9734->pad.flags = MEDIA_PAD_FL_SOURCE;
