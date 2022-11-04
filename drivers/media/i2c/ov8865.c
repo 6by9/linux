@@ -17,6 +17,7 @@
 #include <linux/videodev2.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-image-sizes.h>
 #include <media/v4l2-mediabus.h>
@@ -2871,9 +2872,15 @@ static const struct v4l2_subdev_pad_ops ov8865_subdev_pad_ops = {
 	.set_selection		= ov8865_get_selection,
 };
 
+static const struct v4l2_subdev_core_ops ov8865_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_ops ov8865_subdev_ops = {
 	.video		= &ov8865_subdev_video_ops,
 	.pad		= &ov8865_subdev_pad_ops,
+	.core		= &ov8865_core_ops,
 };
 
 static int ov8865_suspend(struct device *dev)
@@ -3064,7 +3071,8 @@ static int ov8865_probe(struct i2c_client *client)
 	subdev = &sensor->subdev;
 	v4l2_i2c_subdev_init(subdev, client, &ov8865_subdev_ops);
 
-	subdev->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	subdev->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			 V4L2_SUBDEV_FL_HAS_EVENTS;
 	subdev->entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
 	pad = &sensor->pad;
