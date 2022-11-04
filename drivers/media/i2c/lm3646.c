@@ -18,6 +18,7 @@
 #include <media/i2c/lm3646.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 
 /* registers definitions */
 #define REG_ENABLE		0x01
@@ -258,8 +259,13 @@ static int lm3646_init_controls(struct lm3646_flash *flash)
 }
 
 /* initialize device */
+static const struct v4l2_subdev_core_ops lm3646_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
 static const struct v4l2_subdev_ops lm3646_ops = {
-	.core = NULL,
+	.core = lm3646_core_ops,
 };
 
 static const struct regmap_config lm3646_regmap = {
@@ -274,7 +280,8 @@ static int lm3646_subdev_init(struct lm3646_flash *flash)
 	int rval;
 
 	v4l2_i2c_subdev_init(&flash->subdev_led, client, &lm3646_ops);
-	flash->subdev_led.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	flash->subdev_led.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+				   V4L2_SUBDEV_FL_HAS_EVENTS;
 	strscpy(flash->subdev_led.name, LM3646_NAME,
 		sizeof(flash->subdev_led.name));
 	rval = lm3646_init_controls(flash);
