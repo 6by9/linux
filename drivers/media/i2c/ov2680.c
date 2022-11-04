@@ -23,6 +23,7 @@
 
 #include <media/v4l2-common.h>
 #include <media/v4l2-ctrls.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-subdev.h>
 
 #define OV2680_XVCLK_VALUE	24000000
@@ -870,6 +871,8 @@ static const struct v4l2_ctrl_ops ov2680_ctrl_ops = {
 
 static const struct v4l2_subdev_core_ops ov2680_core_ops = {
 	.s_power = ov2680_s_power,
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
 };
 
 static const struct v4l2_subdev_video_ops ov2680_video_ops = {
@@ -927,7 +930,8 @@ static int ov2680_v4l2_register(struct ov2680_dev *sensor)
 			     &ov2680_subdev_ops);
 
 #ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
-	sensor->sd.flags = V4L2_SUBDEV_FL_HAS_DEVNODE;
+	sensor->sd.flags = V4L2_SUBDEV_FL_HAS_DEVNODE |
+			   V4L2_SUBDEV_FL_HAS_EVENTS;
 #endif
 	sensor->pad.flags = MEDIA_PAD_FL_SOURCE;
 	sensor->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
