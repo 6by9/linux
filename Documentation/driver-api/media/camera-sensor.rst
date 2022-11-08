@@ -151,3 +151,34 @@ used to obtain device's power state after the power state transition:
 The function returns a non-zero value if it succeeded getting the power count or
 runtime PM was disabled, in either of which cases the driver may proceed to
 access the device.
+
+Raw camera sensor implementations
+---------------------------------
+
+When writing raw camera sensor drivers please look to write generic drivers, not
+just the minimum required for your product.
+
+V4L2_CID_PIXEL_RATE, V4L2_CID_HBLANK, and V4L2_CID_VBLANK are required for
+userspace to compute the frame rate. Please add them, even if as read-only
+controls.
+
+If V4L2_CID_HFLIP and V4L2_CID_VFLIP can be implemented, then please do so.
+Please do not hard code a flip within a register table as it means that
+implementing these controls later is significantly harder.
+If the flip controls change the Bayer order, then the controls must set
+V4L2_CTRL_FLAG_MODIFY_LAYOUT in the flags field.
+
+Use v4l2_ctrl_new_fwnode_properties to add the standard fwnode properties into
+the control handler.
+
+If any controls are implemented and your subdevice driver sets
+V4L2_SUBDEV_FL_HAS_DEVNODE, then you must also set V4L2_SUBDEV_FL_HAS_EVENTS and
+define subscribe_event and unsubscribe_event core ops. Not doing so will fail
+v4l2-compliance.
+
+If the sensor supports them, then ideally consider how multiple input clock
+frequencies could be supported, and separate the clock register settings out
+from mode setting. Validate the configured clock frequency.
+
+For CSI-2 sensors, check whether they operate in continuous or non-continuous
+clock mode, and validate the configuration. 
