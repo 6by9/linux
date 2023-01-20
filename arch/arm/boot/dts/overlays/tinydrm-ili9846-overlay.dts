@@ -1,0 +1,85 @@
+/*
+ * Device Tree overlay for PiTFT 3.5" resistive touch screen using ILI9846 with
+ * XPT2046 / ADS7846 resistive touch controller
+ *
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+
+/ {
+	compatible = "brcm,bcm2835";
+
+	fragment@0 {
+		target = <&spi0>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	fragment@1 {
+		target = <&spidev0>;
+		__overlay__ {
+			status = "disabled";
+		};
+	};
+
+	fragment@2 {
+		target = <&spidev1>;
+		__overlay__ {
+			status = "disabled";
+		};
+	};
+
+	fragment@3 {
+		target = <&gpio>;
+		__overlay__ {
+			pitft_pins: pitft_pins {
+				brcm,pins = <24 25>;
+				brcm,function = <0 1>; /* in out */
+				brcm,pull = <2 0>; /* pullup none */
+			};
+		};
+	};
+
+	fragment@4 {
+		target = <&spi0>;
+		__overlay__ {
+			/* needed to avoid dtc warning */
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			pitft: pitft@0{
+				compatible = "waveshare,rpi-lcd-35";
+				reg = <0>;
+				pinctrl-names = "default";
+				pinctrl-0 = <&pitft_pins>;
+
+				spi-max-frequency = <32000000>;
+				dc-gpios = <&gpio 24 GPIO_ACTIVE_HIGH>;
+				reset-gpios = <&gpio 25 GPIO_ACTIVE_HIGH>;
+				rotation = <180>;
+			};
+
+			pitft_ts@1 {
+				compatible = "ti,ads7846";
+				reg = <1>;
+				status = "okay";
+
+				spi-max-frequency = <2000000>;
+				interrupts = <17 2>; /* high-to-low edge triggered */
+				interrupt-parent = <&gpio>;
+				pendown-gpio = <&gpio 17 0>;
+				ti,x-plate-ohms = /bits/ 16 <100>;
+				ti,pressure-max = /bits/ 16 <255>;
+			};
+		};
+	};
+
+	__overrides__ {
+		speed =   <&pitft>,"spi-max-frequency:0";
+		rotate =  <&pitft>,"rotation:0"; /* drm */
+	};
+};
