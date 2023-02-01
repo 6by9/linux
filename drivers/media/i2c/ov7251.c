@@ -83,7 +83,6 @@ struct ov7251_mode_info {
 	u32 data_size;
 	u32 pixel_clock;
 	u32 link_freq;
-	u16 exposure_max;
 	struct v4l2_fract timeperframe;
 };
 
@@ -389,7 +388,6 @@ static const struct ov7251_mode_info ov7251_mode_info_data[] = {
 		.vts = 1724,
 		.data = ov7251_setting_vga,
 		.data_size = ARRAY_SIZE(ov7251_setting_vga),
-		.exposure_max = 1704,
 		.timeperframe = {
 			.numerator = 100,
 			.denominator = 3000
@@ -401,7 +399,6 @@ static const struct ov7251_mode_info ov7251_mode_info_data[] = {
 		.vts = 860,
 		.data = ov7251_setting_vga,
 		.data_size = ARRAY_SIZE(ov7251_setting_vga),
-		.exposure_max = 840,
 		.timeperframe = {
 			.numerator = 100,
 			.denominator = 6014
@@ -413,7 +410,6 @@ static const struct ov7251_mode_info ov7251_mode_info_data[] = {
 		.vts = 572,
 		.data = ov7251_setting_vga,
 		.data_size = ARRAY_SIZE(ov7251_setting_vga),
-		.exposure_max = 552,
 		.timeperframe = {
 			.numerator = 100,
 			.denominator = 9043
@@ -976,12 +972,6 @@ static int ov7251_set_format(struct v4l2_subdev *sd,
 	__crop->height = new_mode->height;
 
 	if (format->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
-		ret = __v4l2_ctrl_modify_range(ov7251->exposure,
-					       1, new_mode->exposure_max,
-					       1, OV7251_INTEGRATATION_DEF);
-		if (ret < 0)
-			goto exit;
-
 		ret = __v4l2_ctrl_s_ctrl(ov7251->exposure,
 					 OV7251_INTEGRATATION_DEF);
 		if (ret < 0)
@@ -1150,14 +1140,8 @@ static int ov7251_set_frame_interval(struct v4l2_subdev *subdev,
 	new_mode = ov7251_find_mode_by_ival(ov7251, &fi->interval);
 
 	if (new_mode != ov7251->current_mode) {
-		ret = __v4l2_ctrl_modify_range(ov7251->exposure,
-					       1, new_mode->exposure_max,
-					       1, OV7251_INTEGRATATION_DEF);
-		if (ret < 0)
-			goto exit;
-
-		ret = __v4l2_ctrl_s_ctrl(ov7251->exposure,
-					 new_mode->OV7251_INTEGRATATION_DEF);
+		ret = __v4l2_ctrl_s_ctrl(ov7251->vblank,
+					 new_mode->vts - new_mode->height);
 		if (ret < 0)
 			goto exit;
 
