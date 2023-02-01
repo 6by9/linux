@@ -75,15 +75,18 @@ struct reg_value {
 	u8 val;
 };
 
+struct ov7251_frame_ival_info {
+	u16 vts;
+	struct v4l2_fract timeperframe;
+};
+
 struct ov7251_mode_info {
 	u32 width;
 	u32 height;
-	u32 vts;
 	const struct reg_value *data;
 	u32 data_size;
 	u32 pixel_clock;
 	u32 link_freq;
-	struct v4l2_fract timeperframe;
 };
 
 struct ov7251_pll1_cfg {
@@ -141,6 +144,7 @@ struct ov7251 {
 	const struct ov7251_pll_cfgs *pll_cfgs;
 	enum supported_link_freqs link_freq_idx;
 	const struct ov7251_mode_info *current_mode;
+	const struct ov7251_frame_ival_info *current_ival;
 
 	struct v4l2_ctrl_handler ctrls;
 	struct v4l2_ctrl *pixel_clock;
@@ -381,39 +385,36 @@ static const s64 pixel_rates[] = {
 	[OV7251_LINK_FREQ_319_2_MHZ] = 63840000,
 };
 
-static const struct ov7251_mode_info ov7251_mode_info_data[] = {
+static const struct ov7251_frame_ival_info ov7251_frame_ival_info_data[] = {
 	{
-		.width = 640,
-		.height = 480,
 		.vts = 1724,
-		.data = ov7251_setting_vga,
-		.data_size = ARRAY_SIZE(ov7251_setting_vga),
 		.timeperframe = {
 			.numerator = 100,
 			.denominator = 3000
 		}
 	},
 	{
-		.width = 640,
-		.height = 480,
 		.vts = 860,
-		.data = ov7251_setting_vga,
-		.data_size = ARRAY_SIZE(ov7251_setting_vga),
 		.timeperframe = {
 			.numerator = 100,
 			.denominator = 6014
 		}
 	},
 	{
-		.width = 640,
-		.height = 480,
 		.vts = 572,
-		.data = ov7251_setting_vga,
-		.data_size = ARRAY_SIZE(ov7251_setting_vga),
 		.timeperframe = {
 			.numerator = 100,
 			.denominator = 9043
 		}
+	},
+};
+
+static const struct ov7251_mode_info ov7251_mode_info_data[] = {
+	{
+		.width = 640,
+		.height = 480,
+		.data = ov7251_setting_vga,
+		.data_size = ARRAY_SIZE(ov7251_setting_vga),
 	},
 };
 
@@ -853,13 +854,13 @@ static int ov7251_enum_frame_ival(struct v4l2_subdev *subdev,
 	unsigned int index = fie->index;
 	unsigned int i;
 
-	for (i = 0; i < ARRAY_SIZE(ov7251_mode_info_data); i++) {
-		if (fie->width != ov7251_mode_info_data[i].width ||
-		    fie->height != ov7251_mode_info_data[i].height)
+	for (i = 0; i < ARRAY_SIZE(ov7251_frame_ival_info_data); i++) {
+		if (fie->width != ov7251_mode_info_data[0].width ||
+		    fie->height != ov7251_mode_info_data[0].height)
 			continue;
 
 		if (index-- == 0) {
-			fie->interval = ov7251_mode_info_data[i].timeperframe;
+			fie->interval = ov7251_frame_ival_info_data[i].timeperframe;
 			return 0;
 		}
 	}
@@ -918,23 +919,19 @@ static inline u32 avg_fps(const struct v4l2_fract *t)
 	return (t->denominator + (t->numerator >> 1)) / t->numerator;
 }
 
-static const struct ov7251_mode_info *
-ov7251_find_mode_by_ival(struct ov7251 *ov7251, struct v4l2_fract *timeperframe)
+static const struct ov7251_frame_ival_info *
+ov7251_find_nearest_frame_ival(struct ov7251 *ov7251,
+			       struct v4l2_fract *timeperframe)
 {
-	const struct ov7251_mode_info *mode = ov7251->current_mode;
 	unsigned int fps_req = avg_fps(timeperframe);
 	unsigned int max_dist_match = (unsigned int) -1;
 	unsigned int i, n = 0;
 
-	for (i = 0; i < ARRAY_SIZE(ov7251_mode_info_data); i++) {
+	for (i = 0; i < ARRAY_SIZE(ov7251_frame_ival_info_data); i++) {
 		unsigned int dist;
 		unsigned int fps_tmp;
 
-		if (mode->width != ov7251_mode_info_data[i].width ||
-		    mode->height != ov7251_mode_info_data[i].height)
-			continue;
-
-		fps_tmp = avg_fps(&ov7251_mode_info_data[i].timeperframe);
+		fps_tmp = avg_fps(&ov7251_frame_ival_info_data[i].timeperframe);
 
 		dist = abs(fps_req - fps_tmp);
 
@@ -944,7 +941,7 @@ ov7251_find_mode_by_ival(struct ov7251 *ov7251, struct v4l2_fract *timeperframe)
 		}
 	}
 
-	return &ov7251_mode_info_data[n];
+	return &ov7251_frame_ival_info_data[n];
 }
 
 static int ov7251_set_format(struct v4l2_subdev *sd,
@@ -971,14 +968,15 @@ static int ov7251_set_format(struct v4l2_subdev *sd,
 	__crop->width = new_mode->width;
 	__crop->height = new_mode->height;
 
-	if (format->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
+	if (format->which == V4L2_SUBDEV_FORMAT_ACTIVE &&
+	    ov7251->current_mode != new_mode) {
 		ret = __v4l2_ctrl_s_ctrl(ov7251->exposure,
 					 OV7251_INTEGRATATION_DEF);
 		if (ret < 0)
 			goto exit;
 
 		vblank_max = OV7251_TIMING_MAX_VTS - new_mode->height;
-		vblank_def = new_mode->vts - new_mode->height;
+		vblank_def = ov7251->current_ival->vts - new_mode->height;
 		ret = __v4l2_ctrl_modify_range(ov7251->vblank,
 					       OV7251_TIMING_MIN_VTS,
 					       vblank_max, 1, vblank_def);
@@ -1115,7 +1113,7 @@ static int ov7251_get_frame_interval(struct v4l2_subdev *subdev,
 	struct ov7251 *ov7251 = to_ov7251(subdev);
 
 	mutex_lock(&ov7251->lock);
-	fi->interval = ov7251->current_mode->timeperframe;
+	fi->interval = ov7251->current_ival->timeperframe;
 	mutex_unlock(&ov7251->lock);
 
 	return 0;
@@ -1125,22 +1123,23 @@ static int ov7251_set_frame_interval(struct v4l2_subdev *subdev,
 				     struct v4l2_subdev_frame_interval *fi)
 {
 	struct ov7251 *ov7251 = to_ov7251(subdev);
-	const struct ov7251_mode_info *new_mode;
+	const struct ov7251_frame_ival_info *new_fi;
+	const struct ov7251_mode_info *mode;
 	int ret = 0;
 
 	mutex_lock(&ov7251->lock);
-	new_mode = ov7251_find_mode_by_ival(ov7251, &fi->interval);
+	mode = ov7251->current_mode;
+	new_fi = ov7251_find_nearest_frame_ival(ov7251, &fi->interval);
 
-	if (new_mode != ov7251->current_mode) {
+	if (new_fi != ov7251->current_ival) {
 		ret = __v4l2_ctrl_s_ctrl(ov7251->vblank,
-					 new_mode->vts - new_mode->height);
+					 new_fi->vts - mode->height);
 		if (ret < 0)
 			goto exit;
-
-		ov7251->current_mode = new_mode;
+		ov7251->current_ival = new_fi;
 	}
 
-	fi->interval = ov7251->current_mode->timeperframe;
+	fi->interval = ov7251->current_ival->timeperframe;
 
 exit:
 	mutex_unlock(&ov7251->lock);
@@ -1296,7 +1295,7 @@ static int ov7251_init_ctrls(struct ov7251 *ov7251)
 		ov7251->hblank->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	vblank_max = OV7251_TIMING_MAX_VTS - ov7251->current_mode->height;
-	vblank_def = ov7251->current_mode->vts - ov7251->current_mode->height;
+	vblank_def = ov7251->current_ival->vts - ov7251->current_mode->height;
 	ov7251->vblank = v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
 					   V4L2_CID_VBLANK,
 					   OV7251_TIMING_MIN_VTS, vblank_max, 1,
@@ -1400,6 +1399,7 @@ static int ov7251_probe(struct i2c_client *client)
 	mutex_init(&ov7251->lock);
 
 	ov7251->current_mode = &ov7251_mode_info_data[0];
+	ov7251->current_ival = &ov7251_frame_ival_info_data[0];
 	ret = ov7251_init_ctrls(ov7251);
 	if (ret) {
 		dev_err_probe(dev, ret, "error during v4l2 ctrl init\n");
