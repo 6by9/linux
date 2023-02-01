@@ -65,7 +65,7 @@
 
 #define OV7251_FIXED_PPL		928
 #define OV7251_TIMING_VTS_REG		0x380e
-#define OV7251_TIMING_MIN_VTS		1
+#define OV7251_VBLANK_MIN		1
 #define OV7251_TIMING_MAX_VTS		0xffff
 #define OV7251_INTEGRATION_MARGIN	20
 #define OV7251_INTEGRATATION_DEF	504
@@ -978,7 +978,7 @@ static int ov7251_set_format(struct v4l2_subdev *sd,
 		vblank_max = OV7251_TIMING_MAX_VTS - new_mode->height;
 		vblank_def = ov7251->current_ival->vts - new_mode->height;
 		ret = __v4l2_ctrl_modify_range(ov7251->vblank,
-					       OV7251_TIMING_MIN_VTS,
+					       OV7251_VBLANK_MIN,
 					       vblank_max, 1, vblank_def);
 		if (ret < 0)
 			goto exit;
@@ -1297,9 +1297,8 @@ static int ov7251_init_ctrls(struct ov7251 *ov7251)
 	vblank_max = OV7251_TIMING_MAX_VTS - ov7251->current_mode->height;
 	vblank_def = ov7251->current_ival->vts - ov7251->current_mode->height;
 	ov7251->vblank = v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
-					   V4L2_CID_VBLANK,
-					   OV7251_TIMING_MIN_VTS, vblank_max, 1,
-					   vblank_def);
+					   V4L2_CID_VBLANK, OV7251_VBLANK_MIN,
+					   vblank_max, 1, vblank_def);
 
 	ov7251->sd.ctrl_handler = &ov7251->ctrls;
 
