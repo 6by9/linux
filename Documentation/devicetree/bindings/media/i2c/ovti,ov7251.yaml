@@ -77,7 +77,6 @@ required:
   - clocks
   - clock-names
   - clock-frequency
-  - enable-gpios
   - vdddo-supply
   - vdda-supply
   - vddd-supply
