@@ -1085,14 +1085,6 @@ static int ov7251_s_stream(struct v4l2_subdev *subdev, int enable)
 				ov7251->current_mode->height);
 			goto err_power_down;
 		}
-		ret = ov7251_write_reg(ov7251, OV7251_VTS_HIGH,
-				       ov7251->current_mode->vts >> 8);
-		if (ret)
-			goto err_power_down;
-		ret = ov7251_write_reg(ov7251, OV7251_VTS_LOW,
-				       ov7251->current_mode->vts & 0xff);
-		if (ret)
-			goto err_power_down;
 		ret = __v4l2_ctrl_handler_setup(&ov7251->ctrls);
 		if (ret < 0) {
 			dev_err(ov7251->dev, "could not sync v4l2 controls\n");
