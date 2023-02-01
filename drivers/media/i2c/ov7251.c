@@ -1571,8 +1571,6 @@ static int ov7251_init_ctrls(struct ov7251 *ov7251)
 						   link_freq);
 	if (ov7251->link_freq)
 		ov7251->link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
-	if (ov7251->pixel_clock)
-		ov7251->pixel_clock->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	hblank = OV7251_FIXED_PPL - ov7251->current_mode->width;
 	ov7251->hblank = v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
