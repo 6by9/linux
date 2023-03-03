@@ -2,12 +2,8 @@ name: Pi kernel build tests
 
 on:
   pull_request:
-    paths-ignore:
-      - '.github/**'
     branches: [ "rpi-*" ]
   push:
-    paths-ignore:
-      - '.github/**'
     branches: [ "rpi-*" ]
   workflow_dispatch:
 
@@ -101,3 +97,48 @@ jobs:
         name: ${{matrix.name}}_build
         path: ${{matrix.name}}_build.tar
         retention-days: 90
+
+  hdmi-test:
+    needs: build
+    runs-on: ${{matrix.hardware}}
+    strategy:
+      matrix:
+        include:
+          - name: pi4
+            build: bcm2711
+            hardware: pi4
+
+          - name: pi4_arm64
+            build: bcm2711_arm64
+            hardware: pi4
+
+          - name: pi3
+            build: bcm2709
+            hardware: pi3
+
+    steps:
+      - name: Download the Build Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{matrix.build}}_build
+
+      - name: Copy Build Artifacts to TFTP Folder
+        run: |
+          mkdir -p /home/runner/tftp/files/test
+          ln -s /home/runner/tftp/files/rootfs.cpio.xz /home/runner/tftp/files/test
+          cp -a Image.gz broadcom/*.dtb overlays modules.cpio /home/runner/tftp/files/test/
+          touch /home/runner/tftp/files/test/overlays/README
+      - name: Power the DUT
+        run: |
+          gpioset 0 18=1
+      - name: Start HDMI Capture
+        run: |
+          dradis /usr/share/dradis/samples/test-single-mode-720p.yaml
+      - name: Power off the DUT
+        if: always()
+        run: |
+          gpioset 0 18=0
+      - name: Remove Test Artifacts
+        if: always()
+        run: |
+          rm -rf /home/runner/tftp/files/test
