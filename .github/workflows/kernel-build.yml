@@ -2,12 +2,8 @@ name: Pi kernel build tests
 
 on:
   pull_request:
-    paths-ignore:
-      - '.github/**'
     branches: [ "rpi-*" ]
   push:
-    paths-ignore:
-      - '.github/**'
     branches: [ "rpi-*" ]
   workflow_dispatch:
 
@@ -49,6 +45,9 @@ jobs:
             arch: arm64
             defconfig: bcm2711_defconfig
             kernel: kernel8
+    env:
+      ARTIFACTS_DIR: ${{ github.workspace }}/build-artifacts
+      MOD_TMP_DIR: ${{ github.workspace }}/build-modules
 
     steps:
     - name: Update install
@@ -58,9 +57,9 @@ jobs:
     - name: Install toolchain
       run:
         if [[ "${{matrix.arch}}" == "arm64" ]]; then
-          sudo apt-get install gcc-aarch64-linux-gnu;
+          sudo apt-get install gcc-aarch64-linux-gnu kmod;
         else
-          sudo apt-get install gcc-arm-linux-gnueabihf;
+          sudo apt-get install gcc-arm-linux-gnueabihf kmod;
         fi
       timeout-minutes: 5
 
@@ -82,15 +81,32 @@ jobs:
           export DTS_SUBDIR=
           export IMAGE=zImage
         fi
+
         make O=${{github.workspace}}/build ${{matrix.defconfig}}
         scripts/config --file ${{github.workspace}}/build/.config --set-val CONFIG_WERROR y
         make O=${{github.workspace}}/build -j ${{env.NUM_JOBS}} $IMAGE modules dtbs
+
         mkdir -p ${{github.workspace}}/install/boot/overlays
         make O=${{github.workspace}}/build INSTALL_MOD_PATH=${{github.workspace}}/install modules_install
         cp ${{github.workspace}}/build/arch/${ARCH}/boot/dts/${DTS_SUBDIR}/*.dtb ${{github.workspace}}/install/boot/
         cp ${{github.workspace}}/build/arch/${ARCH}/boot/dts/overlays/*.dtb* ${{github.workspace}}/install/boot/overlays/
         cp ${{github.workspace}}/arch/${ARCH}/boot/dts/overlays/README ${{github.workspace}}/install/boot/overlays/
         cp ${{github.workspace}}/build/arch/${ARCH}/boot/$IMAGE ${{github.workspace}}/install/boot/${{matrix.kernel}}.img
+
+        # Create the artifacts for HDMI test CI
+        mkdir -p ${{ env.ARTIFACTS_DIR }}
+        make O=${{github.workspace}}/build INSTALL_DTBS_PATH=${{ env.ARTIFACTS_DIR }} -j ${{ env.NUM_JOBS }} dtbs_install
+        cp ${{github.workspace}}/build/arch/${ARCH}/boot/$IMAGE ${{ env.ARTIFACTS_DIR }}/
+
+        mkdir -p ${{ env.MOD_TMP_DIR }}
+        make O=${{github.workspace}}/build INSTALL_MOD_PATH=${{ env.MOD_TMP_DIR }}/usr -j ${{ env.NUM_JOBS }} modules_install
+
+        pushd ${{ env.MOD_TMP_DIR }}
+        find . -print0 | \
+              cpio --null --create --verbose --format=newc \
+              > ${{ env.ARTIFACTS_DIR }}/modules.cpio
+        popd
+
 
     - name: Tar build
       run: tar -cvf ${{matrix.name}}_build.tar -C ${{github.workspace}}/install .
@@ -100,4 +116,64 @@ jobs:
       with:
         name: ${{matrix.name}}_build
         path: ${{matrix.name}}_build.tar
+
+    - name: Upload HDMI CI files
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{matrix.name}}_hdmi_ci
+        path: ${{ env.ARTIFACTS_DIR }}
         retention-days: 90
+
+  hdmi-test:
+    needs: build
+    runs-on: ${{matrix.hardware}}
+    strategy:
+      matrix:
+        include:
+          - name: pi4
+            build: bcm2711
+            hardware: pi4
+            arch: arm
+
+          - name: pi4_arm64
+            build: bcm2711_arm64
+            hardware: pi4
+            arch: arm64
+
+          - name: pi3
+            build: bcm2709
+            hardware: pi3
+            arch: arm
+
+    steps:
+      - name: Download the Build Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{matrix.build}}_hdmi_ci
+
+      - name: Copy Build Artifacts to TFTP Folder
+        run: |
+          mkdir -p /home/runner/tftp/files/test
+          ln -s /home/runner/tftp/files/rootfs.cpio.xz /home/runner/tftp/files/test
+          export ARCH=${{matrix.arch}}
+          if [[ "$ARCH" == "arm64" ]]; then
+            cp -a Image.gz broadcom/*.dtb overlays modules.cpio /home/runner/tftp/files/test/
+          else
+            cp -a zImage *.dtb overlays modules.cpio /home/runner/tftp/files/test/
+          fi
+
+          touch /home/runner/tftp/files/test/overlays/README
+      - name: Power the DUT
+        run: |
+          gpioset 0 18=1
+      - name: Start HDMI Capture
+        run: |
+          dradis /usr/share/dradis/samples/test-single-mode-720p.yaml
+      - name: Power off the DUT
+        if: always()
+        run: |
+          gpioset 0 18=0
+      - name: Remove Test Artifacts
+        if: always()
+        run: |
+          rm -rf /home/runner/tftp/files/test
