@@ -4,11 +4,6 @@ on:
     paths-ignore:
       - '.github/**'
     branches: [ "rpi-*" ]
-  push:
-    paths-ignore:
-      - '.github/**'
-    branches: [ "rpi-*" ]
-  workflow_dispatch:
 
 jobs:
   review:
