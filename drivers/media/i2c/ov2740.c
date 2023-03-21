@@ -1177,7 +1177,7 @@ static int ov2740_probe(struct i2c_client *client)
 	ret = ov2740_init_controls(ov2740);
 	if (ret) {
 		dev_err(&client->dev, "failed to init controls: %d", ret);
-		goto probe_error_v4l2_ctrl_handler_free;
+		goto probe_error_mutex_destroy;
 	}
 
 	ov2740->sd.internal_ops = &ov2740_internal_ops;
@@ -1215,6 +1215,8 @@ probe_error_media_entity_cleanup:
 
 probe_error_v4l2_ctrl_handler_free:
 	v4l2_ctrl_handler_free(ov2740->sd.ctrl_handler);
+
+probe_error_mutex_destroy:
 	mutex_destroy(&ov2740->mutex);
 
 	return ret;
