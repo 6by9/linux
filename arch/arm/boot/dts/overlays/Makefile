@@ -23,6 +23,7 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
 	anyspi.dtbo \
 	apds9960.dtbo \
 	applepi-dac.dtbo \
+	ar0234.dtbo \
 	arducam-64mp.dtbo \
 	arducam-pivariety.dtbo \
 	at86rf233.dtbo \
