@@ -34,6 +34,16 @@ config VIDEO_APTINA_PLL
 config VIDEO_CCS_PLL
 	tristate
 
+config VIDEO_AR0234
+	tristate "OnSemi AR0234 sensor support"
+	depends on I2C && VIDEO_DEV
+	select MEDIA_CONTROLLER
+	select VIDEO_V4L2_SUBDEV_API
+	select V4L2_FWNODE
+	help
+	  This is a V4L2 sensor driver for OnSemi AR0234 2.3M
+	  global shutter camera.
+
 config VIDEO_AR0521
 	tristate "ON Semiconductor AR0521 sensor support"
 	depends on I2C && VIDEO_DEV
