@@ -40,10 +40,8 @@
 /* External clock frequency is 24.0M */
 #define AR0234_XCLK_FREQ		24000000
 
-/* Pixel rate is fixed at 180M for all the modes */
-//#define AR0234_PIXEL_RATE		180000000
+/* Pixel rate is fixed at 256M for all the modes */
 #define AR0234_PIXEL_RATE		256000000
-
 
 #define AR0234_DEFAULT_LINK_FREQ	450000000
 
@@ -126,9 +124,9 @@ enum pad_types {
 };
 
 /* AR0234 native and active pixel array size. */
-#define AR0234_NATIVE_WIDTH		1484U
-#define AR0234_NATIVE_HEIGHT		856U
-#define AR0234_PIXEL_ARRAY_LEFT		6U
+#define AR0234_NATIVE_WIDTH		1940U
+#define AR0234_NATIVE_HEIGHT		1220U
+#define AR0234_PIXEL_ARRAY_LEFT		10U
 #define AR0234_PIXEL_ARRAY_TOP		10U
 #define AR0234_PIXEL_ARRAY_WIDTH	1920U
 #define AR0234_PIXEL_ARRAY_HEIGHT	1200U
@@ -195,7 +193,6 @@ static const struct ar0234_reg common_init[] = {
 
 	/* MIPI Config */
 	{ 0x3354, 0x002b },	// MIPI_CNTRL
-	{ 0x31AE, 0x0202 },	// SERIAL_FORMAT
 
 	{ 0x31AC, 0x0A0A },	// DATA_FORMAT_BITS
 	{ 0x306E, 0x9010 },	// DATAPATH_SELECT
@@ -295,7 +292,7 @@ static const u32 mono_codes[] = {
 /* Mode configs */
 static const struct ar0234_mode supported_modes[] = {
 	{
-		/* 1280x800 60fps mode */
+		/* 1920x1200 60fps mode */
 		.width = 1920,
 		.height = 1200,
 		.crop = {
@@ -311,7 +308,7 @@ static const struct ar0234_mode supported_modes[] = {
 		},
 	},
 	{
-		/* Cropped 1280x720 30fps mode */
+		/* Cropped 1280x800 30fps mode */
 		.width = 1280,
 		.height = 800,
 		.crop = {
@@ -353,6 +350,9 @@ struct ar0234 {
 
 	/* Current mode */
 	const struct ar0234_mode *mode;
+
+	u32 csi2_flags;
+	unsigned int nlanes;
 
 	/*
 	 * Mutex for serialized access:
@@ -920,6 +920,13 @@ static int ar0234_start_streaming(struct ar0234 *ar0234)
 		return ret;
 	}
 
+	ret = ar0234_write_reg(ar0234, 0x31AE, 2, (ar0234->nlanes + (ar0234->nlanes << 8)));
+	if (ret) {
+		dev_err(&client->dev, "%s failed to set number of lanes\n",
+			__func__);
+		return ret;
+	}
+
 	/* Apply default values of current mode */
 	reg_list = &ar0234->mode->reg_list;
 	ret = ar0234_write_regs(ar0234, reg_list->regs, reg_list->num_of_regs);
@@ -1257,7 +1264,7 @@ static void ar0234_free_controls(struct ar0234 *ar0234)
 	mutex_destroy(&ar0234->mutex);
 }
 
-static int ar0234_check_hwcfg(struct device *dev)
+static int ar0234_check_hwcfg(struct device *dev, struct ar0234 *ar0234)
 {
 	struct fwnode_handle *endpoint;
 	struct v4l2_fwnode_endpoint ep_cfg = {
@@ -1277,10 +1284,12 @@ static int ar0234_check_hwcfg(struct device *dev)
 	}
 
 	/* Check the number of MIPI CSI2 data lanes */
-	if (ep_cfg.bus.mipi_csi2.num_data_lanes != 2) {
-		dev_err(dev, "only 2 data lanes are currently supported\n");
+	if (ep_cfg.bus.mipi_csi2.num_data_lanes != 2 &&
+	    ep_cfg.bus.mipi_csi2.num_data_lanes != 4) {
+		dev_err(dev, "only 2 or 4 data lanes are currently supported\n");
 		goto error_out;
 	}
+	ar0234->nlanes = ep_cfg.bus.mipi_csi2.num_data_lanes;
 
 	/* Check the link frequency set in device tree */
 	if (!ep_cfg.nr_of_link_frequencies) {
@@ -1295,6 +1304,7 @@ static int ar0234_check_hwcfg(struct device *dev)
 		goto error_out;
 	}
 
+	ar0234->csi2_flags = ep_cfg.bus.mipi_csi2.flags;
 	ret = 0;
 
 error_out:
@@ -1315,9 +1325,8 @@ static int ar0234_probe(struct i2c_client *client)
 		return -ENOMEM;
 
 	v4l2_i2c_subdev_init(&ar0234->sd, client, &ar0234_subdev_ops);
-pr_err("%s\n", __func__);
 	/* Check the hardware configuration in device tree */
-	if (ar0234_check_hwcfg(dev))
+	if (ar0234_check_hwcfg(dev, ar0234))
 		return -EINVAL;
 
 	/* Get system clock (xclk) */
