@@ -403,6 +403,8 @@ struct vc4_plane_state {
 	u32 dlist_size; /* Number of dwords allocated for the display list */
 	u32 dlist_count; /* Number of used dwords in the display list. */
 
+	u32 lbm_size; /* LBM requirements for this plane */
+
 	/* Offset in the dlist to various words, for pageflip or
 	 * cursor updates.
 	 */
@@ -427,9 +429,6 @@ struct vc4_plane_state {
 	enum vc4_scaling_mode x_scaling[2], y_scaling[2];
 	bool is_unity;
 	bool is_yuv;
-
-	/* Our allocation in LBM for temporary storage during scaling. */
-	struct drm_mm_node lbm;
 
 	/* Our allocation in UPM for prefetching. */
 	struct drm_mm_node upm[DRM_FORMAT_MAX_PLANES];
@@ -600,6 +599,9 @@ struct vc4_crtc {
 	 * access to that value.
 	 */
 	unsigned int current_hvs_channel;
+
+	/* @lbm: Our allocation in LBM for temporary storage during scaling. */
+	struct drm_mm_node lbm;
 };
 
 #define to_vc4_crtc(_crtc)					\
