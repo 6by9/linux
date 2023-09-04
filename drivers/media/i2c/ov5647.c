@@ -53,6 +53,8 @@
 #define OV5647_REG_AEC_AGC		0x3503
 #define OV5647_REG_GAIN_HI		0x350a
 #define OV5647_REG_GAIN_LO		0x350b
+#define OV5647_REG_HTS_HI		0x380c
+#define OV5647_REG_HTS_LO		0x380d
 #define OV5647_REG_VTS_HI		0x380e
 #define OV5647_REG_VTS_LO		0x380f
 #define OV5647_REG_VFLIP		0x3820
@@ -74,6 +76,8 @@
 #define OV5647_PIXEL_ARRAY_TOP		6U
 #define OV5647_PIXEL_ARRAY_WIDTH	2592U
 #define OV5647_PIXEL_ARRAY_HEIGHT	1944U
+
+#define OV5647_HTS_MAX			0x1fff
 
 #define OV5647_VBLANK_MIN		24
 #define OV5647_VTS_MAX			32767
@@ -101,7 +105,7 @@ struct ov5647_mode {
 	struct v4l2_mbus_framefmt	format;
 	struct v4l2_rect		crop;
 	u64				pixel_rate;
-	int				hts;
+	int				hts_min;
 	int				vts;
 	const struct regval_list	*reg_list;
 	unsigned int			num_regs;
@@ -173,8 +177,6 @@ static struct regval_list ov5647_2592x1944_10bpp[] = {
 	{0x3a19, 0xf8},
 	{0x3c01, 0x80},
 	{0x3b07, 0x0c},
-	{0x380c, 0x0b},
-	{0x380d, 0x1c},
 	{0x3814, 0x11},
 	{0x3815, 0x11},
 	{0x3708, 0x64},
@@ -262,8 +264,6 @@ static struct regval_list ov5647_1080p30_10bpp[] = {
 	{0x3a19, 0xf8},
 	{0x3c01, 0x80},
 	{0x3b07, 0x0c},
-	{0x380c, 0x09},
-	{0x380d, 0x70},
 	{0x3814, 0x11},
 	{0x3815, 0x11},
 	{0x3708, 0x64},
@@ -361,8 +361,6 @@ static struct regval_list ov5647_2x2binned_10bpp[] = {
 	{0x3809, 0x10},
 	{0x380a, 0x03},
 	{0x380b, 0xcc},
-	{0x380c, 0x07},
-	{0x380d, 0x68},
 	{0x3811, 0x0c},
 	{0x3813, 0x06},
 	{0x3814, 0x31},
@@ -436,8 +434,6 @@ static struct regval_list ov5647_640x480_10bpp[] = {
 	{0x3a19, 0xf8},
 	{0x3c01, 0x80},
 	{0x3b07, 0x0c},
-	{0x380c, 0x07},
-	{0x380d, 0x3c},
 	{0x3814, 0x35},
 	{0x3815, 0x35},
 	{0x3708, 0x64},
@@ -521,7 +517,7 @@ static const struct ov5647_mode ov5647_modes[] = {
 			.height		= 1944
 		},
 		.pixel_rate	= 87500000,
-		.hts		= 2844,
+		.hts_min	= 2844,
 		.vts		= 0x7b0,
 		.reg_list	= ov5647_2592x1944_10bpp,
 		.num_regs	= ARRAY_SIZE(ov5647_2592x1944_10bpp)
@@ -542,7 +538,7 @@ static const struct ov5647_mode ov5647_modes[] = {
 			.height		= 1080,
 		},
 		.pixel_rate	= 81666700,
-		.hts		= 2416,
+		.hts_min	= 2416,
 		.vts		= 0x450,
 		.reg_list	= ov5647_1080p30_10bpp,
 		.num_regs	= ARRAY_SIZE(ov5647_1080p30_10bpp)
@@ -563,7 +559,7 @@ static const struct ov5647_mode ov5647_modes[] = {
 			.height		= 1944,
 		},
 		.pixel_rate	= 81666700,
-		.hts		= 1896,
+		.hts_min	= 1896,
 		.vts		= 0x59b,
 		.reg_list	= ov5647_2x2binned_10bpp,
 		.num_regs	= ARRAY_SIZE(ov5647_2x2binned_10bpp)
@@ -584,7 +580,7 @@ static const struct ov5647_mode ov5647_modes[] = {
 			.height		= 1920,
 		},
 		.pixel_rate	= 55000000,
-		.hts		= 1852,
+		.hts_min	= 1852,
 		.vts		= 0x1f8,
 		.reg_list	= ov5647_640x480_10bpp,
 		.num_regs	= ARRAY_SIZE(ov5647_640x480_10bpp)
@@ -1064,15 +1060,17 @@ static int ov5647_set_pad_fmt(struct v4l2_subdev *sd,
 		*v4l2_subdev_get_try_format(sd, sd_state, format->pad) = mode->format;
 	} else {
 		int exposure_max, exposure_def;
-		int hblank, vblank;
+		int hblank_min, vblank;
 
 		sensor->mode = mode;
 		__v4l2_ctrl_modify_range(sensor->pixel_rate, mode->pixel_rate,
 					 mode->pixel_rate, 1, mode->pixel_rate);
 
-		hblank = mode->hts - mode->format.width;
-		__v4l2_ctrl_modify_range(sensor->hblank, hblank, hblank, 1,
-					 hblank);
+		hblank_min = mode->hts_min - mode->format.width;
+		__v4l2_ctrl_modify_range(sensor->hblank, hblank_min,
+					 OV5647_HTS_MAX - mode->format.width, 1,
+					 hblank_min);
+		__v4l2_ctrl_s_ctrl(sensor->hblank, hblank_min);
 
 		vblank = mode->vts - mode->format.height;
 		__v4l2_ctrl_modify_range(sensor->vblank, OV5647_VBLANK_MIN,
@@ -1335,10 +1333,13 @@ static int ov5647_s_ctrl(struct v4l2_ctrl *ctrl)
 		ret = ov5647_write16(sd, OV5647_REG_VTS_HI,
 				     sensor->mode->format.height + ctrl->val);
 		break;
+	case V4L2_CID_HBLANK:
+		ret = ov5647_write16(sd, OV5647_REG_HTS_HI,
+				     sensor->mode->format.width + ctrl->val);
+		break;
 
 	/* Read-only, but we adjust it based on mode. */
 	case V4L2_CID_PIXEL_RATE:
-	case V4L2_CID_HBLANK:
 		/* Read-only, but we adjust it based on mode. */
 		break;
 
@@ -1381,7 +1382,7 @@ static int ov5647_configure_regulators(struct device *dev,
 static int ov5647_init_controls(struct ov5647 *sensor, struct device *dev)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&sensor->sd);
-	int hblank, exposure_max, exposure_def;
+	int hblank_min, exposure_max, exposure_def;
 	struct v4l2_fwnode_device_properties props;
 
 	v4l2_ctrl_handler_init(&sensor->ctrls, 8);
@@ -1416,10 +1417,12 @@ static int ov5647_init_controls(struct ov5647 *sensor, struct device *dev)
 					       sensor->mode->pixel_rate);
 
 	/* By default, HBLANK is read only, but it does change per mode. */
-	hblank = sensor->mode->hts - sensor->mode->format.width;
+	hblank_min = sensor->mode->hts_min - sensor->mode->format.width;
 	sensor->hblank = v4l2_ctrl_new_std(&sensor->ctrls, &ov5647_ctrl_ops,
-					   V4L2_CID_HBLANK, hblank, hblank, 1,
-					   hblank);
+					   V4L2_CID_HBLANK, hblank_min,
+					   OV5647_HTS_MAX -
+						sensor->mode->format.width, 1,
+					   hblank_min);
 
 	sensor->vblank = v4l2_ctrl_new_std(&sensor->ctrls, &ov5647_ctrl_ops,
 					   V4L2_CID_VBLANK, OV5647_VBLANK_MIN,
@@ -1447,7 +1450,6 @@ static int ov5647_init_controls(struct ov5647 *sensor, struct device *dev)
 		goto handler_free;
 
 	sensor->pixel_rate->flags |= V4L2_CTRL_FLAG_READ_ONLY;
-	sensor->hblank->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 	sensor->sd.ctrl_handler = &sensor->ctrls;
 
 	return 0;
