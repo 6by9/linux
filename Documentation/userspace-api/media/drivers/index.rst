@@ -38,6 +38,7 @@ For more details see the file COPYING in the source distribution of Linux.
 	imx-uapi
 	bcm2835-isp
 	max2175
+	mlx7502x
 	omap3isp-uapi
 	st-vgxy61
 	uvcvideo
