@@ -267,6 +267,7 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
 	sx150x.dtbo \
 	tc358743.dtbo \
 	tc358743-audio.dtbo \
+	tinydrm.dtbo \
 	tinylcd35.dtbo \
 	tpm-slb9670.dtbo \
 	tpm-slb9673.dtbo \
