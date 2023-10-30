@@ -41,8 +41,7 @@
 #define AR0234_XCLK_FREQ		24000000
 
 /* Pixel rate is fixed at 180M for all the modes */
-//#define AR0234_PIXEL_RATE		180000000
-#define AR0234_PIXEL_RATE		256000000
+#define AR0234_PIXEL_RATE		180000000
 
 #define AR0234_DEFAULT_LINK_FREQ	450000000
 
@@ -54,7 +53,7 @@
 #define AR0234_VTS_60FPS		0x0dc6 //fixme
 #define AR0234_VTS_MAX			0xffff
 
-#define AR0234_VBLANK_MIN		4
+#define AR0234_VBLANK_MIN		16
 
 /*Frame Length Line*/
 #define AR0234_FLL_MIN			0x08a6
@@ -63,7 +62,7 @@
 #define AR0234_FLL_DEFAULT		0x0c98
 
 /* HBLANK control - read only */
-#define AR0234_PPL_DEFAULT		3448
+#define AR0234_PPL_DEFAULT		2448
 
 /* Exposure control */
 #define AR0234_REG_EXPOSURE_COARSE	0x3012
@@ -265,9 +264,9 @@ static const int ar0234_test_pattern_val[] = {
 /* regulator supplies */
 static const char * const ar0234_supply_name[] = {
 	/* Supplies can be enabled in any order */
-	"VANA",  /* Analog (2.8V) supply */
-	"VDIG",  /* Digital Core (1.8V) supply */
-	"VDDL",  /* IF (1.2V) supply */
+	"vana",  /* Analog (2.8V) supply */
+	"vdig",  /* Digital Core (1.8V) supply */
+	"vddl",  /* IF (1.2V) supply */
 };
 
 #define AR0234_NUM_SUPPLIES ARRAY_SIZE(ar0234_supply_name)
@@ -1158,6 +1157,7 @@ static const struct v4l2_subdev_internal_ops ar0234_internal_ops = {
 static int ar0234_init_controls(struct ar0234 *ar0234)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&ar0234->sd);
+	struct v4l2_fwnode_device_properties props;
 	struct v4l2_ctrl_handler *ctrl_hdlr;
 	unsigned int height = ar0234->mode->height;
 	int exposure_max, exposure_def, hblank;
@@ -1231,6 +1231,11 @@ static int ar0234_init_controls(struct ar0234 *ar0234)
 				  AR0234_TESTP_COLOUR_MAX);
 		/* The "Solid color" pattern is white by default */
 	}
+
+	ret = v4l2_fwnode_device_parse(&client->dev, &props);
+	if (!ret)
+		v4l2_ctrl_new_fwnode_properties(ctrl_hdlr, &ar0234_ctrl_ops,
+						&props);
 
 	if (ctrl_hdlr->error) {
 		ret = ctrl_hdlr->error;
