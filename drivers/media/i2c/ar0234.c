@@ -1053,40 +1053,6 @@ static int ar0234_power_off(struct device *dev)
 	return 0;
 }
 
-static int __maybe_unused ar0234_suspend(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct ar0234 *ar0234 = to_ar0234(sd);
-
-	if (ar0234->streaming)
-		ar0234_stop_streaming(ar0234);
-
-	return 0;
-}
-
-static int __maybe_unused ar0234_resume(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct ar0234 *ar0234 = to_ar0234(sd);
-	int ret;
-
-	if (ar0234->streaming) {
-		ret = ar0234_start_streaming(ar0234);
-		if (ret)
-			goto error;
-	}
-
-	return 0;
-
-error:
-	ar0234_stop_streaming(ar0234);
-	ar0234->streaming = 0;
-
-	return ret;
-}
-
 static int ar0234_get_regulators(struct ar0234 *ar0234)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&ar0234->sd);
@@ -1451,7 +1417,6 @@ static const struct of_device_id ar0234_dt_ids[] = {
 MODULE_DEVICE_TABLE(of, ar0234_dt_ids);
 
 static const struct dev_pm_ops ar0234_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(ar0234_suspend, ar0234_resume)
 	SET_RUNTIME_PM_OPS(ar0234_power_off, ar0234_power_on, NULL)
 };
 
