@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Definitions for OnSemi AR0234CS camera module on VC I2C bus
+// Definitions for AR0234 camera module on VC I2C bus
 /dts-v1/;
 /plugin/;
 
@@ -9,13 +9,35 @@
 	compatible = "brcm,bcm2835";
 
 	fragment@0 {
+		target = <&i2c0if>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	clk_frag: fragment@1 {
+		target = <&cam1_clk>;
+		__overlay__ {
+			status = "okay";
+			clock-frequency = <24000000>;
+		};
+	};
+
+	fragment@2 {
+		target = <&i2c0mux>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	i2c_frag: fragment@100 {
 		target = <&i2c_csi_dsi>;
 		__overlay__ {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "okay";
 
-			ar0234: ar0234@10 {
+			cam_node: ar0234@10 {
 				compatible = "onnn,ar0234cs";
 				reg = <0x10>;
 				status = "okay";
@@ -23,12 +45,12 @@
 				clocks = <&cam1_clk>;
 				clock-names = "xclk";
 
-				VANA-supply = <&cam1_reg>;	/* 2.8v */
-				VDIG-supply = <&cam_dummy_reg>;	/* 1.8v */
-				VDDL-supply = <&cam_dummy_reg>;	/* 1.2v */
+				vana-supply = <&cam1_reg>;	/* 2.8v */
+				vdig-supply = <&cam_dummy_reg>;	/* 1.8v */
+				vddl-supply = <&cam_dummy_reg>;	/* 1.2v */
 
 				port {
-					ar0234_0: endpoint {
+					cam_endpoint: endpoint {
 						remote-endpoint = <&csi1_ep>;
 						clock-lanes = <0>;
 						data-lanes = <1 2>;
@@ -41,54 +63,40 @@
 		};
 	};
 
-	fragment@1 {
+	csi_frag: fragment@101 {
 		target = <&csi1>;
-		__overlay__ {
+		csi: __overlay__ {
 			status = "okay";
+			brcm,media-controller;
 
 			port {
-				csi1_ep: endpoint {
-					remote-endpoint = <&ar0234_0>;
+				csi_ep: endpoint {
+					remote-endpoint = <&cam_endpoint>;
 					clock-lanes = <0>;
 					data-lanes = <1 2>;
 					clock-noncontinuous;
-					link-frequencies =
-						/bits/ 64 <450000000>;
 				};
 			};
 		};
 	};
 
-	fragment@2 {
-		target = <&i2c0if>;
-		__overlay__ {
-			status = "okay";
-		};
+	__overrides__ {
+		4lane = <0>, "-3+4-5+6";
+		rotation = <&cam_node>,"rotation:0";
+		orientation = <&cam_node>,"orientation:0";
+		media-controller = <&csi>,"brcm,media-controller?";
+		cam0 = <&i2c_frag>, "target:0=",<&i2c_csi_dsi0>,
+		       <&csi_frag>, "target:0=",<&csi0>,
+		       <&clk_frag>, "target:0=",<&cam0_clk>,
+		       <&cam_node>, "clocks:0=",<&cam0_clk>,
+		       <&cam_node>, "vana-supply:0=",<&cam0_reg>;
 	};
+};
 
-	clk_frag: fragment@3 {
-		target = <&cam1_clk>;
-		__overlay__ {
-			status = "okay";
-			clock-frequency = <24000000>;
-		};
-	};
+&cam_node {
+	status = "okay";
+};
 
-	fragment@4 {
-		target = <&i2c0mux>;
-		__overlay__ {
-			status = "okay";
-		};
-	};
-
-	fragment@5 {
-		target = <&cam1_reg>;
-		__overlay__ {
-			status = "okay";
-			regulator-name = "ar0234_vana";
-			startup-delay-us = <300000>;
-			regulator-min-microvolt = <2800000>;
-			regulator-max-microvolt = <2800000>;
-		};
-	};
+&cam_endpoint {
+	remote-endpoint = <&csi_ep>;
 };
