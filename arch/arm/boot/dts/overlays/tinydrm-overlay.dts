@@ -5,10 +5,12 @@
 /dts-v1/;
 /plugin/;
 
+#include <dt-bindings/gpio/gpio.h>
+
 / {
 	compatible = "brcm,bcm2835";
 
-	/* adafruit18 */
+	/* Adafruit 1.8" 120x160 ST7735 */
 	fragment@0 {
 		target = <&display>;
 		__dormant__ {
@@ -23,6 +25,8 @@
 		__dormant__ {
 			compatible = "adafruit,yx240qv29";
 			spi-max-frequency = <32000000>;
+			//dc-gpios = <&gpio 24 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&gpio 25 GPIO_ACTIVE_HIGH>;
 		};
 	};
 
@@ -59,9 +63,11 @@
 	fragment@103 {
 		target-path = "/";
 		__dormant__ {
-			backlight: backlight {
+			backlight: backlight@0 {
+				reg = <0>;
 				compatible = "gpio-backlight";
 				status = "okay";
+				//led-gpios = <&gpio 18 GPIO_ACTIVE_HIGH>;
 			};
 		};
 	};
@@ -91,6 +97,9 @@
 		spi2-2        = <&display_fragment>, "target:0=",<&spi2>,
 				<&spidev_fragment>, "target-path=spi2/spidev@2",
 				<&display>, "reg:0=2";
+		spi3-0        = <&display_fragment>, "target:0=",<&spi3>,
+				<&spidev_fragment>, "target-path=spi3/spidev@0",
+				<&display>, "reg:0=0";
 
 		speed         = <&display>, "spi-max-frequency:0";
 
@@ -172,5 +181,6 @@
 				<&backlight>, "gpios:0=", <&gpio>,
 				<&backlight>, "gpios:4",
 				<&backlight>, "gpios:8=0"; /* GPIO_ACTIVE_HIGH */
+		display_num   = <&backlight>, "reg:0";
 	};
 };
