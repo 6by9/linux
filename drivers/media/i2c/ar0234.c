@@ -894,6 +894,7 @@ static int ar0234_get_selection(struct v4l2_subdev *sd,
 		return 0;
 
 	case V4L2_SEL_TGT_CROP_DEFAULT:
+	case V4L2_SEL_TGT_CROP_DEFAULT:
 		sel->r.top = AR0234_PIXEL_ARRAY_TOP;
 		sel->r.left = AR0234_PIXEL_ARRAY_LEFT;
 		sel->r.width = AR0234_PIXEL_ARRAY_WIDTH;
