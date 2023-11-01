@@ -284,6 +284,10 @@ static const u32 mono_codes[] = {
 	MEDIA_BUS_FMT_Y8_1X8,
 };
 
+static const s64 link_freq[] = {
+	AR0234_DEFAULT_LINK_FREQ,
+};
+
 /*
  * There is an inherent assumption that there will be the same number of codes
  * for the Bayer and monochrome sensors
@@ -1128,10 +1132,11 @@ static int ar0234_init_controls(struct ar0234 *ar0234)
 	struct v4l2_ctrl_handler *ctrl_hdlr;
 	unsigned int height = ar0234->mode->height;
 	int exposure_max, exposure_def, hblank;
+	struct v4l2_ctrl *ctrl;
 	int i, ret;
 
 	ctrl_hdlr = &ar0234->ctrl_handler;
-	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 9);
+	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 16);
 	if (ret)
 		return ret;
 
@@ -1198,6 +1203,12 @@ static int ar0234_init_controls(struct ar0234 *ar0234)
 				  AR0234_TESTP_COLOUR_MAX);
 		/* The "Solid color" pattern is white by default */
 	}
+
+	ctrl = v4l2_ctrl_new_int_menu(ctrl_hdlr, &ar0234_ctrl_ops,
+				      V4L2_CID_LINK_FREQ, 0, 0,
+				      &link_freq);
+	if (ctrl)
+		ctrl->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	ret = v4l2_fwnode_device_parse(&client->dev, &props);
 	if (!ret)
