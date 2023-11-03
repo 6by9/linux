@@ -898,7 +898,7 @@ static int ar0234_get_selection(struct v4l2_subdev *sd,
 		return 0;
 
 	case V4L2_SEL_TGT_CROP_DEFAULT:
-	case V4L2_SEL_TGT_CROP_DEFAULT:
+	case V4L2_SEL_TGT_CROP_BOUNDS:
 		sel->r.top = AR0234_PIXEL_ARRAY_TOP;
 		sel->r.left = AR0234_PIXEL_ARRAY_LEFT;
 		sel->r.width = AR0234_PIXEL_ARRAY_WIDTH;
@@ -1206,7 +1206,7 @@ static int ar0234_init_controls(struct ar0234 *ar0234)
 
 	ctrl = v4l2_ctrl_new_int_menu(ctrl_hdlr, &ar0234_ctrl_ops,
 				      V4L2_CID_LINK_FREQ, 0, 0,
-				      &link_freq);
+				      link_freq);
 	if (ctrl)
 		ctrl->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
