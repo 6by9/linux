@@ -350,9 +350,10 @@ int vc4_hvs_get_fifo_from_output(struct vc4_hvs *hvs, unsigned int output)
 		default:
 			return -EPIPE;
 		}
-	}
 
-	return -EPIPE;
+	default:
+		return -EPIPE;
+	}
 }
 
 static int vc4_hvs_init_channel(struct vc4_hvs *hvs, struct drm_crtc *crtc,
