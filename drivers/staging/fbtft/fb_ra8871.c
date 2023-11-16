@@ -33,9 +33,9 @@ static int init_display(struct fbtft_par *par)
 	gpiod_set_value(par->gpio.dc, 1);
 
 	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par,
-		"%s()\n", __func__);
+		      "%s()\n", __func__);
 	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par,
-		"display size %dx%d\n",
+		      "display size %dx%d\n",
 		par->info->var.xres,
 		par->info->var.yres);
 
@@ -44,103 +44,100 @@ static int init_display(struct fbtft_par *par)
 	if ((par->info->var.xres == 480) && (par->info->var.yres == 272)) {
 		/* PLL clock initial */
 		write_reg(par, 0x05, 0x16);
-	        write_reg(par, 0x06, 0x0F);/*((10*16/10)-1);(SCAN_FREQ*16/10)-1; SCAN_FREQ=10MHz*/ 
+		write_reg(par, 0x06, 0x0F);/*((10*16/10)-1);(SCAN_FREQ*16/10)-1; SCAN_FREQ=10MHz*/
 		write_reg(par, 0x07, 0x04);
-                write_reg(par, 0x08, 0x0F);/*((40*4/10)-1);(DRAM_FREQ*4/10)-1; DRAM_FREQ=40MHz*/
-                write_reg(par, 0x09, 0x04);
-                write_reg(par, 0x0A, 0x0F);/*((40*4/10)-1);(CORE_FREQ*4/10)-1; CORE_FREQ=40MHz*/
-                write_reg(par, 0x01, 0x80);
-                mdelay(10);
-                /* SDRAM initial 64Mbit w9864g6 */
-                write_reg(par, 0xe0, 0x28);
-                write_reg(par, 0xe1, 0x02);
-                write_reg(par, 0xe2, 0x71);/*Auto_Refresh=(64*DRAM_FREQ*1000)/(4096);*/
-                write_reg(par, 0xe3, 0x02);/*Auto_Refresh>>8*/
-                write_reg(par, 0xe4, 0x01);
-                mdelay(10);
+		write_reg(par, 0x08, 0x0F);/*((40*4/10)-1);(DRAM_FREQ*4/10)-1; DRAM_FREQ=40MHz*/
+		write_reg(par, 0x09, 0x04);
+		write_reg(par, 0x0A, 0x0F);/*((40*4/10)-1);(CORE_FREQ*4/10)-1; CORE_FREQ=40MHz*/
+		write_reg(par, 0x01, 0x80);
+		mdelay(10);
+		/* SDRAM initial 64Mbit w9864g6 */
+		write_reg(par, 0xe0, 0x28);
+		write_reg(par, 0xe1, 0x02);
+		write_reg(par, 0xe2, 0x71);/*Auto_Refresh=(64*DRAM_FREQ*1000)/(4096);*/
+		write_reg(par, 0xe3, 0x02);/*Auto_Refresh>>8*/
+		write_reg(par, 0xe4, 0x01);
+		mdelay(10);
 
 		/* LCD output / MCU Interface */
 		write_reg(par, 0x01, 0x80);
-                /*MCU interface and data format*/
-                write_reg(par, 0x02, 0x00);
-                /*Main window color depth for display and rgb interface output mode*/
-                write_reg(par, 0x10, 0x04);
-                /*rgb interface timing setting for AT043TN24*/
-                write_reg(par, 0x12, 0x80);
-                write_reg(par, 0x13, 0x00);
+		/*MCU interface and data format*/
+		write_reg(par, 0x02, 0x00);
+		/*Main window color depth for display and rgb interface output mode*/
+		write_reg(par, 0x10, 0x04);
+		/*rgb interface timing setting for AT043TN24*/
+		write_reg(par, 0x12, 0x80);
+		write_reg(par, 0x13, 0x00);
 
-                write_reg(par, 0x14, 0x3B);
-                write_reg(par, 0x15, 0x00);
-                write_reg(par, 0x1A, 0x0F);
-                write_reg(par, 0x1B, 0x01);
+		write_reg(par, 0x14, 0x3B);
+		write_reg(par, 0x15, 0x00);
+		write_reg(par, 0x1A, 0x0F);
+		write_reg(par, 0x1B, 0x01);
 
-                write_reg(par, 0x16, 0x03);
-                write_reg(par, 0x17, 0x05);
-                write_reg(par, 0x18, 0x01);
-                write_reg(par, 0x19, 0x00);
+		write_reg(par, 0x16, 0x03);
+		write_reg(par, 0x17, 0x05);
+		write_reg(par, 0x18, 0x01);
+		write_reg(par, 0x19, 0x00);
 
-                write_reg(par, 0x1C, 0x07);
-                write_reg(par, 0x1D, 0x00);
-                write_reg(par, 0x1E, 0x07);
-                write_reg(par, 0x1F, 0x07);
+		write_reg(par, 0x1C, 0x07);
+		write_reg(par, 0x1D, 0x00);
+		write_reg(par, 0x1E, 0x07);
+		write_reg(par, 0x1F, 0x07);
 
-                /*Main image start address 0x000c0000*/
-                write_reg(par, 0x20, 0x00);
-                write_reg(par, 0x21, 0x00);
-                write_reg(par, 0x22, 0x0C);
-                write_reg(par, 0x23, 0x00);
-                /*Main image width*/
-                write_reg(par, 0x24, 0xE0);
-                write_reg(par, 0x25, 0x01);
+		/*Main image start address 0x000c0000*/
+		write_reg(par, 0x20, 0x00);
+		write_reg(par, 0x21, 0x00);
+		write_reg(par, 0x22, 0x0C);
+		write_reg(par, 0x23, 0x00);
+		/*Main image width*/
+		write_reg(par, 0x24, 0xE0);
+		write_reg(par, 0x25, 0x01);
 
-                /*Main window start address*/
-                write_reg(par, 0x26, 0x00);
-                write_reg(par, 0x27, 0x00);
-                write_reg(par, 0x28, 0x00);
-                write_reg(par, 0x29, 0x00);
+		/*Main window start address*/
+		write_reg(par, 0x26, 0x00);
+		write_reg(par, 0x27, 0x00);
+		write_reg(par, 0x28, 0x00);
+		write_reg(par, 0x29, 0x00);
 
-                /*Canvas image start address 0x000c0000*/
-                write_reg(par, 0x50, 0x00);
-                write_reg(par, 0x51, 0x00);
-                write_reg(par, 0x52, 0x0C);
-                write_reg(par, 0x53, 0x00);
+		/*Canvas image start address 0x000c0000*/
+		write_reg(par, 0x50, 0x00);
+		write_reg(par, 0x51, 0x00);
+		write_reg(par, 0x52, 0x0C);
+		write_reg(par, 0x53, 0x00);
 
-                /*Canvas image width*/
-                write_reg(par, 0x54, 0xE0);
-                write_reg(par, 0x55, 0x01);
+		/*Canvas image width*/
+		write_reg(par, 0x54, 0xE0);
+		write_reg(par, 0x55, 0x01);
 
-                /*Active window setting*/
-                write_reg(par, 0x56, 0x00);
-                write_reg(par, 0x57, 0x00);
-                write_reg(par, 0x58, 0x00);
-                write_reg(par, 0x59, 0x00);
-                write_reg(par, 0x5A, 0xE0);
-                write_reg(par, 0x5B, 0x01);
-                write_reg(par, 0x5C, 0x10);
-                write_reg(par, 0x5D, 0x01);
+		/*Active window setting*/
+		write_reg(par, 0x56, 0x00);
+		write_reg(par, 0x57, 0x00);
+		write_reg(par, 0x58, 0x00);
+		write_reg(par, 0x59, 0x00);
+		write_reg(par, 0x5A, 0xE0);
+		write_reg(par, 0x5B, 0x01);
+		write_reg(par, 0x5C, 0x10);
+		write_reg(par, 0x5D, 0x01);
 
-                /*Canvas mode and color depth*/
-                write_reg(par, 0x5E, 0x01);
+		/*Canvas mode and color depth*/
+		write_reg(par, 0x5E, 0x01);
 
-  
 	} else {
 		dev_err(par->info->device, "display size is not supported!!");
 		return -1;
 	}
 
-
 	 /* PWM0 clock prescaler*/
-         write_reg(par, 0x84, 0x03);  
-         write_reg(par, 0x85, 0xA2);
-         /* PWM0 clock per period*/  
-         write_reg(par, 0x8a, 0xff);  
-         write_reg(par, 0x8b, 0x00);
-         /* PWM0 clock duty*/  
-         write_reg(par, 0x88, 0xff);  
-         write_reg(par, 0x89, 0x00);
-         /* PWM0 config and start*/
-         write_reg(par, 0x86, 0x07);
-
+	 write_reg(par, 0x84, 0x03);
+	 write_reg(par, 0x85, 0xA2);
+	 /* PWM0 clock per period*/
+	 write_reg(par, 0x8a, 0xff);
+	 write_reg(par, 0x8b, 0x00);
+	 /* PWM0 clock duty*/
+	 write_reg(par, 0x88, 0xff);
+	 write_reg(par, 0x89, 0x00);
+	 /* PWM0 config and start*/
+	 write_reg(par, 0x86, 0x07);
 
 	/* Display ON */
 	write_reg(par, 0x12, 0xC0);
@@ -151,7 +148,6 @@ static int init_display(struct fbtft_par *par)
 
 static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
-
 	/* Set_Memory_Write_Cursor */
 	write_reg(par, 0x5f,  xs & 0xff);
 	write_reg(par, 0x60, (xs >> 8) & 0x1f);
@@ -167,14 +163,13 @@ static void write_reg8_bus8(struct fbtft_par *par, int len, ...)
 	int i, ret;
 	u8 *buf = par->buf;
 
-
 	if (unlikely(par->debug & DEBUG_WRITE_REGISTER)) {
 		va_start(args, len);
 		for (i = 0; i < len; i++)
 			buf[i] = (u8)va_arg(args, unsigned int);
 		va_end(args);
 		fbtft_par_dbg_hex(DEBUG_WRITE_REGISTER, par, par->info->device,
-			u8, buf, len, "%s: ", __func__);
+				  u8, buf, len, "%s: ", __func__);
 	}
 
 	va_start(args, len);
@@ -207,7 +202,6 @@ static void write_reg8_bus8(struct fbtft_par *par, int len, ...)
 		}
 	}
 	va_end(args);
-
 }
 
 static int write_vmem16_bus8(struct fbtft_par *par, size_t offset, size_t len)
@@ -222,7 +216,7 @@ static int write_vmem16_bus8(struct fbtft_par *par, size_t offset, size_t len)
 	size_t startbyte_size = 0;
 
 	fbtft_par_dbg(DEBUG_WRITE_VMEM, par, "%s(offset=%zu, len=%zu)\n",
-		__func__, offset, len);
+		      __func__, offset, len);
 
 	remain = len / 2;
 	vmem16 = (u16 *)(par->info->screen_buffer + offset);
