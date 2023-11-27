@@ -124,7 +124,7 @@ struct bcm2835_dma_cfg {
 				enum dma_transfer_direction direction,
 				bool cyclic, bool final, unsigned long flags);
 
-	u32 (*to_cb_addr)(dma_addr_t addr);
+	dma_addr_t (*to_cb_addr)(dma_addr_t addr);
 
 	void (*chan_plat_init)(struct bcm2835_chan *c);
 	dma_addr_t (*read_addr)(struct bcm2835_chan *c,
