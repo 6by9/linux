@@ -34,6 +34,8 @@
 #define PA_LCD_MODE		BIT(1)
 #define PA_LCD_LR		BIT(2)
 #define PA_LCD_UD		BIT(3)
+#define PA_GPIOS_MASK		(PA_LCD_LR | PA_LCD_UD)
+#define PA_NONGPIOS_MASK	(PA_LCD_DITHB | PA_LCD_MODE)
 
 #define PB_BRIDGE_PWRDNX_N	BIT(0)
 #define PB_LCD_VCC_N		BIT(1)
@@ -47,6 +49,8 @@
 enum gpio_signals {
 	RST_BRIDGE_N,	/* TC358762 bridge reset */
 	RST_TP_N,	/* Touch controller reset */
+	LCD_UD,		/* LCD vflip */
+	LCD_LR,		/* LCD hflip */
 	NUM_GPIO
 };
 
@@ -58,6 +62,8 @@ struct gpio_signal_mappings {
 static const struct gpio_signal_mappings mappings[NUM_GPIO] = {
 	[RST_BRIDGE_N] = { REG_PORTC, PC_RST_BRIDGE_N | PC_RST_LCD_N  },
 	[RST_TP_N] = { REG_PORTC, PC_RST_TP_N },
+	[LCD_UD] = { REG_PORTA, PA_LCD_UD },
+	[LCD_LR] = { REG_PORTA, PA_LCD_LR },
 };
 
 struct attiny_lcd {
@@ -78,9 +84,11 @@ static const struct regmap_config attiny_regmap_config = {
 	.cache_type = REGCACHE_RBTREE,
 };
 
-static int attiny_set_port_state(struct attiny_lcd *state, int reg, u8 val)
+static int attiny_set_port_state(struct attiny_lcd *state, int reg, u8 val, u8 mask)
 {
+	val |= state->port_states[reg - REG_PORTA] & ~mask;
 	state->port_states[reg - REG_PORTA] = val;
+
 	return regmap_write(state->regmap, reg, val);
 };
 
@@ -96,7 +104,7 @@ static int attiny_lcd_power_enable(struct regulator_dev *rdev)
 	mutex_lock(&state->lock);
 
 	/* Ensure bridge, and tp stay in reset */
-	attiny_set_port_state(state, REG_PORTC, 0);
+	attiny_set_port_state(state, REG_PORTC, 0, 0xff);
 	usleep_range(5000, 10000);
 
 	/* Default to the same orientation as the closed source
@@ -104,13 +112,13 @@ static int attiny_lcd_power_enable(struct regulator_dev *rdev)
 	 * configuration will be supported using VC4's plane
 	 * orientation bits.
 	 */
-	attiny_set_port_state(state, REG_PORTA, PA_LCD_LR);
+	attiny_set_port_state(state, REG_PORTA, 0, PA_NONGPIOS_MASK);
 	usleep_range(5000, 10000);
 	/* Main regulator on, and power to the panel (LCD_VCC_N) */
-	attiny_set_port_state(state, REG_PORTB, PB_LCD_MAIN);
+	attiny_set_port_state(state, REG_PORTB, PB_LCD_MAIN, 0xff);
 	usleep_range(5000, 10000);
 	/* Bring controllers out of reset */
-	attiny_set_port_state(state, REG_PORTC, PC_LED_EN);
+	attiny_set_port_state(state, REG_PORTC, PC_LED_EN, 0xff);
 
 	msleep(80);
 
@@ -128,11 +136,11 @@ static int attiny_lcd_power_disable(struct regulator_dev *rdev)
 	regmap_write(rdev->regmap, REG_PWM, 0);
 	usleep_range(5000, 10000);
 
-	attiny_set_port_state(state, REG_PORTA, 0);
+	attiny_set_port_state(state, REG_PORTA, 0, PA_NONGPIOS_MASK);
 	usleep_range(5000, 10000);
-	attiny_set_port_state(state, REG_PORTB, PB_LCD_VCC_N);
+	attiny_set_port_state(state, REG_PORTB, PB_LCD_VCC_N, 0xff);
 	usleep_range(5000, 10000);
-	attiny_set_port_state(state, REG_PORTC, 0);
+	attiny_set_port_state(state, REG_PORTC, 0, 0xff);
 	msleep(30);
 
 	mutex_unlock(&state->lock);
@@ -211,7 +219,7 @@ static void attiny_gpio_set(struct gpio_chip *gc, unsigned int off, int val)
 	else
 		last_val &= ~mappings[off].mask;
 
-	attiny_set_port_state(state, mappings[off].reg, last_val);
+	attiny_set_port_state(state, mappings[off].reg, last_val, PA_GPIOS_MASK);
 
 	if (off == RST_BRIDGE_N && val) {
 		usleep_range(5000, 8000);
@@ -227,6 +235,25 @@ static void attiny_gpio_set(struct gpio_chip *gc, unsigned int off, int val)
 	}
 
 	mutex_unlock(&state->lock);
+}
+
+static int attiny_gpio_get(struct gpio_chip *gc, unsigned int off)
+{
+	struct attiny_lcd *state = gpiochip_get_data(gc);
+	u8 last_val;
+	int ret;
+
+	if (off >= NUM_GPIO)
+		return -EINVAL;
+
+	mutex_lock(&state->lock);
+
+	last_val = attiny_get_port_state(state, mappings[off].reg);
+	ret = last_val & mappings[off].mask;
+
+	mutex_unlock(&state->lock);
+
+	return !!ret;
 }
 
 static int attiny_i2c_read(struct i2c_client *client, u8 reg, unsigned int *buf)
@@ -346,6 +373,7 @@ static int attiny_i2c_probe(struct i2c_client *i2c)
 	state->gc.ngpio = NUM_GPIO;
 
 	state->gc.set = attiny_gpio_set;
+	state->gc.get = attiny_gpio_get;
 	state->gc.get_direction = attiny_gpio_get_direction;
 	state->gc.can_sleep = true;
 
