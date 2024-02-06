@@ -28,6 +28,13 @@ config DVB_MXL5XX
 
 	  Say Y when you want to support these frontends.
 
+config DVB_SI2183
+	tristate "Silicon Labs Si2183 DVB-T/T2/C/C2/S/S2/S2X/ISDB-T demodulator"
+	depends on DVB_CORE && I2C
+	default m if !MEDIA_SUBDRV_AUTOSELECT
+	help
+	  Say Y when you want to support this frontend.
+
 config DVB_STB0899
 	tristate "STB0899 based"
 	depends on DVB_CORE && I2C
