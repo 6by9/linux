@@ -17,7 +17,7 @@
 #include <linux/firmware.h>
 #include <linux/i2c-mux.h>
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+#if 1 //LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 #define SI2183_USE_I2C_MUX
 #endif
 
@@ -46,7 +46,7 @@ LIST_HEAD(silist);
 
 struct si_base {
 	struct mutex i2c_mutex;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+#if 1 //LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
 	struct i2c_mux_core *muxc;
 #endif
 	struct list_head     silist;
@@ -344,18 +344,18 @@ static int si2183_read_status(struct dvb_frontend *fe, enum fe_status *status)
 			case 0x14:
 			c->modulation = APSK_16;
 			break;
-			case 0x17:
-			c->modulation = APSK_8L;
-			break;
-			case 0x18:
-			c->modulation = APSK_16L;
-			break;
+			//case 0x17:
+			//c->modulation = APSK_8L;
+			//break;
+			//case 0x18:
+			//c->modulation = APSK_16L;
+			//break;
 			case 0x15:
 			c->modulation = APSK_32;
 			break;
-			case 0x19:
-			c->modulation = APSK_32L;
-			break;
+			//case 0x19:
+			//c->modulation = APSK_32L;
+			//break;
 			case 0x1a:
 			c->modulation = APSK_32;
 			break;
@@ -1349,7 +1349,7 @@ static int si2183_get_tune_settings(struct dvb_frontend *fe,
 }
 
 #ifdef SI2183_USE_I2C_MUX
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+#if 1 //LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
 static int si2183_select(struct i2c_mux_core *muxc, u32 chan)
 {
 	struct i2c_client *client = i2c_mux_priv(muxc);
@@ -1375,7 +1375,7 @@ err:
 	return ret;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+#if 1 //LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
 static int si2183_deselect(struct i2c_mux_core *muxc, u32 chan)
 {
 	struct i2c_client *client = i2c_mux_priv(muxc);
@@ -1433,6 +1433,7 @@ static enum dvbfe_algo si2183_get_algo(struct dvb_frontend *fe)
 	return DVBFE_ALGO_HW;
 }
 
+#if 0
 static int si2183_set_property(struct dvb_frontend *fe,
 		u32 cmd, u32 data)
 {
@@ -1474,7 +1475,7 @@ static int si2183_set_property(struct dvb_frontend *fe,
 
 	return ret;
 }
-
+#endif
 
 static int send_diseqc_cmd(struct dvb_frontend *fe,
 	u8 cont_tone, u8 tone_burst, u8 burst_sel,
@@ -1578,6 +1579,7 @@ err:
 	return ret;
 }
 
+#if 0
 static void spi_read(struct dvb_frontend *fe, struct ecp3_info *ecp3inf)
 {
 	struct i2c_client *client = fe->demodulator_priv;
@@ -1619,6 +1621,7 @@ static void eeprom_write(struct dvb_frontend *fe,struct eeprom_info *eepinf)
 		dev->write_eeprom(client->adapter,eepinf->reg, eepinf->data);
 	return ;
 }
+#endif
 
 static const struct dvb_frontend_ops si2183_ops = {
 	.delsys = {SYS_DVBT, SYS_DVBT2,
@@ -1666,7 +1669,7 @@ static const struct dvb_frontend_ops si2183_ops = {
 	.get_frontend_algo = si2183_get_algo,
 	.tune = si2183_tune,
 
-	.set_property		= si2183_set_property,
+	//.set_property		= si2183_set_property,
 
 	.set_tone			= si2183_set_tone,
 	.diseqc_send_burst	= si2183_diseqc_send_burst,
@@ -1675,10 +1678,10 @@ static const struct dvb_frontend_ops si2183_ops = {
 	.i2c_gate_ctrl		= i2c_gate_ctrl,
 #endif
 
-	.spi_read			= spi_read,
-	.spi_write			= spi_write,
-	.eeprom_read		= eeprom_read,
-	.eeprom_write		= eeprom_write,
+	//.spi_read			= spi_read,
+	//.spi_write			= spi_write,
+	//.eeprom_read		= eeprom_read,
+	//.eeprom_write		= eeprom_write,
 };
 
 
@@ -1724,7 +1727,7 @@ static int si2183_probe(struct i2c_client *client)
 
 		mutex_init(&base->i2c_mutex);
 #ifdef SI2183_USE_I2C_MUX
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+#if 1 //LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
 		/* create mux i2c adapter for tuner */
 		base->muxc = i2c_mux_alloc(client->adapter, &client->adapter->dev,
 					  1, 0, I2C_MUX_LOCKED,
@@ -1804,7 +1807,7 @@ static void si2183_remove(struct i2c_client *client)
 	dev->base->count--;
 	if (dev->base->count == 0) {
 #ifdef SI2183_USE_I2C_MUX
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+#if 1 //LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
 		i2c_mux_del_adapters(dev->base->muxc);
 #else
 		i2c_del_mux_adapter(dev->base->tuner_adapter);
