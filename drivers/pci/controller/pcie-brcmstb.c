@@ -1360,6 +1360,9 @@ static void brcm_extend_rbus_timeout(struct brcm_pcie *pcie)
 	const unsigned int REG_OFFSET = PCIE_RGR1_SW_INIT_1(pcie) - 8;
 	u32 timeout_us = 4000000; /* 4 seconds, our setting for L1SS */
 
+	if (!PCIE_RGR1_SW_INIT_1(pcie))
+		return;
+
 	/* Each unit in timeout register is 1/216,000,000 seconds */
 	writel(216 * timeout_us, pcie->base + REG_OFFSET);
 }
