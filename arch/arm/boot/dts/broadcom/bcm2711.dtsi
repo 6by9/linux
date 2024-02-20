@@ -354,7 +354,7 @@
 			interrupt-names = "cec-tx", "cec-rx", "cec-low",
 					  "wakeup", "hpd-connected", "hpd-removed";
 			ddc = <&ddc0>;
-			dmas = <&dma 10>;
+			dmas = <&dma40 10>;
 			dma-names = "audio-rx";
 			status = "disabled";
 		};
@@ -395,7 +395,7 @@
 				     <9>, <10>, <11>;
 			interrupt-names = "cec-tx", "cec-rx", "cec-low",
 					  "wakeup", "hpd-connected", "hpd-removed";
-			dmas = <&dma 17>;
+			dmas = <&dma40 17>;
 			dma-names = "audio-rx";
 			status = "disabled";
 		};
