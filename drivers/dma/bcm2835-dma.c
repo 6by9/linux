@@ -1010,8 +1010,9 @@ static void bcm2835_dma_synchronize(struct dma_chan *chan)
 	vchan_synchronize(&c->vc);
 }
 
-static int bcm2835_dma_chan_init(struct bcm2835_dmadev *d, int chan_id,
-				 int irq, unsigned int irq_flags)
+static int bcm2835_dma_chan_init(struct bcm2835_dmadev *d,
+				 unsigned int chan_start, int chan_id, int irq,
+				 unsigned int irq_flags)
 {
 	struct bcm2835_chan *c;
 
@@ -1022,7 +1023,7 @@ static int bcm2835_dma_chan_init(struct bcm2835_dmadev *d, int chan_id,
 	c->vc.desc_free = bcm2835_dma_desc_free;
 	vchan_init(&c->vc, &d->ddev);
 
-	c->chan_base = BCM2835_DMA_CHANIO(d->base, chan_id);
+	c->chan_base = BCM2835_DMA_CHANIO(d->base, chan_id - chan_start);
 	c->ch = chan_id;
 	c->irq_number = irq;
 	c->irq_flags = irq_flags;
@@ -1103,8 +1104,10 @@ static int bcm2835_dma_probe(struct platform_device *pdev)
 	void __iomem *base;
 	int rc;
 	int i, j;
+	int interrupt;
 	int irq[BCM2835_DMA_MAX_DMA_CHAN_SUPPORTED + 1];
 	int irq_flags;
+	int chan_start = -1;
 	uint32_t chans_available;
 	char chan_name[BCM2835_DMA_CHAN_NAME_SIZE];
 
@@ -1184,17 +1187,29 @@ static int bcm2835_dma_probe(struct platform_device *pdev)
 
 	/* get irqs for each channel that we support */
 	for (i = 0; i <= BCM2835_DMA_MAX_DMA_CHAN_SUPPORTED; i++) {
+		/* get the named irq */
+		snprintf(chan_name, sizeof(chan_name), "dma%i", i);
+		interrupt = platform_get_irq_byname_optional(pdev, chan_name);
+
+		/* Find first channel with a defined interrupt, even if masked
+		 * out. The base address is expected to match that channel.
+		 *
+		 * Not supporting offset dma with the legacy missing
+		 * interrupt-names property.
+		 */
+		if (interrupt >= 0 && chan_start == -1)
+			chan_start = i;
+
 		/* skip masked out channels */
 		if (!(chans_available & (1 << i))) {
 			irq[i] = -1;
 			continue;
 		}
 
-		/* get the named irq */
-		snprintf(chan_name, sizeof(chan_name), "dma%i", i);
-		irq[i] = platform_get_irq_byname(pdev, chan_name);
-		if (irq[i] >= 0)
+		if (interrupt >= 0) {
+			irq[i] = interrupt;
 			continue;
+		}
 
 		/* legacy device tree case handling */
 		dev_warn_once(&pdev->dev,
@@ -1206,22 +1221,27 @@ static int bcm2835_dma_probe(struct platform_device *pdev)
 		irq[i] = platform_get_irq(pdev, i < 11 ? i : 11);
 	}
 
+	if (chan_start < 0) {
+		dev_warn_once(&pdev->dev, "Not interrupts defined for DMA channels\n");
+		chan_start = 0;
+	}
+
 	/* get irqs for each channel */
-	for (i = 0; i <= BCM2835_DMA_MAX_DMA_CHAN_SUPPORTED; i++) {
+	for (i = chan_start; i <= BCM2835_DMA_MAX_DMA_CHAN_SUPPORTED; i++) {
 		/* skip channels without irq */
 		if (irq[i] < 0)
 			continue;
 
 		/* check if there are other channels that also use this irq */
 		irq_flags = 0;
-		for (j = 0; j <= BCM2835_DMA_MAX_DMA_CHAN_SUPPORTED; j++)
+		for (j = chan_start; j <= BCM2835_DMA_MAX_DMA_CHAN_SUPPORTED; j++)
 			if ((i != j) && (irq[j] == irq[i])) {
 				irq_flags = IRQF_SHARED;
 				break;
 			}
 
 		/* initialize the channel */
-		rc = bcm2835_dma_chan_init(od, i, irq[i], irq_flags);
+		rc = bcm2835_dma_chan_init(od, chan_start, i, irq[i], irq_flags);
 		if (rc)
 			goto err_no_dma;
 	}
