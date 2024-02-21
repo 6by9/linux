@@ -100,22 +100,6 @@
 	dma-ranges = <0x4 0x7c000000  0x0 0xfc000000  0x0 0x03800000>,
 		     <0x0 0x00000000  0x0 0x00000000  0x4 0x00000000>;
 
-	dma40: dma@7e007b00 {
-		compatible = "brcm,bcm2711-dma";
-		reg = <0x0 0x7e007b00  0x0 0x400>;
-		interrupts =
-			<GIC_SPI 89 IRQ_TYPE_LEVEL_HIGH>, /* dma4 11 */
-			<GIC_SPI 90 IRQ_TYPE_LEVEL_HIGH>, /* dma4 12 */
-			<GIC_SPI 91 IRQ_TYPE_LEVEL_HIGH>, /* dma4 13 */
-			<GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>; /* dma4 14 */
-		interrupt-names = "dma11",
-			"dma12",
-			"dma13",
-			"dma14";
-		#dma-cells = <1>;
-		brcm,dma-channel-mask = <0x7800>;
-	};
-
 	xhci: xhci@7e9c0000 {
 		compatible = "generic-xhci";
 		status = "disabled";
@@ -149,6 +133,7 @@
 
 &dma40 {
 	/* The VPU firmware uses DMA channel 11 for VCHIQ */
+	reg = <0x0 0x7e007b00 0x0 0x400>;
 	brcm,dma-channel-mask = <0x7000>;
 };
 
