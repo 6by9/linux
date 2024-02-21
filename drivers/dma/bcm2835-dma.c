@@ -18,6 +18,7 @@
  *	Copyright 2012 Marvell International Ltd.
  */
 #include <linux/dmaengine.h>
+#include <linux/dma-direct.h>
 #include <linux/dma-mapping.h>
 #include <linux/dmapool.h>
 #include <linux/err.h>
@@ -36,7 +37,6 @@
 
 #define BCM2835_DMA_MAX_DMA_CHAN_SUPPORTED 14
 #define BCM2835_DMA_CHAN_NAME_SIZE 8
-#define BCM2711_DMA40_PHYS_ADDR 0x400000000ULL
 
 /**
  * struct bcm2835_dmadev - BCM2835 DMA controller
@@ -1119,7 +1119,6 @@ static struct dma_async_tx_descriptor *bcm2835_dma_prep_slave_sg(
 	enum dma_transfer_direction direction,
 	unsigned long flags, void *context)
 {
-	const struct bcm2835_dma_cfg *cfg = to_bcm2835_cfg(chan->device);
 	struct bcm2835_chan *c = to_bcm2835_dma_chan(chan);
 	struct bcm2835_desc *d;
 	dma_addr_t src = 0, dst = 0;
@@ -1134,11 +1133,11 @@ static struct dma_async_tx_descriptor *bcm2835_dma_prep_slave_sg(
 	if (direction == DMA_DEV_TO_MEM) {
 		if (c->cfg.src_addr_width != DMA_SLAVE_BUSWIDTH_4_BYTES)
 			return NULL;
-		src = cfg->addr_offset + c->cfg.src_addr;
+		src = phys_to_dma(chan->device->dev, c->cfg.src_addr);
 	} else {
 		if (c->cfg.dst_addr_width != DMA_SLAVE_BUSWIDTH_4_BYTES)
 			return NULL;
-		dst = cfg->addr_offset + c->cfg.dst_addr;
+		dst = phys_to_dma(chan->device->dev, c->cfg.dst_addr);
 	}
 
 	/* count frames in sg list */
@@ -1196,12 +1195,12 @@ static struct dma_async_tx_descriptor *bcm2835_dma_prep_dma_cyclic(
 	if (direction == DMA_DEV_TO_MEM) {
 		if (c->cfg.src_addr_width != DMA_SLAVE_BUSWIDTH_4_BYTES)
 			return NULL;
-		src = cfg->addr_offset + c->cfg.src_addr;
+		src = phys_to_dma(chan->device->dev, c->cfg.src_addr);
 		dst = buf_addr;
 	} else {
 		if (c->cfg.dst_addr_width != DMA_SLAVE_BUSWIDTH_4_BYTES)
 			return NULL;
-		dst = cfg->addr_offset + c->cfg.dst_addr;
+		dst = phys_to_dma(chan->device->dev, c->cfg.dst_addr);
 		src = buf_addr;
 	}
 
@@ -1335,7 +1334,7 @@ static const struct bcm2835_dma_cfg bcm2835_data = {
 };
 
 static const struct bcm2835_dma_cfg bcm2711_data = {
-	.addr_offset = BCM2711_DMA40_PHYS_ADDR,
+	.addr_offset = 0,
 
 	.cs_reg = BCM2711_DMA40_CS,
 	.cb_reg = BCM2711_DMA40_CB,
