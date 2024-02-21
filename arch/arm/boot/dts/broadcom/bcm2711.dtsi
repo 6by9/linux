@@ -642,7 +642,7 @@
 					  "dma14";
 			#dma-cells = <1>;
 
-			dma-channel-mask = <0x7800>;
+			dma-channel-mask = <0x3000>;
 		};
 	};
 };
