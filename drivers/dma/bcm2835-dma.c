@@ -1342,7 +1342,7 @@ static const struct bcm2835_dma_cfg bcm2711_data = {
 	.wait_mask = BCM2711_DMA40_WAITING_FOR_WRITES,
 	.reset_mask = BCM2711_DMA40_HALT,
 	.int_mask = BCM2711_DMA40_INTEN,
-	.active_mask = BCM2711_DMA40_ACTIVE,
+	.active_mask = BCM2711_DMA40_ACTIVE | BCM2711_DMA40_PROT,
 
 	.cb_get_length = bcm2711_dma_cb_get_length,
 	.cb_get_addr = bcm2711_dma_cb_get_addr,
