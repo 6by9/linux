@@ -702,8 +702,8 @@
 			interrupt-names = "cec-tx", "cec-rx", "cec-low",
 					  "hpd-connected", "hpd-removed";
 			ddc = <&ddc0>;
-			dmas = <&dma32 10>;
-			dma-names = "audio-rx";
+			//dmas = <&dma32 10>;
+			//dma-names = "audio-rx";
 			clocks = <&firmware_clocks 13>, <&firmware_clocks 14>, <&dvp 0>, <&clk_27MHz>;
 			clock-names = "hdmi", "bvb", "audio", "cec";
 			status = "okay";
@@ -736,8 +736,8 @@
 				     <14>, <15>;
 			interrupt-names = "cec-tx", "cec-rx", "cec-low",
 					  "hpd-connected", "hpd-removed";
-			dmas = <&dma32 17>;
-			dma-names = "audio-rx";
+			//dmas = <&dma32 17>;
+			//dma-names = "audio-rx";
 			clocks = <&firmware_clocks 13>, <&firmware_clocks 14>, <&dvp 1>, <&clk_27MHz>;
 			clock-names = "hdmi", "bvb", "audio", "cec";
 			status = "okay";
