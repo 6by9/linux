@@ -5,7 +5,7 @@
  * Copyright (c) 2021 Davin zhang <Davin@tbsdtv.com> www.Turbosight.com
  *
 */
-#include <media/dvb_math.h>
+//#include <media/dvb_math.h>
 
 #include "m88rs6060_priv.h"
 #include <linux/mutex.h>
@@ -290,12 +290,12 @@ static  struct MT_FE_PLS_INFO mPLSInfoTable[] =
 	 {0xC9, 	  TRUE,   MtFeType_DvbS2X,	  MtFeModMode_128Apsk,	  MtFeCodeRate_3_4, 	  TRUE,   FALSE,		 0},
 	 {0xCA, 	  TRUE,   MtFeType_DvbS2X,	  MtFeModMode_128Apsk,	  MtFeCodeRate_7_9, 	  FALSE,  FALSE,		 0},
 	 {0xCB, 	  TRUE,   MtFeType_DvbS2X,	  MtFeModMode_128Apsk,	  MtFeCodeRate_7_9, 	  TRUE,   FALSE,		 0},
-	 {0xCC, 	  TRUE,   MtFeType_DvbS2X,	  MtFeModMode_256Apsk_L,  MtFeCodeRate_29_45,	  FALSE,  FALSE,		 0},
-	 {0xCD, 	  TRUE,   MtFeType_DvbS2X,	  MtFeModMode_256Apsk_L,  MtFeCodeRate_29_45,	  TRUE,   FALSE,		 0},
+//	 {0xCC, 	  TRUE,   MtFeType_DvbS2X,	  MtFeModMode_256Apsk_L,  MtFeCodeRate_29_45,	  FALSE,  FALSE,		 0},
+//	 {0xCD, 	  TRUE,   MtFeType_DvbS2X,	  MtFeModMode_256Apsk_L,  MtFeCodeRate_29_45,	  TRUE,   FALSE,		 0},
 	 {0xCE, 	  TRUE,   MtFeType_DvbS2X,	  MtFeModMode_256Apsk_L,  MtFeCodeRate_2_3, 	  FALSE,  FALSE,		 0},
 	 {0xCF, 	  TRUE,   MtFeType_DvbS2X,	  MtFeModMode_256Apsk_L,  MtFeCodeRate_2_3, 	  TRUE,   FALSE,		 0},
-	 {0xD0, 	  TRUE,   MtFeType_DvbS2X,	  MtFeModMode_256Apsk_L,  MtFeCodeRate_31_45,	  FALSE,  FALSE,		 0},
-	 {0xD1, 	  TRUE,   MtFeType_DvbS2X,	  MtFeModMode_256Apsk_L,  MtFeCodeRate_31_45,	  TRUE,   FALSE,		 0},
+//	 {0xD0, 	  TRUE,   MtFeType_DvbS2X,	  MtFeModMode_256Apsk_L,  MtFeCodeRate_31_45,	  FALSE,  FALSE,		 0},
+//	 {0xD1, 	  TRUE,   MtFeType_DvbS2X,	  MtFeModMode_256Apsk_L,  MtFeCodeRate_31_45,	  TRUE,   FALSE,		 0},
 	 {0xD2, 	  TRUE,   MtFeType_DvbS2X,	  MtFeModMode_256Apsk,	  MtFeCodeRate_32_45,	  FALSE,  FALSE,		 0},
 	 {0xD3, 	  TRUE,   MtFeType_DvbS2X,	  MtFeModMode_256Apsk,	  MtFeCodeRate_32_45,	  TRUE,   FALSE,		 0},
 	 {0xD4, 	  TRUE,   MtFeType_DvbS2X,	  MtFeModMode_256Apsk_L,  MtFeCodeRate_11_15,	  FALSE,  FALSE,		 0},
@@ -349,7 +349,6 @@ static int si5351_write(struct si5351_priv *priv,u8 reg,u8 data)
 {
 	struct i2c_adapter *i2c = priv->base1->i2c_si5351;
 	u8 buf[] = { reg, data };
-	u8 val;
 	int ret;
 	struct i2c_msg msg = {
 		.addr = SI5351_BUS_BASE_ADDR,.flags = 0,.buf = buf,.len = 2
@@ -370,7 +369,6 @@ static int si5351_write_bulk(struct si5351_priv *priv,u8 reg, u8 len,u8*data)
 {
 	struct i2c_adapter *i2c = priv->base1->i2c_si5351;
 	u8 buf[80];
-	u8 val;
 	int ret;
 
 	 buf[0] = reg;
@@ -384,7 +382,7 @@ static int si5351_write_bulk(struct si5351_priv *priv,u8 reg, u8 len,u8*data)
 	 if (ret != 1) {
 		dev_err(&i2c->dev,
 			"si5351(ret=%i, reg=0x%02x, value=0x%02x)\n",
-			 ret, reg, data);
+			 ret, reg, *data);
 		return -EREMOTEIO;
 		}	
 	 return 0;
@@ -395,7 +393,6 @@ static u8 si5351_read(struct si5351_priv *priv,u8 reg,u8 *data)
 {
 	struct i2c_adapter *i2c = priv->base1->i2c_si5351;
 	int ret;
-	unsigned val;
 	u8 b0[] = { reg };
 	struct i2c_msg msg[] = {
 		{
@@ -631,53 +628,6 @@ static void si5351_clock_enable(struct si5351_priv *priv,enum si5351_clock clk, 
 	si5351_write(priv,SI5351_OUTPUT_ENABLE_CTRL, reg_val);
 
 }
-
-/*
- * si5351_drive_strength(enum si5351_clock clk, enum si5351_drive drive)
- *
- * Sets the drive strength of the specified clock output
- *
- * clk - Clock output
- *   (use the si5351_clock enum)
- * drive - Desired drive level
- *   (use the si5351_drive enum)
- */
-static void si5351_drive_strength(struct si5351_priv *priv, enum si5351_clock clk, enum si5351_drive drive)
-{
-	u8 reg_val;
-
-	const u8 mask = 0x03;
-
-	if(si5351_read(priv,SI5351_CLK0_CTRL + (u8)clk, &reg_val) != 0)
-	{
-		return;
-	}
-
-	switch(drive)
-	{
-	case SI5351_DRIVE_2MA:
-		reg_val &= ~(mask);
-		reg_val |= 0x00;
-		break;
-	case SI5351_DRIVE_4MA:
-		reg_val &= ~(mask);
-		reg_val |= 0x01;
-		break;
-	case SI5351_DRIVE_6MA:
-		reg_val &= ~(mask);
-		reg_val |= 0x02;
-		break;
-	case SI5351_DRIVE_8MA:
-		reg_val &= ~(mask);
-		reg_val |= 0x03;
-		break;
-	default:
-		break;
-	}
-
-	si5351_write(priv,SI5351_CLK0_CTRL + (u8)clk, reg_val);
-}
-
 
 static u32 multisynth_calc(u32 freq, struct Si5351RegSet *reg)
 {
@@ -2212,7 +2162,6 @@ static int m88rs6060_init(struct dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct m88rs6060_dev *dev = i2c_get_clientdata(client);
-	struct i2c_adapter *i2c = dev->base->i2c;
 	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	/*warm state */
@@ -2477,8 +2426,8 @@ static int m88rs6060_set_clock_ratio(struct m88rs6060_dev *dev )
 			case MtFeCodeRate_14_45:	input_datarate = locked_sym_rate_KSs*mod_fac*14/8/45;	break;
 			case MtFeCodeRate_26_45:	input_datarate = locked_sym_rate_KSs*mod_fac*26/8/45;	break;
 			case MtFeCodeRate_28_45:	input_datarate = locked_sym_rate_KSs*mod_fac*28/8/45;	break;
-			case MtFeCodeRate_29_45:	input_datarate = locked_sym_rate_KSs*mod_fac*29/8/45;	break;
-			case MtFeCodeRate_31_45:	input_datarate = locked_sym_rate_KSs*mod_fac*31/8/45;	break;
+//			case MtFeCodeRate_29_45:	input_datarate = locked_sym_rate_KSs*mod_fac*29/8/45;	break;
+//			case MtFeCodeRate_31_45:	input_datarate = locked_sym_rate_KSs*mod_fac*31/8/45;	break;
 			case MtFeCodeRate_32_45:	input_datarate = locked_sym_rate_KSs*mod_fac*32/8/45;	break;
 			case MtFeCodeRate_77_90:	input_datarate = locked_sym_rate_KSs*mod_fac*77/8/90;	break;
 			default:					input_datarate = locked_sym_rate_KSs*mod_fac*2/8/3;		break;
@@ -3183,7 +3132,6 @@ static int m88rs6060_get_frontend(struct dvb_frontend *fe, struct dtv_frontend_p
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct m88rs6060_dev *dev = i2c_get_clientdata(client);
-	struct i2c_adapter *i2c = dev->base->i2c;
 	struct MT_FE_CHAN_INFO_DVBS2 p_info;
 	
 	
@@ -3231,8 +3179,8 @@ static int m88rs6060_get_frontend(struct dvb_frontend *fe, struct dtv_frontend_p
 			case MtFeCodeRate_14_45:	p->fec_inner = FEC_14_45;	break;
 			case MtFeCodeRate_26_45:	p->fec_inner = FEC_26_45;	break;
 			case MtFeCodeRate_28_45:	p->fec_inner = FEC_28_45;	break;
-			case MtFeCodeRate_29_45:	p->fec_inner = FEC_29_45;	break;
-			case MtFeCodeRate_31_45:	p->fec_inner = FEC_31_45;	break;
+			//case MtFeCodeRate_29_45:	p->fec_inner = FEC_29_45;	break;
+			//case MtFeCodeRate_31_45:	p->fec_inner = FEC_31_45;	break;
 			case MtFeCodeRate_32_45:	p->fec_inner = FEC_32_45;	break;
 			case MtFeCodeRate_77_90:	p->fec_inner = FEC_77_90;	break;
 			default:			p->fec_inner = FEC_NONE;  	break;
@@ -3257,56 +3205,6 @@ static int m88rs6060_get_frontend(struct dvb_frontend *fe, struct dtv_frontend_p
 		p->inversion = (p_info.is_spectrum_inv -1) ?INVERSION_ON : INVERSION_OFF;
 
  return 0;
-}
-static void m88rs6060_spi_read(struct dvb_frontend *fe,
-			       struct ecp3_info *ecp3inf)
-{
-	struct i2c_client *client = fe->demodulator_priv;
-	struct m88rs6060_dev *dev = i2c_get_clientdata(client);
-	struct i2c_adapter *i2c = dev->base->i2c;
-
-	if (dev->config.read_properties)
-		dev->config.read_properties(i2c, ecp3inf->reg,
-				     &(ecp3inf->data));
-
-	return;
-}
-
-static void m88rs6060_spi_write(struct dvb_frontend *fe,
-				struct ecp3_info *ecp3inf)
-{
-		struct i2c_client *client = fe->demodulator_priv;
-	struct m88rs6060_dev *dev = i2c_get_clientdata(client);
-	struct i2c_adapter *i2c = dev->base->i2c;
-
-	if (dev->config.write_properties)
-		dev->config.write_properties(i2c, ecp3inf->reg,
-				      ecp3inf->data);
-	return;
-}
-
-static void m88rs6060_eeprom_read(struct dvb_frontend *fe, struct eeprom_info *eepinf)
-{
-	struct i2c_client *client = fe->demodulator_priv;
-	struct m88rs6060_dev *dev = i2c_get_clientdata(client);
-	struct i2c_adapter *i2c = dev->base->i2c;
-
-	if (dev->config.read_eeprom)
-		dev->config.read_eeprom(i2c, eepinf->reg,
-				      &(eepinf->data));
-	return ;
-}
-
-static void m88rs6060_eeprom_write(struct dvb_frontend *fe,struct eeprom_info *eepinf)
-{
-	struct i2c_client *client = fe->demodulator_priv;
-	struct m88rs6060_dev *dev = i2c_get_clientdata(client);
-	struct i2c_adapter *i2c = dev->base->i2c;
-
-	if (dev->config.write_eeprom)
-		dev->config.write_eeprom(i2c, eepinf->reg,
-				      eepinf->data);
-	return ;
 }
 
 static const struct dvb_frontend_ops m88rs6060_ops = {
@@ -3341,11 +3239,6 @@ static const struct dvb_frontend_ops m88rs6060_ops = {
 	.set_tone = m88rs6060_set_tone,
 	.diseqc_send_burst = m88rs6060_diseqc_send_burst,
 	.diseqc_send_master_cmd = m88rs6060_diseqc_send_master_cmd,
-	.spi_read = m88rs6060_spi_read,
-	.spi_write = m88rs6060_spi_write,
-	.eeprom_read = m88rs6060_eeprom_read,
-	.eeprom_write = m88rs6060_eeprom_write,
-
 };
 static int m88rs6060_ready(struct m88rs6060_dev *dev)
 {
@@ -3386,9 +3279,9 @@ static int m88rs6060_ready(struct m88rs6060_dev *dev)
 	if (ret)
 		goto err_release_firmware;
 
-	dev_dbg(&i2c->dev, " firmware size  = %lu data %02x %02x %02x\n",
-		 firmware->size, firmware->data[0], firmware->data[1],
-		 firmware->data[2]);
+	dev_dbg(&i2c->dev, " firmware size  = %zu data %02x %02x %02x\n",
+		firmware->size, firmware->data[0], firmware->data[1],
+		firmware->data[2]);
 
 	for (rem = firmware->size; rem > 0; rem -= (dev->config.i2c_wr_max - 1)) {
 		len = min(dev->config.i2c_wr_max - 1, rem);
