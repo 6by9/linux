@@ -296,6 +296,15 @@ config DVB_USB_TBS5520se
         help
           Say Y here to support the Turbosight TBS5520se USB2 DVB-T/T2/C/C2/S/S2/S2x device
 
+config DVB_USB_TBS5530
+        tristate "Turbosight TBS5530 support"
+        depends on DVB_USB
+	select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_CXD2878 if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_M88RS6060 if MEDIA_SUBDRV_AUTOSELECT
+        help
+          Say Y here to support the Turbosight TBS5530 USB2 DVB-T/T2/C/C2/S/S2/S2x ISDBT ATSC device        
+          
 config DVB_USB_TECHNISAT_USB2
 	tristate "Technisat DVB-S/S2 USB2.0 support"
 	depends on DVB_USB
