@@ -364,6 +364,13 @@ config DVB_CXD2820R
 	help
 	  Say Y when you want to support this frontend.
 
+config DVB_CXD2878
+	tristate "sony cxd2878 family Dvb-T/T2/C(j83-a/b/c),ISDB-T/C,ATSC Demodulator" 
+	depends on DVB_CORE && I2C 
+	default m if !MEDIA_SUBDRV_AUTOSELECT
+	help
+	  Say Y when you want to support this frontend.
+
 config DVB_CXD2841ER
 	tristate "Sony CXD2841ER"
 	depends on DVB_CORE && I2C
