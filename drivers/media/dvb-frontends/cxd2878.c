@@ -26,7 +26,7 @@ struct cxd_base{
 	struct mutex i2c_lock; //for two adapter at the same i2c bus
 	u8 adr		;		// 
 	u32 count	;		//
-	struct cxd2878_config *config;	
+	const struct cxd2878_config *config;	
 
 };
 
@@ -346,11 +346,11 @@ static int cxd2878_atsc_SlaveRWriteRegister (struct cxd2878_dev*dev,
 			}
 		}
 
-		if(waittime>1000){
+		if(waittime > 1000){
 			ret = -1;
 			goto err;}
 	  }
-   	if(rdata[0]&0x3F!=0x30){
+   	if((rdata[0] & 0x3F) != 0x30){
 		ret = -1;
 		goto err;
    	}
@@ -423,7 +423,7 @@ static int cxd2878_atsc_softreset(struct cxd2878_dev *dev)
 			goto err;}
 	  }	
 
-	 if(rdata[0]&0x3F!=0x30){
+	 if((rdata[0] & 0x3F) != 0x30){
 		ret = -1;
 		goto err;
    	 }
@@ -559,12 +559,12 @@ err:
 }
 static int ascot3_tune(struct cxd2878_dev*dev,u32 frequency)
 {
-	int ret;
 	enum sony_ascot3_tv_system_t aSystem;
     /* Convert system, bandwidth into dtv system. */
     switch (dev->system) {
     case SONY_DTV_SYSTEM_DVBC:
         switch (dev->bandwidth) {
+        default:
         case SONY_DTV_BW_6_MHZ:
             aSystem = SONY_ASCOT3_DTV_DVBC_6;
             break;
@@ -578,6 +578,7 @@ static int ascot3_tune(struct cxd2878_dev*dev,u32 frequency)
 
     case SONY_DTV_SYSTEM_DVBT:
         switch (dev->bandwidth) {
+        default:
         case SONY_DTV_BW_5_MHZ:
             aSystem = SONY_ASCOT3_DTV_DVBT_5;
             break;
@@ -595,6 +596,7 @@ static int ascot3_tune(struct cxd2878_dev*dev,u32 frequency)
 
     case SONY_DTV_SYSTEM_DVBT2:
         switch (dev->bandwidth) {
+        default:
         case SONY_DTV_BW_1_7_MHZ:
             aSystem = SONY_ASCOT3_DTV_DVBT2_1_7;
             break;
@@ -615,6 +617,7 @@ static int ascot3_tune(struct cxd2878_dev*dev,u32 frequency)
 
     case SONY_DTV_SYSTEM_ISDBT:
         switch (dev->bandwidth) {
+        default:
         case SONY_DTV_BW_6_MHZ:
             aSystem = SONY_ASCOT3_DTV_ISDBT_6;
             break;
@@ -638,6 +641,7 @@ static int ascot3_tune(struct cxd2878_dev*dev,u32 frequency)
 
     case SONY_DTV_SYSTEM_J83B:
         switch (dev->bandwidth) {
+        default:
         case SONY_DTV_BW_J83B_5_06_5_36_MSPS:
             aSystem = SONY_ASCOT3_DTV_DVBC_6; /* J.83B (5.057, 5.361Msps commonly used in US) uses DVB-C 6MHz BW setting */
             break;
@@ -962,6 +966,7 @@ err:
 	dev_err(&dev->base->i2c->dev,"%s: Tuner ASCOT3 i2c error !",KBUILD_MODNAME);
 	return ret;
 }
+
 static int freia_read_rssi(struct cxd2878_dev*dev,u32 frequency,s32 *rssi)
 {
     int ret = 0;
@@ -1013,8 +1018,8 @@ static int freia_read_rssi(struct cxd2878_dev*dev,u32 frequency,s32 *rssi)
 		ifgain = 533+ if_bpf_gc_x100;
 	} 
 	
-	
-   if (SONY_FREIA_IS_DVB_T_T2(dev->system)) {
+	/* FIXME: This cast is totally bogus, but I want to shut up the warning */
+   if (SONY_FREIA_IS_DVB_T_T2((enum sony_freia_tv_system_t)(dev->system))) {
   
         
             int32_t maxagcreg_x150 = 0;
@@ -1192,6 +1197,7 @@ static int freia_tune(struct cxd2878_dev *dev,u32 frequencykHz)
     switch (dev->system) {
       case SONY_DTV_SYSTEM_DVBC:
         switch (dev->bandwidth) {
+        default:
         case SONY_DTV_BW_6_MHZ:
             tvSystem = SONY_FREIA_DTV_CABLE_6;
             break;
@@ -1205,6 +1211,7 @@ static int freia_tune(struct cxd2878_dev *dev,u32 frequencykHz)
 
     case SONY_DTV_SYSTEM_DVBT:
         switch (dev->bandwidth) {
+        default:
         case SONY_DTV_BW_5_MHZ:
             tvSystem = SONY_FREIA_DTV_DVBT_5;
             break;
@@ -1222,6 +1229,7 @@ static int freia_tune(struct cxd2878_dev *dev,u32 frequencykHz)
 
     case SONY_DTV_SYSTEM_DVBT2:
         switch (dev->bandwidth) {
+        default:
         case SONY_DTV_BW_1_7_MHZ:
             tvSystem = SONY_FREIA_DTV_DVBT2_1_7;
             break;
@@ -1242,6 +1250,7 @@ static int freia_tune(struct cxd2878_dev *dev,u32 frequencykHz)
 
     case SONY_DTV_SYSTEM_DVBC2:
         switch (dev->bandwidth) {
+        default:
         case SONY_DTV_BW_6_MHZ:
             tvSystem = SONY_FREIA_DTV_DVBC2_6;
             break;
@@ -1253,6 +1262,7 @@ static int freia_tune(struct cxd2878_dev *dev,u32 frequencykHz)
 
     case SONY_DTV_SYSTEM_ISDBT:
         switch (dev->bandwidth) {
+    	default:
         case SONY_DTV_BW_6_MHZ:
             tvSystem = SONY_FREIA_DTV_ISDBT_6;
             break;
@@ -1275,6 +1285,7 @@ static int freia_tune(struct cxd2878_dev *dev,u32 frequencykHz)
 
     case SONY_DTV_SYSTEM_ATSC3:
         switch (dev->bandwidth) {
+        default:
         case SONY_DTV_BW_6_MHZ:
             tvSystem = SONY_FREIA_DTV_ATSC3_6;
             break;
@@ -1289,6 +1300,7 @@ static int freia_tune(struct cxd2878_dev *dev,u32 frequencykHz)
 
     case SONY_DTV_SYSTEM_J83B:
         switch (dev->bandwidth) {
+    	default:
         case SONY_DTV_BW_J83B_5_06_5_36_MSPS:
             tvSystem = SONY_FREIA_DTV_CABLE_6; /* J.83B (5.057, 5.361Msps commonly used in US) uses DVB-C 6MHz BW setting */
             break;
@@ -1848,6 +1860,7 @@ static int cxd2878_sleep(struct cxd2878_dev *dev)
 	
 
         switch (dev->system) {
+        default:
         case SONY_DTV_SYSTEM_DVBT:
 			/* Cancel DVB-T Demod parameter setting*/
             	cxd2878_wr(dev,dev->slvt,0x00,0x17);
@@ -1964,7 +1977,6 @@ static int SLtoAT_BandSetting(struct cxd2878_dev *dev)
 {
 	int ret = 0;
 	u8 bandtmp[3];
-	u8 regD7 = 0;
 	u8 nominalRate_8M[5] = {0x15,0x00,0x00,0x00,0x00};
  	u8 itbCoef_8M[14] = {
             /*  COEF01 COEF02 COEF11 COEF12 COEF21 COEF22 COEF31 COEF32 COEF41 COEF42 COEF51 COEF52 COEF61 COEF62 */
@@ -2630,7 +2642,6 @@ err:
 static int cxd2878_set_dvbc(struct dvb_frontend *fe)
 {
 	struct cxd2878_dev *dev = fe->demodulator_priv;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret= 0;
 
 	if(dev->base->config->LED_switch)
@@ -3656,7 +3667,7 @@ static int cxd2878_tune(struct dvb_frontend*fe,bool re_tune,
 	
 	ret = cxd2878_read_status(fe,status);
 	if(ret)
-		ret;
+		return ret;
 	
 	if (*status & FE_HAS_LOCK)
 			return 0;
@@ -3664,44 +3675,6 @@ static int cxd2878_tune(struct dvb_frontend*fe,bool re_tune,
 	return 0;
 }
 
-static int cxd2878_set_property(struct dvb_frontend*fe,
-		u32 cmd,u32 data)
-{
-	int ret = 0;
-	switch(cmd){
-		case DTV_DELIVERY_SYSTEM:
-			switch (data){
-				default:
-				case SYS_DVBT:
-				case SYS_DVBT2:
-					fe->ops.info.frequency_min_hz = 174*MHz;
-					fe->ops.info.frequency_max_hz = 868*MHz;
-					fe->ops.info.frequency_stepsize_hz = 250000;				
-					break;
-				case SYS_ISDBT:
-					fe->ops.info.frequency_min_hz = 42*MHz;
-					fe->ops.info.frequency_max_hz = 1002*MHz;
-					fe->ops.info.frequency_stepsize_hz = 0;
-					break;
-				case SYS_DVBC_ANNEX_A:
-				case SYS_DVBC_ANNEX_B:
-				case SYS_DVBC_ANNEX_C:
-					fe->ops.info.frequency_min_hz = 47*MHz;
-					fe->ops.info.frequency_max_hz = 862*MHz;
-					fe->ops.info.frequency_stepsize_hz = 62500;
-					fe->ops.info.symbol_rate_min = 1700000;
-					fe->ops.info.symbol_rate_max = 7200000;
-					break;
-				case SYS_ATSC:
-					fe->ops.info.frequency_min_hz = 54*MHz;
-					fe->ops.info.frequency_max_hz = 858*MHz;
-					fe->ops.info.frequency_stepsize_hz = 62500;
-					break;
-			}
-		}
-
-	return ret;
-}
 static enum dvbfe_algo cxd2878_get_algo(struct dvb_frontend *fe)
 {
 	return DVBFE_ALGO_HW;
@@ -3752,46 +3725,7 @@ static int cxd2878_read_ucblocks(struct dvb_frontend *fe,u32 *ucblocks)
 
 	return 0;
 }
-static void cxd2878_spi_read(struct dvb_frontend *fe, struct ecp3_info *ecp3inf)
-{
 
-	struct cxd2878_dev *dev = fe->demodulator_priv;
-
-
-	if (dev->base->config->read_properties)
-		dev->base->config->read_properties(dev->base->i2c,ecp3inf->reg, &(ecp3inf->data));
-
-	return ;
-}
-
-static void cxd2878_spi_write(struct dvb_frontend *fe,struct ecp3_info *ecp3inf)
-{
-
-	struct cxd2878_dev *dev = fe->demodulator_priv;
-
-
-	if (dev->base->config->write_properties)
-		dev->base->config->write_properties(dev->base->i2c,ecp3inf->reg, ecp3inf->data);
-	return ;
-}
-static void cxd2878_eeprom_read(struct dvb_frontend *fe, struct eeprom_info *eepinf)
-{
-	struct cxd2878_dev *dev = fe->demodulator_priv;
-
-	if (dev->base->config->read_eeprom)
-		dev->base->config->read_eeprom(dev->base->i2c,eepinf->reg, &(eepinf->data));
-	return ;
-}
-
-static void cxd2878_eeprom_write(struct dvb_frontend *fe,struct eeprom_info *eepinf)
-{
-	struct cxd2878_dev *dev = fe->demodulator_priv;
-
-	if (dev->base->config->write_eeprom)
-		dev->base->config->write_eeprom(dev->base->i2c,eepinf->reg, eepinf->data);
-
-	return ;
-}
 static void cxd2878_release (struct dvb_frontend*fe)
 {
 	struct cxd2878_dev *dev = fe->demodulator_priv;
@@ -3844,13 +3778,6 @@ static const struct dvb_frontend_ops cxd2878_ops = {
 			.read_ber  				= cxd2878_read_ber,
 			.read_snr				= cxd2878_read_snr,
 			.read_ucblocks			= cxd2878_read_ucblocks,
-
-			.set_property			= cxd2878_set_property,
-			
-			.spi_read				= cxd2878_spi_read,
-			.spi_write				= cxd2878_spi_write,
-			.eeprom_read		= cxd2878_eeprom_read,
-			.eeprom_write		= cxd2878_eeprom_write,
 };
 
 static struct cxd_base *match_base(struct i2c_adapter *i2c,u8 adr)
@@ -3868,7 +3795,6 @@ struct dvb_frontend*cxd2878_attach(const struct cxd2878_config*config,
 	struct cxd2878_dev *dev;
 	struct cxd_base *base;
 
-	int ret;
 	u16 id;
 	u8 data[2];
 	dev = kzalloc(sizeof(struct cxd2878_dev),GFP_KERNEL);
