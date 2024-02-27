@@ -524,6 +524,8 @@ static dma_addr_t bcm2835_dma_read_addr(struct bcm2835_chan *c,
 	return 0;
 }
 
+/* BCM2711 and BCM2712 DMA4 channels */
+
 static inline u32 bcm2711_dma_cb_get_length(void *data)
 {
 	struct bcm2711_dma40_scb *scb = data;
@@ -1358,7 +1360,7 @@ static const struct bcm2835_dma_cfg bcm2711_data = {
 	.chan_plat_init = bcm2711_dma_chan_plat_init,
 	.read_addr = bcm2711_dma_read_addr,
 
-	.dma_mask = DMA_BIT_MASK(36),
+	.dma_mask = DMA_BIT_MASK(40),
 };
 
 static const struct of_device_id bcm2835_dma_of_match[] = {
