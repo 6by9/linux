@@ -845,7 +845,7 @@
 		};
 
 		dma32: dma@10000 {
-			compatible = "brcm,bcm2712-dma";
+			compatible = "brcm,bcm2712-dma-lite";
 			reg = <0x10 0x00010000 0 0x600>;
 			interrupts = <GIC_SPI 80 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>,
@@ -861,6 +861,7 @@
 					  "dma5";
 			#dma-cells = <1>;
 			brcm,dma-channel-mask = <0x0035>;
+			status = "disabled";
 		};
 
 		dma40: dma@10600 {
