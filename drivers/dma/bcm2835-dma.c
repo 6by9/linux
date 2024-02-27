@@ -78,6 +78,16 @@ struct bcm2711_dma40_scb {
 	u32 pad;
 };
 
+struct bcm2712_lite_scb {
+	u32 info;
+	u32 src;
+	u32 dst;
+	u32 length;
+	u32 addr_high;
+	u32 next;
+	u32 pad[2];
+};
+
 struct bcm2835_cb_entry {
 	struct bcm_dma_cb *cb;
 	dma_addr_t paddr;
@@ -674,6 +684,65 @@ static void bcm2711_dma_cb_abort(struct dma_chan *chan)
 	writel(readl(chan_base + BCM2711_DMA40_DEBUG) | BCM2711_DMA40_DEBUG_RESET,
 	       chan_base + BCM2711_DMA40_DEBUG);
 }
+
+/* BCM2712 Lite channels */
+
+static dma_addr_t
+bcm2712_lite_dma_cb_get_addr(void *data, enum dma_transfer_direction direction)
+{
+	struct bcm2712_lite_scb *cb = data;
+
+	if (direction == DMA_DEV_TO_MEM)
+		return (((dma_addr_t)cb->addr_high & 0xff00) << 24ULL) + cb->dst;
+
+	return (((dma_addr_t)cb->addr_high & 0xff) << 32ULL) + cb->src;
+}
+
+static void
+bcm2712_lite_dma_cb_init(void *data, struct bcm2835_chan *c,
+			 enum dma_transfer_direction direction, dma_addr_t src,
+			 dma_addr_t dst, bool zero_page)
+{
+	struct bcm2712_lite_scb *cb = data;
+
+	cb->info = bcm2835_dma_prepare_cb_info(c, direction, zero_page);
+	cb->src = lower_32_bits(src);
+	cb->dst = lower_32_bits(dst);
+	cb->addr_high = (upper_32_bits(src) & 0xff) |
+			((upper_32_bits(dst) & 0xff) << 8);
+	cb->next = 0;
+}
+
+static void
+bcm2712_lite_dma_cb_set_src(void *data, enum dma_transfer_direction direction,
+			    dma_addr_t src)
+{
+	struct bcm2712_lite_scb *cb = data;
+
+	cb->src = src;
+	cb->addr_high &= 0xff;
+	cb->addr_high |= upper_32_bits(src);
+}
+
+static void
+bcm2712_lite_dma_cb_set_dst(void *data, enum dma_transfer_direction direction,
+			    dma_addr_t dst)
+{
+	struct bcm2712_lite_scb *cb = data;
+
+	cb->dst = dst;
+	cb->addr_high &= 0xff00;
+	cb->addr_high |= (upper_32_bits(dst) << 8);
+}
+
+static void bcm2712_lite_dma_cb_set_next(void *data, dma_addr_t next)
+{
+	struct bcm2712_lite_scb *cb = data;
+
+	cb->next = next;
+}
+
+/* Common functions */
 
 static void bcm2835_dma_free_cb_chain(struct bcm2835_desc *desc)
 {
@@ -1366,6 +1435,7 @@ static const struct bcm2835_dma_cfg bcm2711_data = {
 static const struct of_device_id bcm2835_dma_of_match[] = {
 	{ .compatible = "brcm,bcm2835-dma", .data = &bcm2835_data },
 	{ .compatible = "brcm,bcm2711-dma", .data = &bcm2711_data },
+	{ .compatible = "brcm,bcm2712-dma", .data = &bcm2711_data },
 	{},
 };
 MODULE_DEVICE_TABLE(of, bcm2835_dma_of_match);
