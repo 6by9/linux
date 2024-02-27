@@ -18,6 +18,7 @@
  *	Copyright 2012 Marvell International Ltd.
  */
 #include <linux/dmaengine.h>
+#include <linux/dma-direct.h>
 #include <linux/dma-mapping.h>
 #include <linux/dmapool.h>
 #include <linux/err.h>
@@ -1131,11 +1132,11 @@ static struct dma_async_tx_descriptor *bcm2835_dma_prep_slave_sg(
 	if (direction == DMA_DEV_TO_MEM) {
 		if (c->cfg.src_addr_width != DMA_SLAVE_BUSWIDTH_4_BYTES)
 			return NULL;
-		src = cfg->addr_offset + c->cfg.src_addr;
+		src = phys_to_dma(chan->device->dev, c->cfg.src_addr);
 	} else {
 		if (c->cfg.dst_addr_width != DMA_SLAVE_BUSWIDTH_4_BYTES)
 			return NULL;
-		dst = cfg->addr_offset + c->cfg.dst_addr;
+		dst = phys_to_dma(chan->device->dev, c->cfg.dst_addr);
 	}
 
 	/* count frames in sg list */
@@ -1193,12 +1194,12 @@ static struct dma_async_tx_descriptor *bcm2835_dma_prep_dma_cyclic(
 	if (direction == DMA_DEV_TO_MEM) {
 		if (c->cfg.src_addr_width != DMA_SLAVE_BUSWIDTH_4_BYTES)
 			return NULL;
-		src = cfg->addr_offset + c->cfg.src_addr;
+		src = phys_to_dma(chan->device->dev, c->cfg.src_addr);
 		dst = buf_addr;
 	} else {
 		if (c->cfg.dst_addr_width != DMA_SLAVE_BUSWIDTH_4_BYTES)
 			return NULL;
-		dst = cfg->addr_offset + c->cfg.dst_addr;
+		dst = phys_to_dma(chan->device->dev, c->cfg.dst_addr);
 		src = buf_addr;
 	}
 
