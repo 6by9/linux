@@ -15,6 +15,10 @@ properties:
     oneOf:
       - items:
           - enum:
+              - brcm,bcm2712-sdhci
+          - const: brcm,sdhci-brcmstb
+      - items:
+          - enum:
               - brcm,bcm7216-sdhci
           - const: brcm,bcm7445-sdhci
           - const: brcm,sdhci-brcmstb
@@ -113,4 +117,23 @@ examples:
       interrupts = <0x0 0x27 0x4>;
       clocks = <&scmi_clk 245>;
       clock-names = "sw_sdio";
+    };
+
+  - |
+    #include <dt-bindings/interrupt-controller/arm-gic.h>
+    soc {
+      #address-cells = <2>;
+      #size-cells = <2>;
+
+      mmc@1000fff000 {
+        compatible = "brcm,bcm2712-sdhci",
+                     "brcm,sdhci-brcmstb";
+        reg = <0x10 0x00fff000  0x0 0x260>,
+              <0x10 0x00fff400  0x0 0x200>;
+        reg-names = "host", "cfg";
+        mmc-ddr-3_3v;
+        interrupts = <GIC_SPI 0x111 IRQ_TYPE_LEVEL_HIGH>;
+        clocks = <&clk_emmc2>;
+        clock-names = "sw_sdio";
+      };
     };
