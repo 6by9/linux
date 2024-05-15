@@ -263,7 +263,6 @@
 			clocks = <&clk_uart>, <&clk_vpu>;
 			clock-names = "uartclk", "apb_pclk";
 			arm,primecell-periphid = <0x00241011>;
-			status = "disabled";
 		};
 
 		interrupt-controller@7d517000 {
