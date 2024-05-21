@@ -13,3 +13,8 @@ obj-$(CONFIG_SND_SOC_CYGNUS) += snd-soc-cygnus.o
 snd-soc-63xx-y := bcm63xx-i2s-whistler.o bcm63xx-pcm-whistler.o
 
 obj-$(CONFIG_SND_BCM63XX_I2S_WHISTLER) += snd-soc-63xx.o
+
+snd-soc-rpi-simple-soundcard-objs := rpi-simple-soundcard.o
+obj-$(CONFIG_SND_RPI_SIMPLE_SOUNDCARD) += snd-soc-rpi-simple-soundcard.o
+snd-soc-iqaudio-dac-objs := iqaudio-dac.o
+obj-$(CONFIG_SND_BCM2708_SOC_IQAUDIO_DAC) += snd-soc-iqaudio-dac.o

@@ -169,6 +169,7 @@ config SND_SOC_ALL_CODECS
 	imply SND_SOC_PCM1789_I2C
 	imply SND_SOC_PCM179X_I2C
 	imply SND_SOC_PCM179X_SPI
+	imply SND_SOC_PCM1794A
 	imply SND_SOC_PCM186X_I2C
 	imply SND_SOC_PCM186X_SPI
 	imply SND_SOC_PCM3008
@@ -1358,6 +1359,12 @@ config SND_SOC_PCM179X_SPI
 	help
 	  Enable support for Texas Instruments PCM179x CODEC.
 	  Select this if your PCM179x is connected via an SPI bus.
+
+config SND_SOC_PCM1794A
+	tristate "Texas Instruments PCM1794A CODEC"
+	depends on I2C
+	help
+	  Enable support for Texas Instruments PCM1794A CODEC.
 
 config SND_SOC_PCM186X
 	tristate
