@@ -1735,7 +1735,7 @@ static struct i2c_driver mlx7502x_driver = {
 		.name = "mlx7502x",
 		.pm = &mlx7502x_pm_ops,
 	},
-	.probe_new = mlx7502x_probe,
+	.probe = mlx7502x_probe,
 	.remove = mlx7502x_remove,
 };
 
