@@ -176,6 +176,7 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
 	minipitft13.dtbo \
 	miniuart-bt.dtbo \
 	mipi-dbi-spi.dtbo \
+	mlx7502x.dtbo \
 	mlx90640.dtbo \
 	mmc.dtbo \
 	mz61581.dtbo \
