@@ -976,22 +976,24 @@ static void drm_test_cmdline_tv_options(struct kunit *test)
 	KUNIT_EXPECT_EQ(test, mode.force, DRM_FORCE_UNSPECIFIED);
 }
 
-#define TV_OPT_TEST(_opt, _cmdline, _mode_fn)		\
+#define TV_OPT_TEST(_opt, _cmdline, _mode_fn, _tvmode)		\
 	{						\
 		.name = #_opt,				\
 		.cmdline = _cmdline,			\
 		.mode_fn = _mode_fn,			\
-		.tv_mode = DRM_MODE_TV_MODE_ ## _opt,	\
+		.tv_mode = DRM_MODE_TV_MODE_ ## _tvmode,	\
 	}
 
 static const struct drm_cmdline_tv_option_test drm_cmdline_tv_option_tests[] = {
-	TV_OPT_TEST(NTSC, "720x480i,tv_mode=NTSC", drm_mode_analog_ntsc_480i),
-	TV_OPT_TEST(NTSC_443, "720x480i,tv_mode=NTSC-443", drm_mode_analog_ntsc_480i),
-	TV_OPT_TEST(NTSC_J, "720x480i,tv_mode=NTSC-J", drm_mode_analog_ntsc_480i),
-	TV_OPT_TEST(PAL, "720x576i,tv_mode=PAL", drm_mode_analog_pal_576i),
-	TV_OPT_TEST(PAL_M, "720x480i,tv_mode=PAL-M", drm_mode_analog_ntsc_480i),
-	TV_OPT_TEST(PAL_N, "720x576i,tv_mode=PAL-N", drm_mode_analog_pal_576i),
-	TV_OPT_TEST(SECAM, "720x576i,tv_mode=SECAM", drm_mode_analog_pal_576i),
+	TV_OPT_TEST(NTSC, "720x480i,tv_mode=NTSC", drm_mode_analog_ntsc_480i, NTSC),
+	TV_OPT_TEST(NTSC_443, "720x480i,tv_mode=NTSC-443", drm_mode_analog_ntsc_480i, NTSC_443),
+	TV_OPT_TEST(NTSC_J, "720x480i,tv_mode=NTSC-J", drm_mode_analog_ntsc_480i, NTSC_J),
+	TV_OPT_TEST(PAL, "720x576i,tv_mode=PAL", drm_mode_analog_pal_576i, PAL),
+	TV_OPT_TEST(PAL_M, "720x480i,tv_mode=PAL-M", drm_mode_analog_ntsc_480i, PAL_M),
+	TV_OPT_TEST(PAL_N, "720x576i,tv_mode=PAL-N", drm_mode_analog_pal_576i, PAL_N),
+	TV_OPT_TEST(SECAM, "720x576i,tv_mode=SECAM", drm_mode_analog_pal_576i, SECAM),
+	TV_OPT_TEST(MONO_525, "720x480i,tv_mode=Mono", drm_mode_analog_ntsc_480i, MONOCHROME),
+	TV_OPT_TEST(MONO_625, "720x576i,tv_mode=Mono", drm_mode_analog_pal_576i, MONOCHROME),
 };
 
 static void drm_cmdline_tv_option_desc(const struct drm_cmdline_tv_option_test *t,
