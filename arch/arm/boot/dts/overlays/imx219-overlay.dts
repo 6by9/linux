@@ -30,6 +30,17 @@
 		};
 	};
 
+	fragment@3 {
+		target-path = "/";
+		__overlay__ {
+			clk_fusion_25M_fixed: fixed-clock-25M {
+				compatible = "fixed-clock";
+				#clock-cells = <0>;
+				clock-frequency = <25000000>;
+			};
+		};
+	};
+
 	i2c_frag: fragment@100 {
 		target = <&i2c_csi_dsi>;
 		__overlay__ {
@@ -37,14 +48,177 @@
 			#size-cells = <0>;
 			status = "okay";
 
-			#include "imx219.dtsi"
+                       deser@30 {
+                                compatible = "ti,ds90ub954-q1";
+                                reg = <0x30>;
 
-			vcm: ad5398@c {
-				compatible = "adi,ad5398";
-				reg = <0x0c>;
-				status = "disabled";
-				VANA-supply = <&cam1_reg>;
-			};
+                                clock-names = "refclk";
+                                clocks = <&clk_fusion_25M_fixed>;
+
+                                i2c-alias-pool = <0x4a 0x4b 0x4c 0x4d 0x4e 0x4f>;
+
+                                ds90ub960_0_ports: ports {
+                                        #address-cells = <1>;
+                                        #size-cells = <0>;
+
+                                        /* CSI-2 TX */
+                                        port@2 {
+                                                reg = <2>;
+                                                cam_endpoint: endpoint {
+                                                        data-lanes = <1 2 3 4>;
+                                                        clock-lanes = <0>;
+                                                        link-frequencies = /bits/ 64 <800000000>;
+                                                        remote-endpoint = <&csi_ep>;
+                                                };
+                                        };
+
+				        /* FPDLink RX 0 */
+				        port@0 {
+				                reg = <0>;
+
+				                ub960_fpd3_1_in: endpoint {
+				                        remote-endpoint = <&ub953_1_out>;
+				                };
+				        };
+				        /* FPDLink RX 1 */
+				        port@1 {
+				                reg = <1>;
+
+				                ub960_fpd3_2_in: endpoint {
+				                        remote-endpoint = <&ub953_2_out>;
+				                };
+				        };
+                                };
+
+                                ds90ub960_0_links: links {
+				        #address-cells = <1>;
+				        #size-cells = <0>;
+
+				       link@0 {
+				                reg = <0>;
+				                i2c-alias = <0x44>;
+
+				                ti,rx-mode = <3>;
+
+				                serializer1: serializer {
+				                        compatible = "ti,ds90ub953-q1";
+				                        gpio-controller;
+				                        #gpio-cells = <2>;
+
+				                        #clock-cells = <0>;
+
+				                        ports {
+				                                #address-cells = <1>;
+				                                #size-cells = <0>;
+
+				                                port@0 {
+				                                        reg = <0>;
+				                                        ub953_1_in: endpoint {
+				                                                clock-lanes = <0>;
+				                                                data-lanes = <1 2>;
+				                                                remote-endpoint = <&sensor_1_out>;
+				                                        };
+				                                };
+
+				                                port@1 {
+				                                        reg = <1>;
+
+				                                        ub953_1_out: endpoint {
+				                                                remote-endpoint = <&ub960_fpd3_1_in>;
+				                                        };
+				                                };
+				                        };
+
+				                        i2c {
+				                                #address-cells = <1>;
+				                                #size-cells = <0>;
+
+				                                sensor@10 {
+				                                        compatible = "sony,imx219";
+				                                        reg = <0x10>;
+
+				                                        clocks = <&cam1_clk>;
+				                                        clock-names = "xclk";
+				                                        reset-gpios = <&serializer1 1 GPIO_ACTIVE_HIGH>;
+
+									rotation = <180>;
+									orientation = <2>;
+				                                        port {
+				                                                sensor_1_out: endpoint {
+				                                                        remote-endpoint = <&ub953_1_in>;
+				                                                        link-frequencies = /bits/ 64 <456000000>;
+				                                                        clock-lanes = <0>;
+				                                                        data-lanes = <1 2>;
+				                                                };
+				                                        };
+				                                };
+				                        };
+		                                };
+		                        };
+
+				        link@1 {
+				                reg = <1>;
+				                i2c-alias = <0x45>;
+
+				                ti,rx-mode = <3>;
+
+				                serializer2: serializer {
+				                        compatible = "ti,ds90ub953-q1";
+				                        gpio-controller;
+				                        #gpio-cells = <2>;
+
+				                        #clock-cells = <0>;
+
+				                        ports {
+				                                #address-cells = <1>;
+				                                #size-cells = <0>;
+
+				                                port@0 {
+				                                        reg = <0>;
+				                                        ub953_2_in: endpoint {
+				                                                clock-lanes = <0>;
+				                                                data-lanes = <1 2>;
+				                                                remote-endpoint = <&sensor_2_out>;
+				                                        };
+				                                };
+
+				                                port@1 {
+				                                        reg = <1>;
+
+				                                        ub953_2_out: endpoint {
+				                                                remote-endpoint = <&ub960_fpd3_2_in>;
+				                                        };
+				                                };
+				                        };
+
+				                        i2c {
+				                                #address-cells = <1>;
+				                                #size-cells = <0>;
+
+				                                sensor@10 {
+				                                        compatible = "sony,imx219";
+				                                        reg = <0x10>;
+
+				                                        clocks = <&cam1_clk>;
+				                                        clock-names = "xclk";
+				                                        reset-gpios = <&serializer2 1 GPIO_ACTIVE_HIGH>;
+
+									rotation = <180>;
+									orientation = <2>;
+				                                        port {
+				                                                sensor_2_out: endpoint {
+				                                                        remote-endpoint = <&ub953_2_in>;
+				                                                        link-frequencies = /bits/ 64 <456000000>;
+				                                                        clock-lanes = <0>;
+				                                                        data-lanes = <1 2>;
+				                                                };
+				                                        };
+				                                };
+				                        };
+		                                };
+		                        };
+	                        };
+                        };
 		};
 	};
 
@@ -66,24 +240,6 @@
 	};
 
 	__overrides__ {
-		rotation = <&cam_node>,"rotation:0";
-		orientation = <&cam_node>,"orientation:0";
-		media-controller = <&csi>,"brcm,media-controller?";
-		cam0 = <&i2c_frag>, "target:0=",<&i2c_csi_dsi0>,
-		       <&csi_frag>, "target:0=",<&csi0>,
-		       <&clk_frag>, "target:0=",<&cam0_clk>,
-		       <&cam_node>, "clocks:0=",<&cam0_clk>,
-		       <&cam_node>, "VANA-supply:0=",<&cam0_reg>,
-		       <&vcm>, "VANA-supply:0=", <&cam0_reg>;
-		vcm = <&vcm>, "status=okay",
-		      <&cam_node>,"lens-focus:0=", <&vcm>;
 	};
 };
 
-&cam_node {
-	status = "okay";
-};
-
-&cam_endpoint {
-	remote-endpoint = <&csi_ep>;
-};
