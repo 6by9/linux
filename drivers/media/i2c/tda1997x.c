@@ -259,6 +259,10 @@ struct tda1997x_state {
 	struct v4l2_ctrl *detect_tx_5v_ctrl;
 	struct v4l2_ctrl *rgb_quantization_range_ctrl;
 
+	/* debugfs */
+	struct dentry *debugfs_dir;
+	struct v4l2_debugfs_if *infoframes;
+
 	/* audio */
 	u8  audio_ch_alloc;
 	int audio_samplerate;
@@ -1263,7 +1267,7 @@ tda1997x_parse_infoframe(struct tda1997x_state *state, u16 addr)
 {
 	struct v4l2_subdev *sd = &state->sd;
 	union hdmi_infoframe frame;
-	u8 buffer[40] = { 0 };
+	u8 buffer[V4L2_DEBUGFS_IF_MAX_LEN] = { 0 };
 	u8 reg;
 	int len, err;
 
@@ -1938,11 +1942,44 @@ static const struct v4l2_subdev_pad_ops tda1997x_pad_ops = {
  * v4l2_subdev_core_ops
  */
 
+static ssize_t
+tda1997x_debugfs_if_read(u32 type, void *priv, struct file *filp, char __user *ubuf, size_t count, loff_t *ppos)
+{
+	struct v4l2_subdev *sd = priv;
+	u8 buffer[V4L2_DEBUGFS_IF_MAX_LEN] = {};
+	int addr, len;
+
+	switch (type) {
+	case V4L2_DEBUGFS_IF_AVI:
+		addr = AVI_IF;
+		break;
+	case V4L2_DEBUGFS_IF_AUDIO:
+		addr = AUD_IF;
+		break;
+	case V4L2_DEBUGFS_IF_SPD:
+		addr = SPD_IF;
+		break;
+	default:
+		return 0;
+	}
+
+	/* read data */
+	len = io_readn(sd, addr, sizeof(buffer), buffer);
+	if (len > 0) {
+		len = buffer[2] + 4;
+		if (len > V4L2_DEBUGFS_IF_MAX_LEN)
+			len = -EIO;
+	}
+	if (len > 0)
+		len = simple_read_from_buffer(ubuf, count, ppos, buffer, len);
+	return len < 0 ? 0 : len;
+}
+
 static int tda1997x_log_infoframe(struct v4l2_subdev *sd, int addr)
 {
 	struct tda1997x_state *state = to_state(sd);
 	union hdmi_infoframe frame;
-	u8 buffer[40] = { 0 };
+	u8 buffer[V4L2_DEBUGFS_IF_MAX_LEN] = {};
 	int len, err;
 
 	/* read data */
@@ -2791,6 +2828,12 @@ static int tda1997x_probe(struct i2c_client *client)
 		goto err_free_media;
 	}
 
+	state->debugfs_dir = debugfs_create_dir(sd->name, v4l2_debugfs_root());
+	state->infoframes = v4l2_debugfs_if_alloc(state->debugfs_dir,
+		V4L2_DEBUGFS_IF_AVI | V4L2_DEBUGFS_IF_AUDIO |
+		V4L2_DEBUGFS_IF_SPD, sd,
+		tda1997x_debugfs_if_read);
+
 	return 0;
 
 err_free_media:
@@ -2814,6 +2857,9 @@ static void tda1997x_remove(struct i2c_client *client)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct tda1997x_state *state = to_state(sd);
 	struct tda1997x_platform_data *pdata = &state->pdata;
+
+	v4l2_debugfs_if_free(state->infoframes);
+	debugfs_remove_recursive(state->debugfs_dir);
 
 	if (pdata->audout_format) {
 		mutex_destroy(&state->audio_lock);
