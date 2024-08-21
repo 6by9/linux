@@ -466,7 +466,7 @@ tc358743_debugfs_if_read(u32 type, void *priv, struct file *filp,
 		return 0;
 
 	i2c_rd(sd, PK_AVI_0HEAD, buf, PK_AVI_16BYTE - PK_AVI_0HEAD + 1);
-	len = buf[2] + 3;
+	len = buf[2] + 4;
 	if (len > V4L2_DEBUGFS_IF_MAX_LEN)
 		len = -ENOENT;
 	if (len > 0)
