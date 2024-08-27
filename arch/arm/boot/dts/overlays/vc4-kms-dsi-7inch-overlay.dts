@@ -75,7 +75,35 @@
 		};
 	};
 
-	i2c_frag: fragment@2 {
+	fragment@2 {
+		target = <&updown>;
+		__overlay__ {
+			output-low;
+		};
+	};
+
+	fragment@3 {
+		target = <&leftright>;
+		__overlay__ {
+			output-high;
+		};
+	};
+
+	fragment@4 {
+		target = <&updown>;
+		__dormant__ {
+			output-high;
+		};
+	};
+
+	fragment@5 {
+		target = <&leftright>;
+		__dormant__ {
+			output-low;
+		};
+	};
+
+	i2c_frag: fragment@6 {
 		target = <&i2c_csi_dsi>;
 		__overlay__ {
 			#address-cells = <1>;
@@ -87,30 +115,41 @@
 				reg = <0x45>;
 				gpio-controller;
 				#gpio-cells = <2>;
+
+				updown: updown@2 {
+					gpio-hog;
+					gpios = <2 0>;
+				};
+				leftright: leftright@3 {
+					gpio-hog;
+					gpios = <3 0>;
+				};
 			};
 		};
 	};
 
-	fragment@3 {
+	fragment@7 {
 		target = <&i2c0if>;
 		__overlay__ {
 			status = "okay";
 		};
 	};
 
-	fragment@4 {
+	fragment@8 {
 		target = <&i2c0mux>;
 		__overlay__ {
 			status = "okay";
 		};
 	};
-	fragment@5 {
+	fragment@9 {
 		target = <&ft5406>;
 		__overlay__ {
 			vcc-supply = <&reg_display>;
 			reset-gpio = <&reg_display 1 1>;
 		};
 	};
+
+	// NB fragments 10 - 12 are imported from edt-ft5406.dtsi
 
 	__overrides__ {
 		dsi0 = <&dsi_frag>, "target:0=",<&dsi0>,
@@ -120,5 +159,8 @@
 		       <&reg_bridge>, "reg:0=0",
 		       <&reg_bridge>, "regulator-name=bridge_reg_0";
 		disable_touch = <&ft5406>, "status=disabled";
+		invert = <0>,"-2-3+4+5-10-11";
+		vflip = <0>,"-2+4-11";
+		hflip = <0>,"-3+5-10";
 	};
 };

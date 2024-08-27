@@ -5129,6 +5129,9 @@ Params: sizex                   Touchscreen size x (default 800)
         disable_touch           Disables the touch screen overlay driver
         dsi0                    Use DSI0 and i2c_csi_dsi0 (rather than
                                 the default DSI1 and i2c_csi_dsi).
+        invert                  Invert both display and touch
+        vflip                   Vertically flip both display and touch
+        hflip                   Horizontally flip both display and touch
 
 
 Name:   vc4-kms-dsi-generic
