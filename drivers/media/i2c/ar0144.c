@@ -1010,6 +1010,12 @@ static int ar0144_s_ctrl(struct v4l2_ctrl *ctrl)
 			  AR0144_AUTO_AG_EN | AR0144_AE_ENABLE : 0, &ret);
 		break;
 
+	case V4L2_CID_COMPANDING:
+		cci_write(sensor->regmap, AR0144_COMPANDING,
+			  ctrl->val == V4L2_COMPANDING_COMPRESS ?
+			  AR0144_COMPAND_EN : 0, &ret);
+		break;
+
 	case V4L2_CID_LINK_FREQ:
 		break;
 
@@ -1044,7 +1050,7 @@ static int ar0144_init_ctrls(struct ar0144 *sensor)
 	if (ret < 0)
 		return ret;
 
-	v4l2_ctrl_handler_init(&sensor->ctrls, 17);
+	v4l2_ctrl_handler_init(&sensor->ctrls, 18);
 
 	v4l2_ctrl_new_fwnode_properties(&sensor->ctrls, &ar0144_ctrl_ops,
 					&props);
@@ -1107,6 +1113,10 @@ static int ar0144_init_ctrls(struct ar0144 *sensor)
 					  V4L2_CID_HFLIP, 0, 1, 1, 0);
 	sensor->vflip = v4l2_ctrl_new_std(&sensor->ctrls, &ar0144_ctrl_ops,
 					  V4L2_CID_VFLIP, 0, 1, 1, 0);
+
+	v4l2_ctrl_new_std_menu(&sensor->ctrls, &ar0144_ctrl_ops,
+			       V4L2_CID_COMPANDING, V4L2_COMPANDING_COMPRESS, 0,
+			       V4L2_COMPANDING_LINEAR);
 
 	if (sensor->ctrls.error) {
 		ret = sensor->ctrls.error;
