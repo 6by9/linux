@@ -55,3 +55,19 @@ Image Process Control IDs
     control value divided by e.g. 0x100, meaning that to get no
     digital gain the control value needs to be 0x100. The no-gain
     configuration is also typically the default.
+
+``V4L2_CID_COMPANDING (menu)``
+    Companding refers to compression and expansion of pixel data to fit in a
+    smaller range.
+
+
+.. tabularcolumns:: |p{5.7cm}|p{11.8cm}|
+
+.. flat-table::
+    :header-rows:  0
+    :stub-columns: 0
+
+    * - ``V4L2_COMPANDING_LINEAR``
+      - No companding.
+    * - ``V4L2_COMPANDING_COMPRESS``
+      - Compress the data using a device-specific curve.
