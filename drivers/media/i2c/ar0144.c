@@ -314,6 +314,9 @@
 #define AR0144_PIXEL_ARRAY_ACTIVE_WIDTH		1288U
 #define AR0144_PIXEL_ARRAY_ACTIVE_HEIGHT	808U
 
+/* Embedded metadata stream height */
+#define AR0144_EMBEDDED_DATA_HEIGHT		2U
+
 /*
  * Documentation indicates minimum horizontal and vertical blanking of 208
  * pixels and 27 lines respectively, which matches the default values for the
@@ -339,11 +342,13 @@
 enum ar0144_pad_ids {
 	AR0144_PAD_SOURCE = 0,
 	AR0144_PAD_IMAGE,
+	AR0144_PAD_EDATA,
 	AR0144_NUM_PADS,
 };
 
 enum ar0144_stream_ids {
 	AR0144_STREAM_IMAGE,
+	AR0144_STREAM_EDATA,
 };
 
 struct ar0144_model {
@@ -353,6 +358,7 @@ struct ar0144_model {
 struct ar0144_format_info {
 	u32 colour;
 	u32 mono;
+	u32 edata;
 	u16 bpp;
 	u16 dt;
 };
@@ -373,16 +379,19 @@ static const struct ar0144_format_info ar0144_formats[] = {
 	{
 		.colour = MEDIA_BUS_FMT_SGRBG12_1X12,
 		.mono = MEDIA_BUS_FMT_Y12_1X12,
+		.edata = MEDIA_BUS_FMT_META_12,
 		.bpp = 12,
 		.dt = MIPI_CSI2_DT_RAW12,
 	}, {
 		.colour = MEDIA_BUS_FMT_SGRBG10_1X10,
 		.mono = MEDIA_BUS_FMT_Y10_1X10,
+		.edata = MEDIA_BUS_FMT_META_10,
 		.bpp = 10,
 		.dt = MIPI_CSI2_DT_RAW10,
 	}, {
 		.colour = MEDIA_BUS_FMT_SGRBG8_1X8,
 		.mono = MEDIA_BUS_FMT_Y8_1X8,
+		.edata = MEDIA_BUS_FMT_META_8,
 		.bpp = 8,
 		.dt = MIPI_CSI2_DT_RAW8,
 	},
@@ -574,8 +583,8 @@ static int ar0144_start_streaming(struct ar0144 *sensor,
 	 * Enable generation of embedded statistics, required for the on-chip
 	 * auto-exposure. There is no downside in enabling it unconditionally.
 	 */
-	cci_write(sensor->regmap, AR0144_SMIA_TEST, AR0144_STATS_EN | 0x1802,
-		  &ret);
+	cci_write(sensor->regmap, AR0144_SMIA_TEST, AR0144_EMBEDDED_DATA |
+		  AR0144_STATS_EN | 0x1802, &ret);
 
 	if (ret)
 		goto error;
@@ -1136,7 +1145,25 @@ static int ar0144_enum_mbus_code(struct v4l2_subdev *sd,
 		return 0;
 	}
 
-	case AR0144_PAD_SOURCE: {
+	case AR0144_PAD_EDATA: {
+		if (code->index > 0)
+			return -EINVAL;
+
+		code->code = MEDIA_BUS_FMT_CCS_EMBEDDED;
+		return 0;
+	}
+
+	case AR0144_PAD_SOURCE:
+	default:
+		break;
+	}
+
+	/*
+	 * On the source pad, the sensor supports multiple image raw formats
+	 * with different bit depths. The embedded data format bit depth
+	 * follows the image stream.
+	 */
+	if (code->stream == AR0144_STREAM_IMAGE) {
 		unsigned int index = 0;
 		unsigned int i;
 
@@ -1155,11 +1182,18 @@ static int ar0144_enum_mbus_code(struct v4l2_subdev *sd,
 		}
 
 		return -EINVAL;
+	} else {
+		struct v4l2_mbus_framefmt *fmt;
+
+		if (code->index > 0)
+			return -EINVAL;
+
+		fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE,
+						   AR0144_STREAM_EDATA);
+		code->code = fmt->code;
 	}
 
-	default:
-		return -EINVAL;
-	}
+	return 0;
 }
 
 static int ar0144_enum_frame_size(struct v4l2_subdev *sd,
@@ -1173,25 +1207,21 @@ static int ar0144_enum_frame_size(struct v4l2_subdev *sd,
 	if (fse->index > 0)
 		return -EINVAL;
 
-	switch (fse->pad) {
-	case AR0144_PAD_IMAGE:
-		if (fse->code != ar0144_format_code(sensor, &ar0144_formats[0]))
-			return -EINVAL;
+	fmt = v4l2_subdev_state_get_format(state, fse->pad, fse->stream);
 
-		fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_IMAGE);
-		break;
-
-	case AR0144_PAD_SOURCE:
+	/*
+	 * Verify the media bus code. On the source image stream multiple
+	 * options are supported, while on all other streams the requested code
+	 * must match the current format.
+	 */
+	if (fse->pad == AR0144_PAD_SOURCE &&
+	    fse->stream == AR0144_STREAM_IMAGE) {
 		info = ar0144_format_info(sensor, fse->code, false);
 		if (!info)
 			return -EINVAL;
-
-		fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE,
-						   AR0144_STREAM_IMAGE);
-		break;
-
-	default:
-		return -EINVAL;
+	} else {
+		if (fse->code != fmt->code)
+			return -EINVAL;
 	}
 
 	fse->min_width = fmt->width;
@@ -1229,6 +1259,11 @@ static int ar0144_set_fmt(struct v4l2_subdev *sd,
 	fmt->code = ar0144_format_code(sensor, info);
 
 	format->format = *fmt;
+
+	/* Update the format on the source side of the embedded data stream. */
+	fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE,
+					   AR0144_STREAM_EDATA);
+	fmt->code = info->edata;
 
 	if (format->which != V4L2_SUBDEV_FORMAT_ACTIVE)
 		return 0;
@@ -1353,6 +1388,14 @@ static int ar0144_set_selection(struct v4l2_subdev *sd,
 	fmt->width = compose->width;
 	fmt->height = compose->height;
 
+	/* Update the embedded data stream width. */
+	fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_EDATA);
+	fmt->width = compose->width;
+
+	fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE,
+					   AR0144_STREAM_EDATA);
+	fmt->width = compose->width;
+
 	return 0;
 }
 
@@ -1361,28 +1404,34 @@ static int ar0144_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 {
 	struct ar0144 *sensor = to_ar0144(sd);
 	const struct ar0144_format_info *info;
-	const struct v4l2_mbus_framefmt *fmt;
 	struct v4l2_subdev_state *state;
-	u32 code;
+	u32 img_code;
+	u32 ed_code;
 
 	if (pad != AR0144_PAD_SOURCE)
 		return -EINVAL;
 
 	state = v4l2_subdev_lock_and_get_active_state(sd);
-	fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE,
-					   AR0144_STREAM_IMAGE);
-	code = fmt->code;
+	img_code = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE,
+						AR0144_STREAM_IMAGE)->code;
+	ed_code = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE,
+					       AR0144_STREAM_EDATA)->code;
 	v4l2_subdev_unlock_state(state);
 
-	info = ar0144_format_info(sensor, code, true);
+	info = ar0144_format_info(sensor, img_code, true);
 
 	fd->type = V4L2_MBUS_FRAME_DESC_TYPE_CSI2;
-	fd->num_entries = 1;
+	fd->num_entries = 2;
 
-	fd->entry[0].pixelcode = code;
+	fd->entry[0].pixelcode = img_code;
 	fd->entry[0].stream = AR0144_STREAM_IMAGE;
 	fd->entry[0].bus.csi2.vc = 0;
 	fd->entry[0].bus.csi2.dt = info->dt;
+
+	fd->entry[1].pixelcode = ed_code;
+	fd->entry[1].stream = AR0144_STREAM_EDATA;
+	fd->entry[1].bus.csi2.vc = 0;
+	fd->entry[1].bus.csi2.dt = MIPI_CSI2_DT_EMBEDDED_8B;
 
 	return 0;
 }
@@ -1415,6 +1464,13 @@ static int ar0144_enable_streams(struct v4l2_subdev *sd,
 	struct ar0144 *sensor = to_ar0144(sd);
 	int ret;
 
+	/*
+	 * The image stream controls sensor streaming, as embedded data isn't
+	 * controllable independently.
+	 */
+	if (!(streams_mask & BIT(AR0144_STREAM_IMAGE)))
+		return 0;
+
 	ret = pm_runtime_resume_and_get(sensor->dev);
 	if (ret < 0)
 		return ret;
@@ -1436,6 +1492,13 @@ static int ar0144_disable_streams(struct v4l2_subdev *sd,
 {
 	struct ar0144 *sensor = to_ar0144(sd);
 
+	/*
+	 * The image stream controls sensor streaming, as embedded data isn't
+	 * controllable independently.
+	 */
+	if (!(streams_mask & BIT(AR0144_STREAM_IMAGE)))
+		return 0;
+
 	ar0144_stop_streaming(sensor);
 	pm_runtime_mark_last_busy(sensor->dev);
 	pm_runtime_put_autosuspend(sensor->dev);
@@ -1452,6 +1515,13 @@ static int ar0144_entity_init_state(struct v4l2_subdev *sd,
 			.sink_stream = 0,
 			.source_pad = AR0144_PAD_SOURCE,
 			.source_stream = AR0144_STREAM_IMAGE,
+			.flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE |
+				 V4L2_SUBDEV_ROUTE_FL_IMMUTABLE,
+		}, {
+			.sink_pad = AR0144_PAD_EDATA,
+			.sink_stream = 0,
+			.source_pad = AR0144_PAD_SOURCE,
+			.source_stream = AR0144_STREAM_EDATA,
 			.flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE |
 				 V4L2_SUBDEV_ROUTE_FL_IMMUTABLE,
 		},
@@ -1472,6 +1542,7 @@ static int ar0144_entity_init_state(struct v4l2_subdev *sd,
 	if (ret)
 		return ret;
 
+	/* Image pad. */
 	info = &ar0144_formats[0];
 
 	fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_IMAGE);
@@ -1496,6 +1567,14 @@ static int ar0144_entity_init_state(struct v4l2_subdev *sd,
 	compose->width = AR0144_DEF_WIDTH;
 	compose->height = AR0144_DEF_HEIGHT;
 
+	/* Embedded data pad. */
+	fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_EDATA);
+	fmt->width = AR0144_DEF_WIDTH;
+	fmt->height = AR0144_EMBEDDED_DATA_HEIGHT;
+	fmt->code = MEDIA_BUS_FMT_CCS_EMBEDDED;
+	fmt->field = V4L2_FIELD_NONE;
+
+	/* Source pad, image stream. */
 	info = ar0144_format_info(sensor, 0, true);
 
 	fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE,
@@ -1508,6 +1587,14 @@ static int ar0144_entity_init_state(struct v4l2_subdev *sd,
 	fmt->ycbcr_enc = V4L2_YCBCR_ENC_601;
 	fmt->quantization = V4L2_QUANTIZATION_FULL_RANGE;
 	fmt->xfer_func = V4L2_XFER_FUNC_NONE;
+
+	/* Source pad, embedded data stream. */
+	fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE,
+					   AR0144_STREAM_EDATA);
+	fmt->width = AR0144_DEF_WIDTH;
+	fmt->height = AR0144_EMBEDDED_DATA_HEIGHT;
+	fmt->code = info->edata;
+	fmt->field = V4L2_FIELD_NONE;
 
 	return 0;
 }
@@ -1556,6 +1643,8 @@ static int ar0144_init_subdev(struct ar0144 *sensor)
 
 	sensor->pads[AR0144_PAD_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
 	sensor->pads[AR0144_PAD_IMAGE].flags = MEDIA_PAD_FL_SINK
+					     | MEDIA_PAD_FL_INTERNAL;
+	sensor->pads[AR0144_PAD_EDATA].flags = MEDIA_PAD_FL_SINK
 					     | MEDIA_PAD_FL_INTERNAL;
 
 	ret = media_entity_pads_init(&sd->entity, ARRAY_SIZE(sensor->pads),
