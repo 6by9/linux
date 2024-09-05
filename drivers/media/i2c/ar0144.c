@@ -10,7 +10,8 @@
  * - Use grouped parameter hold to update controls atomically
  * - Expose debug information through debugfs (FRAME_COUNT, FRAME_STATUS, ...)
  * - Make MIPI D-PHY timings configurable
- * - Support the parallel interface
+ * - Program additional parallel interface parameters (slew rates, polarities,
+ *   ...)
  * - Expose additional controls (in particular the temperature sensor and the
  *   on-chip black level correction)
  * - Make binning configurable
@@ -300,6 +301,8 @@
 #define AR0144_MIN_CSI2_LINK_FREQ		150000000U
 #define AR0144_MAX_CSI2_LINK_FREQ		384000000U
 
+#define AR0144_MAX_PARALLEL_LINK_FREQ		74250000U
+
 /*
  * The pixel array contains 1300x820 optically transparent pixels, with 6 dummy
  * pixels on each side that can't be read out. The active size is 1288x808.
@@ -466,6 +469,12 @@ static int ar0144_configure_pll(struct ar0144 *sensor)
 	return ret;
 }
 
+static int ar0144_configure_parallel(struct ar0144 *sensor,
+				     const struct ar0144_format_info *info)
+{
+	return cci_write(sensor->regmap, AR0144_SERIAL_FORMAT, 0x0200, NULL);
+}
+
 static int ar0144_configure_mipi(struct ar0144 *sensor,
 				 const struct ar0144_format_info *info)
 {
@@ -558,13 +567,19 @@ static int ar0144_start_streaming(struct ar0144 *sensor,
 	if (ret)
 		goto error;
 
-	ret = ar0144_configure_mipi(sensor, info);
+	if (sensor->bus_cfg.bus_type == V4L2_MBUS_PARALLEL)
+		ret = ar0144_configure_parallel(sensor, info);
+	else
+		ret = ar0144_configure_mipi(sensor, info);
 
 	/*
 	 * We're all set, start streaming. Mask bad frames and keep read-only
 	 * registers locked.
 	 */
 	val = AR0144_MASK_BAD | AR0144_LOCK_REG | AR0144_STREAM | 0x2010;
+	if (sensor->bus_cfg.bus_type == V4L2_MBUS_PARALLEL)
+		val |= AR0144_SMIA_SERIALIZER_DIS | AR0144_PARALLEL_EN
+		    |  AR0144_DRIVE_PINS;
 	cci_write(sensor->regmap, AR0144_RESET_REGISTER, val, &ret);
 
 	if (ret)
@@ -598,6 +613,10 @@ static int ar0144_stop_streaming(struct ar0144 *sensor)
 	 * Initiate the transition to standby by clearing the STREAM bit. Don't
 	 * clear the bits that affect the output interface yet.
 	 */
+	if (sensor->bus_cfg.bus_type == V4L2_MBUS_PARALLEL)
+		reset_bits |= AR0144_SMIA_SERIALIZER_DIS | AR0144_PARALLEL_EN
+			   |  AR0144_DRIVE_PINS;
+
 	ret = cci_write(sensor->regmap, AR0144_RESET_REGISTER, reset_bits, NULL);
 	if (ret)
 		return ret;
@@ -1282,6 +1301,10 @@ static int ar0144_get_mbus_config(struct v4l2_subdev *sd, unsigned int pad,
 	default:
 		cfg->bus.mipi_csi2 = sensor->bus_cfg.bus.mipi_csi2;
 		break;
+
+	case V4L2_MBUS_PARALLEL:
+		cfg->bus.parallel = sensor->bus_cfg.bus.parallel;
+		break;
 	}
 
 	return 0;
@@ -1621,6 +1644,10 @@ static int ar0144_parse_dt(struct ar0144 *sensor)
 			ret = -EINVAL;
 			goto error;
 		}
+		break;
+
+	case V4L2_MBUS_PARALLEL:
+		nlanes = ep->bus.parallel.bus_width ? : 12;
 		break;
 
 	default:
