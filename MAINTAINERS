@@ -1835,6 +1835,12 @@ S:	Maintained
 W:	http://www.aquantia.com
 F:	drivers/net/ethernet/aquantia/atlantic/aq_ptp*
 
+AR0144 ONSEMI CAMERA SENSOR DRIVER
+M:	Laurent Pinchart <laurent.pinchart@ideasonboard.com>
+L:	linux-media@vger.kernel.org
+S:	Maintained
+F:	Documentation/devicetree/bindings/media/i2c/onnn,ar0144.yaml
+
 AR0521 ON SEMICONDUCTOR CAMERA SENSOR DRIVER
 M:	Krzysztof Hałasa <khalasa@piap.pl>
 L:	linux-media@vger.kernel.org
