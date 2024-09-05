@@ -1446,11 +1446,31 @@ static int ar0144_disable_streams(struct v4l2_subdev *sd,
 static int ar0144_entity_init_state(struct v4l2_subdev *sd,
 		struct v4l2_subdev_state *state)
 {
+	struct v4l2_subdev_route routes[] = {
+		{
+			.sink_pad = AR0144_PAD_IMAGE,
+			.sink_stream = 0,
+			.source_pad = AR0144_PAD_SOURCE,
+			.source_stream = AR0144_STREAM_IMAGE,
+			.flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE |
+				 V4L2_SUBDEV_ROUTE_FL_IMMUTABLE,
+		},
+	};
+	struct v4l2_subdev_krouting routing = {
+		.len_routes = ARRAY_SIZE(routes),
+		.num_routes = ARRAY_SIZE(routes),
+		.routes = routes,
+	};
 	const struct ar0144_format_info *info;
 	struct ar0144 *sensor = to_ar0144(sd);
 	struct v4l2_mbus_framefmt *fmt;
 	struct v4l2_rect *crop;
 	struct v4l2_rect *compose;
+	int ret;
+
+	ret = v4l2_subdev_set_routing(sd, state, &routing);
+	if (ret)
+		return ret;
 
 	info = &ar0144_formats[0];
 
@@ -1528,7 +1548,8 @@ static int ar0144_init_subdev(struct ar0144 *sensor)
 
 	v4l2_i2c_subdev_init(sd, client, &ar0144_subdev_ops);
 
-	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+		     V4L2_SUBDEV_FL_STREAMS;
 	sd->internal_ops = &ar0144_subdev_internal_ops;
 	sd->entity.function = MEDIA_ENT_F_CAM_SENSOR;
 	sd->entity.ops = &ar0144_entity_ops;
