@@ -1840,6 +1840,7 @@ M:	Laurent Pinchart <laurent.pinchart@ideasonboard.com>
 L:	linux-media@vger.kernel.org
 S:	Maintained
 F:	Documentation/devicetree/bindings/media/i2c/onnn,ar0144.yaml
+F:	drivers/media/i2c/ar0144.c
 
 AR0521 ON SEMICONDUCTOR CAMERA SENSOR DRIVER
 M:	Krzysztof Hałasa <khalasa@piap.pl>
