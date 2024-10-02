@@ -1635,6 +1635,8 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper)
 		ret = dev->driver->fbdev_probe(fb_helper, &sizes);
 	else if (fb_helper->funcs)
 		ret = fb_helper->funcs->fb_probe(fb_helper, &sizes);
+	else
+		ret = -EINVAL;
 	if (ret < 0)
 		return ret;
 
