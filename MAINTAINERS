@@ -19338,6 +19338,13 @@ F:	Documentation/devicetree/bindings/media/raspberrypi,pispbe.yaml
 F:	drivers/media/platform/raspberrypi/pisp_be/
 F:	include/uapi/linux/media/raspberrypi/
 
+RASPBERRY PI PISP CAMERA FRONT END
+M:	Tomi Valkeinen <tomi.valkeinen@ideasonboard.com>
+M:	Raspberry Pi Kernel Maintenance <kernel-list@raspberrypi.com>
+S:	Maintained
+F:	Documentation/devicetree/bindings/media/raspberrypi,rp1-cfe.yaml
+F:	drivers/media/platform/raspberrypi/rp1-cfe/
+
 RASPBERRY PI RP1 PCI DRIVER
 M:	Andrea della Porta <andrea.porta@suse.com>
 S:	Maintained
