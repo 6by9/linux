@@ -679,6 +679,9 @@ bool gpiochip_line_is_open_source(struct gpio_chip *gc, unsigned int offset);
 bool gpiochip_line_is_persistent(struct gpio_chip *gc, unsigned int offset);
 bool gpiochip_line_is_valid(const struct gpio_chip *gc, unsigned int offset);
 
+/* Assign gpio line names from device property */
+int gpiochip_set_names(struct gpio_chip *chip);
+
 /* get driver data */
 void *gpiochip_get_data(struct gpio_chip *gc);
 

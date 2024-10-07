@@ -522,7 +522,7 @@ static void gpiochip_set_desc_names(struct gpio_chip *gc)
  * names belong to the underlying firmware node and should not be released
  * by the caller.
  */
-static int gpiochip_set_names(struct gpio_chip *chip)
+int gpiochip_set_names(struct gpio_chip *chip)
 {
 	struct gpio_device *gdev = chip->gpiodev;
 	struct device *dev = &gdev->dev;
@@ -589,6 +589,7 @@ static int gpiochip_set_names(struct gpio_chip *chip)
 
 	return 0;
 }
+EXPORT_SYMBOL(gpiochip_set_names);
 
 static unsigned long *gpiochip_allocate_mask(struct gpio_chip *gc)
 {
