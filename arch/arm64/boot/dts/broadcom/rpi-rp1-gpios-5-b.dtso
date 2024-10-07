@@ -1,0 +1,62 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+
+/dts-v1/;
+/plugin/;
+
+&rp1_gpio {
+	gpio-line-names =
+		"ID_SDA", // GPIO0
+		"ID_SCL", // GPIO1
+		"GPIO2", // GPIO2
+		"GPIO3", // GPIO3
+		"GPIO4", // GPIO4
+		"GPIO5", // GPIO5
+		"GPIO6", // GPIO6
+		"GPIO7", // GPIO7
+		"GPIO8", // GPIO8
+		"GPIO9", // GPIO9
+		"GPIO10", // GPIO10
+		"GPIO11", // GPIO11
+		"GPIO12", // GPIO12
+		"GPIO13", // GPIO13
+		"GPIO14", // GPIO14
+		"GPIO15", // GPIO15
+		"GPIO16", // GPIO16
+		"GPIO17", // GPIO17
+		"GPIO18", // GPIO18
+		"GPIO19", // GPIO19
+		"GPIO20", // GPIO20
+		"GPIO21", // GPIO21
+		"GPIO22", // GPIO22
+		"GPIO23", // GPIO23
+		"GPIO24", // GPIO24
+		"GPIO25", // GPIO25
+		"GPIO26", // GPIO26
+		"GPIO27", // GPIO27
+		"PCIE_RP1_WAKE", // GPIO28
+		"FAN_TACH", // GPIO29
+		"HOST_SDA", // GPIO30
+		"HOST_SCL", // GPIO31
+		"ETH_RST_N", // GPIO32
+		"", // GPIO33
+		"CD0_IO0_MICCLK", // GPIO34
+		"CD0_IO0_MICDAT0", // GPIO35
+		"RP1_PCIE_CLKREQ_N", // GPIO36
+		"", // GPIO37
+		"CD0_SDA", // GPIO38
+		"CD0_SCL", // GPIO39
+		"CD1_SDA", // GPIO40
+		"CD1_SCL", // GPIO41
+		"USB_VBUS_EN", // GPIO42
+		"USB_OC_N", // GPIO43
+		"RP1_STAT_LED", // GPIO44
+		"FAN_PWM", // GPIO45
+		"CD1_IO0_MICCLK", // GPIO46
+		"2712_WAKE", // GPIO47
+		"CD1_IO1_MICDAT1", // GPIO48
+		"EN_MAX_USB_CUR", // GPIO49
+		"", // GPIO50
+		"", // GPIO51
+		"", // GPIO52
+		""; // GPIO53
+};
