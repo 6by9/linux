@@ -1323,6 +1323,52 @@ static int brcm_pcie_start_link(struct brcm_pcie *pcie)
 	return 0;
 }
 
+static int brcm_pcie_enable_external_msix(struct brcm_pcie *pcie,
+					  struct device_node *msi_np)
+{
+	struct inbound_win inbound_wins[PCIE_BRCM_MAX_INBOUND_WINS];
+	u64 msi_pci_addr, msi_phys_addr;
+	struct resource r;
+	int mip_bar, ret;
+	u32 val, reg;
+
+	ret = of_property_read_reg(msi_np, 1, &msi_pci_addr, NULL);
+	if (ret)
+		return ret;
+
+	ret = of_address_to_resource(msi_np, 0, &r);
+	if (ret)
+		return ret;
+
+	msi_phys_addr = r.start;
+
+	/* Find free inbound window for MIP access */
+	mip_bar = brcm_pcie_get_inbound_wins(pcie, inbound_wins);
+	if (mip_bar < 0)
+		return mip_bar;
+
+	mip_bar += 1;
+	reg = brcm_bar_reg_offset(mip_bar);
+
+	val = lower_32_bits(msi_pci_addr);
+	val |= brcm_pcie_encode_ibar_size(SZ_4K);
+	writel(val, pcie->base + reg);
+
+	val = upper_32_bits(msi_pci_addr);
+	writel(val, pcie->base + reg + 4);
+
+	reg = brcm_ubus_reg_offset(mip_bar);
+
+	val = lower_32_bits(msi_phys_addr);
+	val |= PCIE_MISC_UBUS_BAR1_CONFIG_REMAP_ACCESS_EN_MASK;
+	writel(val, pcie->base + reg);
+
+	val = upper_32_bits(msi_phys_addr);
+	writel(val, pcie->base + reg + 4);
+
+	return 0;
+}
+
 static const char * const supplies[] = {
 	"vpcie3v3",
 	"vpcie3v3aux",
@@ -1888,11 +1934,20 @@ static int brcm_pcie_probe(struct platform_device *pdev)
 		goto fail;
 	}
 
-	msi_np = of_parse_phandle(pcie->np, "msi-parent", 0);
-	if (pci_msi_enabled() && msi_np == pcie->np) {
-		ret = brcm_pcie_enable_msi(pcie);
+	if (pci_msi_enabled()) {
+		msi_np = of_parse_phandle(pcie->np, "msi-parent", 0);
+		const char *str;
+
+		if (msi_np == pcie->np) {
+			str = "internal MSI";
+			ret = brcm_pcie_enable_msi(pcie);
+		} else {
+			str = "external MSI-X";
+			ret = brcm_pcie_enable_external_msix(pcie, msi_np);
+		}
+
 		if (ret) {
-			dev_err(pcie->dev, "probe of internal MSI failed");
+			dev_err(pcie->dev, "enable of %s failed\n", str);
 			goto fail;
 		}
 	}
