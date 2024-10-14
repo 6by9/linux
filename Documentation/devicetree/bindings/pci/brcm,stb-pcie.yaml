@@ -14,6 +14,7 @@ properties:
     items:
       - enum:
           - brcm,bcm2711-pcie # The Raspberry Pi 4
+          - brcm,bcm2712-pcie # Raspberry Pi 5
           - brcm,bcm4908-pcie
           - brcm,bcm7211-pcie # Broadcom STB version of RPi4
           - brcm,bcm7216-pcie # Broadcom 7216 Arm
@@ -158,7 +159,9 @@ allOf:
       properties:
         compatible:
           contains:
-            const: brcm,bcm7712-pcie
+            enum:
+              - brcm,bcm7712-pcie
+              - brcm,bcm2712-pcie
     then:
       properties:
         resets:
