@@ -104,6 +104,11 @@ static const s64 ov5647_link_freqs[] = {
 	[FREQ_INDEX_VGA]	= 208333000,
 };
 
+static const s64 ov5647_link_freq_slow[] = {
+    [FREQ_INDEX_FULL]   = 218500000 >> 1,
+    [FREQ_INDEX_VGA]    = 208333000,
+};
+
 struct regval_list {
 	u16 addr;
 	u8 data;
@@ -226,6 +231,7 @@ static struct regval_list ov5647_common_regs[] = {
 };
 
 static struct regval_list ov5647_2592x1944_10bpp[] = {
+	{0x3037, 0x06},
 	{0x3036, 0x69},
 	{0x3821, 0x00},
 	{0x3820, 0x00},
@@ -262,6 +268,7 @@ static struct regval_list ov5647_2592x1944_10bpp[] = {
 };
 
 static struct regval_list ov5647_1080p30_10bpp[] = {
+	{0x3037, 0x06},
 	{0x3036, 0x69},
 	{0x3821, 0x00},
 	{0x3820, 0x00},
@@ -298,6 +305,7 @@ static struct regval_list ov5647_1080p30_10bpp[] = {
 };
 
 static struct regval_list ov5647_2x2binned_10bpp[] = {
+	{0x3037, 0x06},
 	{0x3036, 0x69},
 	{0x3821, 0x01},
 	{0x3820, 0x41},
@@ -385,7 +393,7 @@ static const struct ov5647_mode ov5647_modes[] = {
 			.width		= 2592,
 			.height		= 1944
 		},
-		.pixel_rate	= 87500000,
+		.pixel_rate	= 87500000 / 2,
 		.link_freq_index = FREQ_INDEX_FULL,
 		.hts		= 2844,
 		.vts		= 0x7b0,
@@ -407,7 +415,7 @@ static const struct ov5647_mode ov5647_modes[] = {
 			.width		= 1928,
 			.height		= 1080,
 		},
-		.pixel_rate	= 87500000,
+		.pixel_rate	= 87500000 / 2,
 		.link_freq_index = FREQ_INDEX_FULL,
 		.hts		= 2416,
 		.vts		= 0x450,
@@ -429,7 +437,7 @@ static const struct ov5647_mode ov5647_modes[] = {
 			.width		= 2592,
 			.height		= 1944,
 		},
-		.pixel_rate	= 87500000,
+		.pixel_rate	= 87500000 / 2,
 		.link_freq_index = FREQ_INDEX_FULL,
 		.hts		= 1896,
 		.vts		= 0x59b,
