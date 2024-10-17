@@ -3104,31 +3104,6 @@ static int vc5_hdmi_init_resources(struct drm_device *drm,
 	return 0;
 }
 
-static int vc4_hdmi_suspend(struct device *dev)
-{
-	struct vc4_hdmi *vc4_hdmi = dev_get_drvdata(dev);
-	struct drm_device *drm = vc4_hdmi->connector.dev;
-
-	if (drm && drm->mode_config.poll_enabled)
-		drm_kms_helper_poll_disable(drm);
-
-	return pm_runtime_force_suspend(dev);
-}
-
-static int vc4_hdmi_resume(struct device *dev)
-{
-	struct vc4_hdmi *vc4_hdmi = dev_get_drvdata(dev);
-	struct drm_device *drm = vc4_hdmi->connector.dev;
-	int ret;
-
-	ret = pm_runtime_force_resume(dev);
-
-	if (drm && drm->mode_config.poll_enabled)
-		drm_kms_helper_poll_enable(drm);
-
-	return ret;
-}
-
 static int vc4_hdmi_runtime_suspend(struct device *dev)
 {
 	struct vc4_hdmi *vc4_hdmi = dev_get_drvdata(dev);
@@ -3427,8 +3402,9 @@ static const struct of_device_id vc4_hdmi_dt_match[] = {
 };
 
 static const struct dev_pm_ops vc4_hdmi_pm_ops = {
-	RUNTIME_PM_OPS(vc4_hdmi_runtime_suspend, vc4_hdmi_runtime_resume, NULL)
-	SYSTEM_SLEEP_PM_OPS(vc4_hdmi_suspend, vc4_hdmi_resume)
+	SET_RUNTIME_PM_OPS(vc4_hdmi_runtime_suspend,
+			   vc4_hdmi_runtime_resume,
+			   NULL)
 };
 
 struct platform_driver vc4_hdmi_driver = {
@@ -3437,6 +3413,6 @@ struct platform_driver vc4_hdmi_driver = {
 	.driver = {
 		.name = "vc4_hdmi",
 		.of_match_table = vc4_hdmi_dt_match,
-		.pm = pm_ptr(&vc4_hdmi_pm_ops),
+		.pm = &vc4_hdmi_pm_ops,
 	},
 };
