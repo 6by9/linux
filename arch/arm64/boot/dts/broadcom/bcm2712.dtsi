@@ -653,6 +653,35 @@
 		clock-output-names = "108MHz-clock";
 	};
 
+	macb_pclk: macb-pclk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-output-names = "pclk";
+		clock-frequency = <200000000>;
+	};
+
+	sdhci_core: sdhci_core {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-output-names = "core";
+		clock-frequency = <50000000>;
+	};
+
+	macb_hclk: macb-hclk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-output-names = "hclk";
+		clock-frequency = <200000000>;
+	};
+
+	rp1_vdd_3v3: rp1_vdd_3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd-3v3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
 	hvs: hvs@107c580000 {
 		compatible = "brcm,bcm2712-hvs";
 		reg = <0x10 0x7c580000 0x0 0x1a000>;
