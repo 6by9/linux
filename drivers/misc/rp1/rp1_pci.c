@@ -350,6 +350,8 @@ static const struct pci_device_id dev_id_table[] = {
 	{ 0, }
 };
 
+MODULE_DEVICE_TABLE(pci, dev_id_table);
+
 static struct pci_driver rp1_driver = {
 	.name		= RP1_DRIVER_NAME,
 	.id_table	= dev_id_table,
