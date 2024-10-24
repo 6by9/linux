@@ -4,6 +4,134 @@
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/clock/raspberrypi,rp1-clocks.h>
 
+#define RP1_INT_IO_BANK0	0
+#define RP1_INT_IO_BANK1	1
+#define RP1_INT_IO_BANK2	2
+#define RP1_INT_AUDIO_IN	3
+#define RP1_INT_AUDIO_OUT	4
+#define RP1_INT_PWM0		5
+#define RP1_INT_ETH		6
+#define RP1_INT_I2C0		7
+#define RP1_INT_I2C1		8
+#define RP1_INT_I2C2		9
+#define RP1_INT_I2C3		10
+#define RP1_INT_I2C4		11
+#define RP1_INT_I2C5		12
+#define RP1_INT_I2C6		13
+#define RP1_INT_I2S0		14
+#define RP1_INT_I2S1		15
+#define RP1_INT_I2S2		16
+#define RP1_INT_SDIO0		17
+#define RP1_INT_SDIO1		18
+#define RP1_INT_SPI0		19
+#define RP1_INT_SPI1		20
+#define RP1_INT_SPI2		21
+#define RP1_INT_SPI3		22
+#define RP1_INT_SPI4		23
+#define RP1_INT_SPI5		24
+#define RP1_INT_UART0		25
+#define RP1_INT_TIMER_0		26
+#define RP1_INT_TIMER_1		27
+#define RP1_INT_TIMER_2		28
+#define RP1_INT_TIMER_3		29
+#define RP1_INT_USBHOST0	30
+#define RP1_INT_USBHOST0_0	31
+#define RP1_INT_USBHOST0_1	32
+#define RP1_INT_USBHOST0_2	33
+#define RP1_INT_USBHOST0_3	34
+#define RP1_INT_USBHOST1	35
+#define RP1_INT_USBHOST1_0	36
+#define RP1_INT_USBHOST1_1	37
+#define RP1_INT_USBHOST1_2	38
+#define RP1_INT_USBHOST1_3	39
+#define RP1_INT_DMA		40
+#define RP1_INT_PWM1		41
+#define RP1_INT_UART1		42
+#define RP1_INT_UART2		43
+#define RP1_INT_UART3		44
+#define RP1_INT_UART4		45
+#define RP1_INT_UART5		46
+#define RP1_INT_MIPI0		47
+#define RP1_INT_MIPI1		48
+#define RP1_INT_VIDEO_OUT	49
+#define RP1_INT_PIO_0		50
+#define RP1_INT_PIO_1		51
+#define RP1_INT_ADC_FIFO	52
+#define RP1_INT_PCIE_OUT	53
+#define RP1_INT_SPI6		54
+#define RP1_INT_SPI7		55
+#define RP1_INT_SPI8		56
+#define RP1_INT_SYSCFG		58
+#define RP1_INT_CLOCKS_DEFAULT	59
+#define RP1_INT_VBUSCTRL	60
+#define RP1_INT_PROC_MISC	57
+
+#define RP1_DMA_I2C0_RX 0x0
+#define RP1_DMA_I2C0_TX 0x1
+#define RP1_DMA_I2C1_RX 0x2
+#define RP1_DMA_I2C1_TX 0x3
+#define RP1_DMA_I2C2_RX 0x4
+#define RP1_DMA_I2C2_TX 0x5
+#define RP1_DMA_I2C3_RX 0x6
+#define RP1_DMA_I2C3_TX 0x7
+#define RP1_DMA_I2C4_RX 0x8
+#define RP1_DMA_I2C4_TX 0x9
+#define RP1_DMA_I2C5_RX 0xa
+#define RP1_DMA_I2C5_TX 0xb
+#define RP1_DMA_SPI0_RX 0xc
+#define RP1_DMA_SPI0_TX 0xd
+#define RP1_DMA_SPI1_RX 0xe
+#define RP1_DMA_SPI1_TX 0xf
+#define RP1_DMA_SPI2_RX 0x10
+#define RP1_DMA_SPI2_TX 0x11
+#define RP1_DMA_SPI3_RX 0x12
+#define RP1_DMA_SPI3_TX 0x13
+#define RP1_DMA_SPI4_RX 0x14
+#define RP1_DMA_SPI4_TX 0x15
+#define RP1_DMA_SPI5_RX 0x16
+#define RP1_DMA_SPI5_TX 0x17
+#define RP1_DMA_PWM0 0x18
+#define RP1_DMA_UART0_RX 0x19
+#define RP1_DMA_UART0_TX 0x1a
+#define RP1_DMA_AUDIO_IN_CH0 0x1b
+#define RP1_DMA_AUDIO_IN_CH1 0x1c
+#define RP1_DMA_AUDIO_OUT 0x1d
+#define RP1_DMA_PWM1 0x1e
+#define RP1_DMA_I2S0_RX 0x1f
+#define RP1_DMA_I2S0_TX 0x20
+#define RP1_DMA_I2S1_RX 0x21
+#define RP1_DMA_I2S1_TX 0x22
+#define RP1_DMA_I2S2_RX 0x23
+#define RP1_DMA_I2S2_TX 0x24
+#define RP1_DMA_UART1_RX 0x25
+#define RP1_DMA_UART1_TX 0x26
+#define RP1_DMA_UART2_RX 0x27
+#define RP1_DMA_UART2_TX 0x28
+#define RP1_DMA_UART3_RX 0x29
+#define RP1_DMA_UART3_TX 0x2a
+#define RP1_DMA_UART4_RX 0x2b
+#define RP1_DMA_UART4_TX 0x2c
+#define RP1_DMA_UART5_RX 0x2d
+#define RP1_DMA_UART5_TX 0x2e
+#define RP1_DMA_ADC 0x2f
+#define RP1_DMA_DMA_TICK_TICK0 0x30
+#define RP1_DMA_DMA_TICK_TICK1 0x31
+#define RP1_DMA_SPI6_RX 0x32
+#define RP1_DMA_SPI6_TX 0x33
+#define RP1_DMA_SPI7_RX 0x34
+#define RP1_DMA_SPI7_TX 0x35
+#define RP1_DMA_SPI8_RX 0x36
+#define RP1_DMA_SPI8_TX 0x37
+#define RP1_DMA_PIO_CH0_TX 0x38
+#define RP1_DMA_PIO_CH0_RX 0x39
+#define RP1_DMA_PIO_CH1_TX 0x3a
+#define RP1_DMA_PIO_CH1_RX 0x3b
+#define RP1_DMA_PIO_CH2_TX 0x3c
+#define RP1_DMA_PIO_CH2_RX 0x3d
+#define RP1_DMA_PIO_CH3_TX 0x3e
+#define RP1_DMA_PIO_CH3_RX 0x3f
+
+
 /dts-v1/;
 /plugin/;
 
@@ -55,6 +183,307 @@
 					interrupts = <0 IRQ_TYPE_LEVEL_HIGH>,
 						     <1 IRQ_TYPE_LEVEL_HIGH>,
 						     <2 IRQ_TYPE_LEVEL_HIGH>;
+				};
+
+				rp1_uart0: serial@c040030000 {
+					compatible = "arm,pl011-axi";
+					reg = <0xc0 0x40030000  0x0 0x100>;
+					interrupts = <RP1_INT_UART0 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+					clock-names = "uartclk", "apb_pclk";
+					// dmas = <&rp1_dma RP1_DMA_UART0_TX>,
+					//        <&rp1_dma RP1_DMA_UART0_RX>;
+					// dma-names = "tx", "rx";
+					pinctrl-names = "default";
+					arm,primecell-periphid = <0x00541011>;
+					uart-has-rtscts;
+					cts-event-workaround;
+					skip-init;
+					status = "disabled";
+				};
+
+				rp1_uart1: serial@c040034000 {
+					compatible = "arm,pl011-axi";
+					reg = <0xc0 0x40034000  0x0 0x100>;
+					interrupts = <RP1_INT_UART1 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+					clock-names = "uartclk", "apb_pclk";
+					// dmas = <&rp1_dma RP1_DMA_UART1_TX>,
+					//        <&rp1_dma RP1_DMA_UART1_RX>;
+					// dma-names = "tx", "rx";
+					pinctrl-names = "default";
+					arm,primecell-periphid = <0x00541011>;
+					uart-has-rtscts;
+					cts-event-workaround;
+					skip-init;
+					status = "disabled";
+				};
+
+				rp1_uart2: serial@c040038000 {
+					compatible = "arm,pl011-axi";
+					reg = <0xc0 0x40038000  0x0 0x100>;
+					interrupts = <RP1_INT_UART2 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+					clock-names = "uartclk", "apb_pclk";
+					// dmas = <&rp1_dma RP1_DMA_UART2_TX>,
+					//        <&rp1_dma RP1_DMA_UART2_RX>;
+					// dma-names = "tx", "rx";
+					pinctrl-names = "default";
+					arm,primecell-periphid = <0x00541011>;
+					uart-has-rtscts;
+					cts-event-workaround;
+					skip-init;
+					status = "disabled";
+				};
+
+				rp1_uart3: serial@c04003c000 {
+					compatible = "arm,pl011-axi";
+					reg = <0xc0 0x4003c000  0x0 0x100>;
+					interrupts = <RP1_INT_UART3 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+					clock-names = "uartclk", "apb_pclk";
+					// dmas = <&rp1_dma RP1_DMA_UART3_TX>,
+					//        <&rp1_dma RP1_DMA_UART3_RX>;
+					// dma-names = "tx", "rx";
+					pinctrl-names = "default";
+					arm,primecell-periphid = <0x00541011>;
+					uart-has-rtscts;
+					cts-event-workaround;
+					skip-init;
+					status = "disabled";
+				};
+
+				rp1_uart4: serial@c040040000 {
+					compatible = "arm,pl011-axi";
+					reg = <0xc0 0x40040000  0x0 0x100>;
+					interrupts = <RP1_INT_UART4 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+					clock-names = "uartclk", "apb_pclk";
+					// dmas = <&rp1_dma RP1_DMA_UART4_TX>,
+					//        <&rp1_dma RP1_DMA_UART4_RX>;
+					// dma-names = "tx", "rx";
+					pinctrl-names = "default";
+					arm,primecell-periphid = <0x00541011>;
+					uart-has-rtscts;
+					cts-event-workaround;
+					skip-init;
+					status = "disabled";
+				};
+
+				rp1_uart5: serial@c040044000 {
+					compatible = "arm,pl011-axi";
+					reg = <0xc0 0x40044000  0x0 0x100>;
+					interrupts = <RP1_INT_UART5 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+					clock-names = "uartclk", "apb_pclk";
+					// dmas = <&rp1_dma RP1_DMA_UART5_TX>,
+					//        <&rp1_dma RP1_DMA_UART5_RX>;
+					// dma-names = "tx", "rx";
+					pinctrl-names = "default";
+					arm,primecell-periphid = <0x00541011>;
+					uart-has-rtscts;
+					cts-event-workaround;
+					skip-init;
+					status = "disabled";
+				};
+
+				rp1_i2c0: i2c@c040070000 {
+					reg = <0xc0 0x40070000  0x0 0x1000>;
+					compatible = "snps,designware-i2c";
+					interrupts = <RP1_INT_I2C0 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&rp1_clocks RP1_CLK_SYS>;
+					i2c-scl-rising-time-ns = <65>;
+					i2c-scl-falling-time-ns = <100>;
+					//status = "disabled";
+				};
+
+				rp1_i2c1: i2c@c040074000 {
+					reg = <0xc0 0x40074000  0x0 0x1000>;
+					compatible = "snps,designware-i2c";
+					interrupts = <RP1_INT_I2C1 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&rp1_clocks RP1_CLK_SYS>;
+					i2c-scl-rising-time-ns = <65>;
+					i2c-scl-falling-time-ns = <100>;
+					//status = "disabled";
+				};
+
+				rp1_i2c2: i2c@c040078000 {
+					reg = <0xc0 0x40078000  0x0 0x1000>;
+					compatible = "snps,designware-i2c";
+					interrupts = <RP1_INT_I2C2 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&rp1_clocks RP1_CLK_SYS>;
+					i2c-scl-rising-time-ns = <65>;
+					i2c-scl-falling-time-ns = <100>;
+					status = "disabled";
+				};
+
+				rp1_i2c3: i2c@c04007c000 {
+					reg = <0xc0 0x4007c000  0x0 0x1000>;
+					compatible = "snps,designware-i2c";
+					interrupts = <RP1_INT_I2C3 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&rp1_clocks RP1_CLK_SYS>;
+					i2c-scl-rising-time-ns = <65>;
+					i2c-scl-falling-time-ns = <100>;
+					status = "disabled";
+				};
+
+				rp1_i2c4: i2c@c040080000 {
+					reg = <0xc0 0x40080000  0x0 0x1000>;
+					compatible = "snps,designware-i2c";
+					interrupts = <RP1_INT_I2C4 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&rp1_clocks RP1_CLK_SYS>;
+					i2c-scl-rising-time-ns = <65>;
+					i2c-scl-falling-time-ns = <100>;
+					status = "disabled";
+				};
+
+				rp1_i2c5: i2c@c040084000 {
+					reg = <0xc0 0x40084000  0x0 0x1000>;
+					compatible = "snps,designware-i2c";
+					interrupts = <RP1_INT_I2C5 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&rp1_clocks RP1_CLK_SYS>;
+					i2c-scl-rising-time-ns = <65>;
+					i2c-scl-falling-time-ns = <100>;
+					status = "disabled";
+				};
+
+				rp1_i2c6: i2c@c040088000 {
+					reg = <0xc0 0x40088000  0x0 0x1000>;
+					compatible = "snps,designware-i2c";
+					interrupts = <RP1_INT_I2C6 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&rp1_clocks RP1_CLK_SYS>;
+					i2c-scl-rising-time-ns = <65>;
+					i2c-scl-falling-time-ns = <100>;
+					status = "disabled";
+				};
+
+				rp1_pwm0: pwm@c040098000 {
+					compatible = "raspberrypi,rp1-pwm";
+					reg = <0xc0 0x40098000  0x0 0x100>;
+					#pwm-cells = <3>;
+					clocks = <&rp1_clocks RP1_CLK_PWM0>;
+					assigned-clocks = <&rp1_clocks RP1_CLK_PWM0>;
+					assigned-clock-rates = <50000000>;
+					status = "disabled";
+				};
+
+				rp1_pwm1: pwm@c04009c000 {
+					compatible = "raspberrypi,rp1-pwm";
+					reg = <0xc0 0x4009c000  0x0 0x100>;
+					#pwm-cells = <3>;
+					clocks = <&rp1_clocks RP1_CLK_PWM1>;
+					assigned-clocks = <&rp1_clocks RP1_CLK_PWM1>;
+					assigned-clock-rates = <50000000>;
+					status = "disabled";
+				};
+
+				rp1_i2s0: i2s@c0400a0000 {
+					reg = <0xc0 0x400a0000  0x0 0x1000>;
+					compatible = "snps,designware-i2s";
+					// Providing an interrupt disables DMA
+					// interrupts = <RP1_INT_I2S0 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&rp1_clocks RP1_CLK_I2S>;
+					clock-names = "i2sclk";
+					#sound-dai-cells = <0>;
+					dmas = <&rp1_dma RP1_DMA_I2S0_TX>,<&rp1_dma RP1_DMA_I2S0_RX>;
+					dma-names = "tx", "rx";
+					dma-maxburst = <4>;
+					status = "disabled";
+				};
+
+				rp1_i2s1: i2s@c0400a4000 {
+					reg = <0xc0 0x400a4000  0x0 0x1000>;
+					compatible = "snps,designware-i2s";
+					// Providing an interrupt disables DMA
+					// interrupts = <RP1_INT_I2S1 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&rp1_clocks RP1_CLK_I2S>;
+					clock-names = "i2sclk";
+					#sound-dai-cells = <0>;
+					dmas = <&rp1_dma RP1_DMA_I2S1_TX>,<&rp1_dma RP1_DMA_I2S1_RX>;
+					dma-names = "tx", "rx";
+					dma-maxburst = <4>;
+					status = "disabled";
+				};
+
+				rp1_i2s2: i2s@c0400a8000 {
+					reg = <0xc0 0x400a8000  0x0 0x1000>;
+					compatible = "snps,designware-i2s";
+					// Providing an interrupt disables DMA
+					// interrupts = <RP1_INT_I2S2 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&rp1_clocks RP1_CLK_I2S>;
+					status = "disabled";
+				};
+
+				rp1_adc: adc@c0400c8000 {
+					compatible = "raspberrypi,rp1-adc";
+					reg = <0xc0 0x400c8000 0x0 0x4000>;
+					clocks = <&rp1_clocks RP1_CLK_ADC>;
+					clock-names = "adcclk";
+					#clock-cells = <0>;
+					vref-supply = <&rp1_vdd_3v3>;
+					status = "disabled";
+				};
+
+				rp1_eth: ethernet@c040100000 {
+					reg = <0xc0 0x40100000  0x0 0x4000>;
+					compatible = "cdns,macb";
+					#address-cells = <1>;
+					#size-cells = <0>;
+					interrupts = <RP1_INT_ETH IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&macb_pclk &macb_hclk &rp1_clocks RP1_CLK_ETH_TSU>;
+					clock-names = "pclk", "hclk", "tsu_clk";
+					phy-mode = "rgmii-id";
+					cdns,aw2w-max-pipe = /bits/ 8 <8>;
+					cdns,ar2r-max-pipe = /bits/ 8 <8>;
+					cdns,use-aw2b-fill;
+					local-mac-address = [00 00 00 00 00 00];
+				};
+
+				rp1_usb0: usb@c040200000 {
+					reg = <0xc0 0x40200000  0x0 0x100000>;
+					compatible = "snps,dwc3";
+					dr_mode = "host";
+					usb3-lpm-capable;
+					snps,axi-pipe-limit = /bits/ 8 <8>;
+					snps,dis_rxdet_inp3_quirk;
+					snps,parkmode-disable-ss-quirk;
+					snps,parkmode-disable-hs-quirk;
+					snps,parkmode-disable-fsls-quirk;
+					snps,tx-max-burst = /bits/ 8 <8>;
+					snps,tx-thr-num-pkt = /bits/ 8 <2>;
+					interrupts = <RP1_INT_USBHOST0_0 IRQ_TYPE_EDGE_RISING>;
+				};
+
+				rp1_usb1: usb@c040300000 {
+					reg = <0xc0 0x40300000  0x0 0x100000>;
+					compatible = "snps,dwc3";
+					dr_mode = "host";
+					usb3-lpm-capable;
+					snps,axi-pipe-limit = /bits/ 8 <8>;
+					snps,dis_rxdet_inp3_quirk;
+					snps,parkmode-disable-ss-quirk;
+					snps,parkmode-disable-hs-quirk;
+					snps,parkmode-disable-fsls-quirk;
+					snps,tx-max-burst = /bits/ 8 <8>;
+					snps,tx-thr-num-pkt = /bits/ 8 <2>;
+					interrupts = <RP1_INT_USBHOST1_0 IRQ_TYPE_EDGE_RISING>;
+				};
+
+				rp1_dma: dma@c040188000 {
+					reg = <0xc0 0x40188000  0x0 0x1000>;
+					compatible = "snps,axi-dma-1.01a";
+					interrupts = <RP1_INT_DMA IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&sdhci_core &rp1_clocks RP1_CLK_SYS>;
+					clock-names = "core-clk", "cfgr-clk";
+
+					#dma-cells = <1>;
+					dma-channels = <8>;
+					snps,dma-masters = <1>;
+					snps,dma-targets = <64>;
+					snps,data-width = <4>; // (8 << 4) == 128 bits
+					snps,block-size = <0x40000 0x40000 0x40000 0x40000 0x40000 0x40000 0x40000 0x40000>;
+					snps,priority = <0 1 2 3 4 5 6 7>;
+					snps,axi-max-burst-len = <4>;
 				};
 			};
 		};
