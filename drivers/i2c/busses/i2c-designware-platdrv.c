@@ -208,10 +208,13 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 	struct i2c_adapter *adap;
 	struct dw_i2c_dev *dev;
 	int irq, ret;
+	pr_err("%s %s\n", __func__, pdev->name);
 
 	irq = platform_get_irq(pdev, 0);
-	if (irq < 0)
+	if (irq < 0) {
+		dev_err_probe(&pdev->dev, irq, "platform_get_irq failed %d\n", irq);
 		return irq;
+	}
 
 	dev = devm_kzalloc(&pdev->dev, sizeof(struct dw_i2c_dev), GFP_KERNEL);
 	if (!dev)
@@ -226,22 +229,30 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, dev);
 
 	ret = dw_i2c_plat_request_regs(dev);
-	if (ret)
+	if (ret) {
+		dev_err_probe(&pdev->dev, ret, "dw_i2c_plat_request_regs failed %d\n", ret);
 		return ret;
+	}
 
 	dev->rst = devm_reset_control_get_optional_exclusive(&pdev->dev, NULL);
-	if (IS_ERR(dev->rst))
+	if (IS_ERR(dev->rst)) {
+		dev_err_probe(&pdev->dev, PTR_ERR(dev->rst), "devm_reset_control_get_optional_exclusive failed %ld\n", PTR_ERR(dev->rst));
 		return PTR_ERR(dev->rst);
+	}
 
 	reset_control_deassert(dev->rst);
 
 	ret = i2c_dw_fw_parse_and_configure(dev);
-	if (ret)
+	if (ret) {
+		dev_err_probe(&pdev->dev, ret, "i2c_dw_fw_parse_and_configure failed %d\n", ret);
 		goto exit_reset;
+	}
 
 	ret = i2c_dw_probe_lock_support(dev);
-	if (ret)
+	if (ret) {
+		dev_err_probe(&pdev->dev, ret, "i2c_dw_probe_lock_support failed %d\n", ret);
 		goto exit_reset;
+	}
 
 	i2c_dw_configure(dev);
 
@@ -249,18 +260,22 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 	dev->pclk = devm_clk_get_optional(&pdev->dev, "pclk");
 	if (IS_ERR(dev->pclk)) {
 		ret = PTR_ERR(dev->pclk);
+		dev_err_probe(&pdev->dev, ret, "devm_clk_get_optional failed %d\n", ret);
 		goto exit_reset;
 	}
 
 	dev->clk = devm_clk_get_optional(&pdev->dev, NULL);
 	if (IS_ERR(dev->clk)) {
 		ret = PTR_ERR(dev->clk);
+		dev_err_probe(&pdev->dev, ret, "devm_clk_get_optional failed %d\n", ret);
 		goto exit_reset;
 	}
 
 	ret = i2c_dw_prepare_clk(dev, true);
-	if (ret)
+	if (ret) {
+		dev_err_probe(&pdev->dev, ret, "i2c_dw_prepare_clk failed %d\n", ret);
 		goto exit_reset;
+	}
 
 	if (dev->clk) {
 		struct i2c_timings *t = &dev->timings;
@@ -304,15 +319,19 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 	pm_runtime_enable(&pdev->dev);
 
 	ret = i2c_dw_probe(dev);
-	if (ret)
+	if (ret) {
+		dev_err_probe(&pdev->dev, ret, "i2c_dw_probe failed %d\n", ret);
 		goto exit_probe;
+	}
 
+	pr_err("%s exit %d\n", __func__, ret);
 	return ret;
 
 exit_probe:
 	dw_i2c_plat_pm_cleanup(dev);
 exit_reset:
 	reset_control_assert(dev->rst);
+	pr_err("%s exit %d\n", __func__, ret);
 	return ret;
 }
 
