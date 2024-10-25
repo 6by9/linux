@@ -437,6 +437,15 @@
 					cdns,ar2r-max-pipe = /bits/ 8 <8>;
 					cdns,use-aw2b-fill;
 					local-mac-address = [00 00 00 00 00 00];
+
+					phy-handle = <&phy1>;
+					phy-reset-gpios = <&rp1_gpio 32 GPIO_ACTIVE_LOW>;
+					phy-reset-duration = <5>;
+
+					phy1: ethernet-phy@1 {
+						reg = <0x1>;
+						brcm,powerdown-enable;
+					};
 				};
 
 				rp1_usb0: usb@c040200000 {
