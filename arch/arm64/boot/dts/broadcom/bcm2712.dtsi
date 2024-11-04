@@ -625,6 +625,15 @@
 			g-rx-fifo-size = <558>;
 			g-tx-fifo-size = <512 512 512 512 512 256 256>;
 		};
+
+		hevc_dec: codec@800000 {
+			compatible = "raspberrypi,hevc-dec";
+			reg = <0x00 0x00800000  0x0 0x10000>, /* HEVC */
+			      <0x00 0x00840000  0x0 0x1000>;  /* INTC */
+			reg-names = "hevc",
+				    "intc";
+			interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
+		};
 	};
 
 	timer {

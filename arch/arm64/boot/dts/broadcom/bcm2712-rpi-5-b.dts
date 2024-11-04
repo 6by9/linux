@@ -112,3 +112,8 @@
 &pcie2 {
 	status = "okay";
 };
+
+&hevc_dec {
+	clocks = <&firmware_clocks 11>;
+	clock-names = "hevc";
+};
