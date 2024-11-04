@@ -22053,6 +22053,7 @@ M:	Raspberry Pi Internal Kernel List <kernel-list@raspberrypi.com>
 L:	linux-media@vger.kernel.org
 S:	Maintained
 F:	Documentation/devicetree/bindings/media/raspberrypi,hevc-dec.yaml
+F:	drivers/media/platform/raspberrypi/hevc_dec
 
 RASPBERRY PI PISP BACK END
 M:	Jacopo Mondi <jacopo.mondi@ideasonboard.com>
