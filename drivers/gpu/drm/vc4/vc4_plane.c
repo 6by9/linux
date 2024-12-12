@@ -891,7 +891,7 @@ static int vc4_plane_mode_set(struct drm_plane *plane,
 	u32 v_subsample = fb->format->vsub;
 	bool mix_plane_alpha;
 	bool covers_screen;
-	u32 scl0, scl1, pitch0;
+	u32 scl0, scl1, pitch[2];
 	u32 tiling, src_x, src_y;
 	u32 width, height;
 	u32 hvs_format = format->hvs;
@@ -938,7 +938,7 @@ static int vc4_plane_mode_set(struct drm_plane *plane,
 	switch (base_format_mod) {
 	case DRM_FORMAT_MOD_LINEAR:
 		tiling = SCALER_CTL0_TILING_LINEAR;
-		pitch0 = VC4_SET_FIELD(fb->pitches[0], SCALER_SRC_PITCH);
+		pitch[0] = VC4_SET_FIELD(fb->pitches[0], SCALER_SRC_PITCH);
 
 		/* Adjust the base pointer to the first pixel to be scanned
 		 * out.
@@ -990,23 +990,23 @@ static int vc4_plane_mode_set(struct drm_plane *plane,
 		 */
 		if (rotation & DRM_MODE_REFLECT_Y) {
 			y_off = tile_h_mask - y_off;
-			pitch0 = SCALER_PITCH0_TILE_LINE_DIR;
+			pitch[0] = SCALER_PITCH0_TILE_LINE_DIR;
 		} else {
-			pitch0 = 0;
+			pitch[0] = 0;
 		}
 
 		tiling = SCALER_CTL0_TILING_256B_OR_T;
-		pitch0 |= (VC4_SET_FIELD(x_off, SCALER_PITCH0_SINK_PIX) |
-			   VC4_SET_FIELD(y_off, SCALER_PITCH0_TILE_Y_OFFSET) |
-			   VC4_SET_FIELD(tiles_l, SCALER_PITCH0_TILE_WIDTH_L) |
-			   VC4_SET_FIELD(tiles_r, SCALER_PITCH0_TILE_WIDTH_R));
+		pitch[0] |= (VC4_SET_FIELD(x_off, SCALER_PITCH0_SINK_PIX) |
+			     VC4_SET_FIELD(y_off, SCALER_PITCH0_TILE_Y_OFFSET) |
+			     VC4_SET_FIELD(tiles_l, SCALER_PITCH0_TILE_WIDTH_L) |
+			     VC4_SET_FIELD(tiles_r, SCALER_PITCH0_TILE_WIDTH_R));
 		offsets[0] += tiles_t * (tiles_w << tile_size_shift);
 		offsets[0] += subtile_y << 8;
 		offsets[0] += utile_y << 4;
 
 		/* Rows of tiles alternate left-to-right and right-to-left. */
 		if (tiles_t & 1) {
-			pitch0 |= SCALER_PITCH0_TILE_INITIAL_LINE_DIR;
+			pitch[0] |= SCALER_PITCH0_TILE_INITIAL_LINE_DIR;
 			offsets[0] += (tiles_w - tiles_l) << tile_size_shift;
 			offsets[0] -= (1 + !tile_y) << 10;
 		} else {
@@ -1062,6 +1062,20 @@ static int vc4_plane_mode_set(struct drm_plane *plane,
 		for (i = 0; i < num_planes; i++) {
 			u32 tile_w, tile, x_off, pix_per_tile;
 
+			switch (param) {
+			case 0:
+				/* Compute column stride from buffer size and
+				 * padded width
+				 */
+				pitch[i] = drm_format_info_plane_height(fb->format,
+									fb->height,
+									i);
+				break;
+			default:
+				pitch[i] = VC4_SET_FIELD(param, SCALER_TILE_HEIGHT);
+				break;
+			}
+
 			if (fb->format->format == DRM_FORMAT_P030) {
 				/*
 				 * Spec says: bits [31:4] of the given address
@@ -1105,7 +1119,6 @@ static int vc4_plane_mode_set(struct drm_plane *plane,
 			offsets[i] += x_off & ~(i ? 1 : 0);
 		}
 
-		pitch0 = VC4_SET_FIELD(param, SCALER_TILE_HEIGHT);
 		break;
 	}
 
@@ -1260,7 +1273,7 @@ static int vc4_plane_mode_set(struct drm_plane *plane,
 		vc4_dlist_write(vc4_state, 0xc0c0c0c0);
 
 	/* Pitch word 0 */
-	vc4_dlist_write(vc4_state, pitch0);
+	vc4_dlist_write(vc4_state, pitch[0]);
 
 	/* Pitch word 1/2 */
 	for (i = 1; i < num_planes; i++) {
@@ -1270,7 +1283,7 @@ static int vc4_plane_mode_set(struct drm_plane *plane,
 					VC4_SET_FIELD(fb->pitches[i],
 						      SCALER_SRC_PITCH));
 		} else {
-			vc4_dlist_write(vc4_state, pitch0);
+			vc4_dlist_write(vc4_state, pitch[1]);
 		}
 	}
 
