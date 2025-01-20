@@ -6,7 +6,7 @@
 config MISC_RP1
 	tristate "RaspberryPi RP1 PCIe support"
 	depends on OF_IRQ && PCI_MSI && PCI_QUIRKS
-	select OF_OVERLAY
+	depends on OF_OVERLAY
 	select PCI_DYNAMIC_OF_NODES
 	help
 	  Support the RP1 peripheral chip found on Raspberry Pi 5 board.
