@@ -2,7 +2,10 @@
 /dts-v1/;
 
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pwm/pwm.h>
+
 #include "bcm2712.dtsi"
+#include "rp1-placeholder.dtsi"
 
 / {
 	compatible = "raspberrypi,5-model-b", "brcm,bcm2712";
@@ -50,6 +53,18 @@
 		regulator-boot-on;
 		enable-active-high;
 		gpios = <&gio_aon 4 GPIO_ACTIVE_HIGH>;
+	};
+
+	fan: cooling_fan {
+		status = "disabled";
+		compatible = "pwm-fan";
+		#cooling-cells = <2>;
+		cooling-min-state = <0>;
+		cooling-max-state = <3>;
+		cooling-levels = <0 75 125 175 250>;
+		pwms = <&rp1_pwm1 3 41566 PWM_POLARITY_INVERTED>;
+		rpm-regmap = <&rp1_pwm1>;
+		rpm-offset = <0x3c>;
 	};
 };
 

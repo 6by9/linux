@@ -1,0 +1,536 @@
+#include <dt-bindings/clock/raspberrypi,rp1-clocks.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+&pcie2 {
+	pci@0,0 {
+		#address-cells = <0x03>;
+		bus-range = <0x01 0x01>;
+		interrupts = <0x01>;
+		interrupt-map = <0x10000 0x00 0x00 0x01 0x01 0x00 0xe5 0x04
+				 0x10000 0x00 0x00 0x02 0x01 0x00 0xe6 0x04
+				 0x10000 0x00 0x00 0x03 0x01 0x00 0xe7 0x04
+				 0x10000 0x00 0x00 0x04 0x01 0x00 0xe8 0x04>;
+		#size-cells = <0x02>;
+		device_type = "pci";
+		interrupt-map-mask = <0xffff00 0x00 0x00 0x07>;
+		//compatible = "pci14e4,2712", \0pciclass,060400\0pciclass,0604";
+		ranges = <0x82000000 0x00 0x00 0x82000000 0x00 0x00 0x00 0x600000>;
+		#interrupt-cells = <0x01>;
+		reg = <0x00 0x00 0x00 0x00 0x00>;
+
+		dev@0,0 {
+			#address-cells = <3>;
+			interrupts = <0x01>;
+			#size-cells = <2>;
+			#interrupt-cells = <0x01>;
+			interrupt-controller;
+
+			ranges = <0x00 0x00 0x00 0x82010000 0x00 0x410000 0x00 0x4000
+				  0x01 0x00 0x00 0x82010000 0x00 0x00 0x00 0x400000
+				  0x02 0x00 0x00 0x82010000 0x00 0x400000 0x00 0x10000>;
+			reg = <0x10000 0x00 0x00 0x00 0x00>;
+
+			rp1: pci-ep-bus@1 {
+				compatible = "simple-bus";
+				ranges = <0x00 0x40000000  0x01 0x00 0x00000000  0x00 0x00400000>;
+				dma-ranges = <0x10 0x00000000  0x43000000 0x10 0x00000000  0x10 0x00000000>;
+				#address-cells = <2>;
+				#size-cells = <2>;
+			};
+		};
+	};
+};
+
+&rp1 {
+	rp1_clocks: clocks@40018000 {
+		compatible = "raspberrypi,rp1-clocks";
+		reg = <0x00 0x40018000 0x0 0x10038>;
+		#clock-cells = <1>;
+		clocks = <&clk_rp1_xosc>;
+		assigned-clocks = <&rp1_clocks RP1_PLL_SYS_CORE>,
+				  <&rp1_clocks RP1_PLL_SYS>,
+				  <&rp1_clocks RP1_PLL_SYS_SEC>,
+				  <&rp1_clocks RP1_CLK_SYS>;
+		assigned-clock-rates = <1000000000>, // RP1_PLL_SYS_CORE
+				       <200000000>,  // RP1_PLL_SYS
+				       <125000000>,  // RP1_PLL_SYS_SEC
+				       <200000000>;  // RP1_CLK_SYS
+	};
+
+	rp1_gpio: pinctrl@400d0000 {
+		compatible = "raspberrypi,rp1-gpio";
+		reg = <0x00 0x400d0000  0x0 0xc000>,
+		      <0x00 0x400e0000  0x0 0xc000>,
+		      <0x00 0x400f0000  0x0 0xc000>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		interrupts = <0 IRQ_TYPE_LEVEL_HIGH>,
+			     <1 IRQ_TYPE_LEVEL_HIGH>,
+			     <2 IRQ_TYPE_LEVEL_HIGH>;
+	};
+	rp1_uart0: serial@40030000 {
+		compatible = "arm,pl011-axi";
+		reg = <0x00 0x40030000  0x0 0x100>;
+		interrupts = <25 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+		clock-names = "uartclk", "apb_pclk";
+//					dmas = <&rp1_dma RP1_DMA_UART0_TX>,
+//					       <&rp1_dma RP1_DMA_UART0_RX>;
+//					dma-names = "tx", "rx";
+		pinctrl-names = "default";
+		arm,primecell-periphid = <0x00341011>;
+		uart-has-rtscts;
+		cts-event-workaround;
+		skip-init;
+	};
+
+	rp1_uart1: serial@40034000 {
+		compatible = "arm,pl011-axi";
+		reg = <0x00 0x40034000  0x0 0x100>;
+		interrupts = <42 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+		clock-names = "uartclk", "apb_pclk";
+		pinctrl-names = "default";
+		arm,primecell-periphid = <0x00341011>;
+		uart-has-rtscts;
+		cts-event-workaround;
+		skip-init;
+	};
+
+	rp1_uart2: serial@40038000 {
+		compatible = "arm,pl011-axi";
+		reg = <0x00 0x40038000  0x0 0x100>;
+		interrupts = <43 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+		clock-names = "uartclk", "apb_pclk";
+		pinctrl-names = "default";
+		arm,primecell-periphid = <0x00341011>;
+		uart-has-rtscts;
+		cts-event-workaround;
+		skip-init;
+	};
+
+	rp1_uart3: serial@4003c000 {
+		compatible = "arm,pl011-axi";
+		reg = <0x00 0x4003c000  0x0 0x100>;
+		interrupts = <44 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+		clock-names = "uartclk", "apb_pclk";
+		pinctrl-names = "default";
+		arm,primecell-periphid = <0x00341011>;
+		uart-has-rtscts;
+		cts-event-workaround;
+		skip-init;
+	};
+
+	rp1_uart4: serial@40040000 {
+		compatible = "arm,pl011-axi";
+		reg = <0x00 0x40040000  0x0 0x100>;
+		interrupts = <45 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+		clock-names = "uartclk", "apb_pclk";
+		pinctrl-names = "default";
+		arm,primecell-periphid = <0x00341011>;
+		uart-has-rtscts;
+		cts-event-workaround;
+		skip-init;
+	};
+
+	rp1_uart5: serial@40044000 {
+		compatible = "arm,pl011-axi";
+		reg = <0x00 0x40044000  0x0 0x100>;
+		interrupts = <46 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+		clock-names = "uartclk", "apb_pclk";
+		pinctrl-names = "default";
+		arm,primecell-periphid = <0x00341011>;
+		uart-has-rtscts;
+		cts-event-workaround;
+		skip-init;
+	};
+
+	rp1_i2c0: i2c@40070000 {
+		reg = <0x00 0x40070000  0x0 0x1000>;
+		compatible = "snps,designware-i2c";
+		interrupts = <7 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&rp1_clocks RP1_CLK_SYS>;
+		i2c-scl-rising-time-ns = <65>;
+		i2c-scl-falling-time-ns = <100>;
+	};
+
+	rp1_i2c1: i2c@40074000 {
+		reg = <0x00 0x40074000  0x0 0x1000>;
+		compatible = "snps,designware-i2c";
+		interrupts = <8 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&rp1_clocks RP1_CLK_SYS>;
+		i2c-scl-rising-time-ns = <65>;
+		i2c-scl-falling-time-ns = <100>;
+	};
+
+	rp1_i2c2: i2c@40078000 {
+		reg = <0x00 0x40078000  0x0 0x1000>;
+		compatible = "snps,designware-i2c";
+		interrupts = <9 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&rp1_clocks RP1_CLK_SYS>;
+		i2c-scl-rising-time-ns = <65>;
+		i2c-scl-falling-time-ns = <100>;
+	};
+
+	rp1_i2c3: i2c@4007c000 {
+		reg = <0x00 0x4007c000  0x0 0x1000>;
+		compatible = "snps,designware-i2c";
+		interrupts = <10 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&rp1_clocks RP1_CLK_SYS>;
+		i2c-scl-rising-time-ns = <65>;
+		i2c-scl-falling-time-ns = <100>;
+	};
+
+	rp1_i2c4: i2c@40080000 {
+		reg = <0x00 0x40080000  0x0 0x1000>;
+		compatible = "snps,designware-i2c";
+		interrupts = <11 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&rp1_clocks RP1_CLK_SYS>;
+		i2c-scl-rising-time-ns = <65>;
+		i2c-scl-falling-time-ns = <100>;
+	};
+
+	rp1_i2c5: i2c@40084000 {
+		reg = <0x00 0x40084000  0x0 0x1000>;
+		compatible = "snps,designware-i2c";
+		interrupts = <12 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&rp1_clocks RP1_CLK_SYS>;
+		i2c-scl-rising-time-ns = <65>;
+		i2c-scl-falling-time-ns = <100>;
+	};
+
+	rp1_i2c6: i2c@40088000 {
+		reg = <0x00 0x40088000  0x0 0x1000>;
+		compatible = "snps,designware-i2c";
+		interrupts = <13 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&rp1_clocks RP1_CLK_SYS>;
+		i2c-scl-rising-time-ns = <65>;
+		i2c-scl-falling-time-ns = <100>;
+	};
+
+	rp1_dma: dma@40188000 {
+		reg = <0x00 0x40188000  0x0 0x1000>;
+		compatible = "snps,axi-dma-1.01a";
+		interrupts = <40 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&rp1_clocks RP1_CLK_DMA &rp1_clocks RP1_CLK_SYS>;
+		clock-names = "core-clk", "cfgr-clk";
+
+		#dma-cells = <1>;
+		dma-channels = <8>;
+		snps,dma-masters = <1>;
+		snps,dma-targets = <64>;
+		snps,data-width = <4>; // (8 << 4) == 128 bits
+		snps,block-size = <0x40000 0x40000 0x40000 0x40000 0x40000 0x40000 0x40000 0x40000>;
+		snps,priority = <0 1 2 3 4 5 6 7>;
+		snps,axi-max-burst-len = <4>;
+	};
+
+	rp1_pwm1: pwm@4009c000 {
+		compatible = "raspberrypi,rp1-pwm";
+		reg = <0x00 0x4009c000  0x0 0x100>;
+		#pwm-cells = <3>;
+		clocks = <&rp1_clocks RP1_CLK_PWM1>;
+		assigned-clocks = <&rp1_clocks RP1_CLK_PWM1>;
+		assigned-clock-rates = <50000000>;
+	};
+
+	rp1_usb0: usb@40200000 {
+		reg = <0x00 0x40200000  0x0 0x100000>;
+		compatible = "snps,dwc3";
+		dr_mode = "host";
+		usb3-lpm-capable;
+		snps,axi-pipe-limit = /bits/ 8 <8>;
+		snps,dis_rxdet_inp3_quirk;
+		snps,enhanced-nak-fs-quirk;
+		snps,parkmode-disable-ss-quirk;
+		snps,parkmode-disable-hs-quirk;
+		snps,parkmode-disable-fsls-quirk;
+		snps,tx-max-burst = /bits/ 8 <8>;
+		snps,tx-thr-num-pkt = /bits/ 8 <2>;
+		interrupts = <31 IRQ_TYPE_EDGE_RISING>;
+	};
+
+	rp1_usb1: usb@40300000 {
+		reg = <0x00 0x40300000  0x0 0x100000>;
+		compatible = "snps,dwc3";
+		dr_mode = "host";
+		usb3-lpm-capable;
+		snps,axi-pipe-limit = /bits/ 8 <8>;
+		snps,dis_rxdet_inp3_quirk;
+		snps,enhanced-nak-fs-quirk;
+		snps,parkmode-disable-ss-quirk;
+		snps,parkmode-disable-hs-quirk;
+		snps,parkmode-disable-fsls-quirk;
+		snps,tx-max-burst = /bits/ 8 <8>;
+		snps,tx-thr-num-pkt = /bits/ 8 <2>;
+		interrupts = <36 IRQ_TYPE_EDGE_RISING>;
+	};
+};
+
+&rp1_gpio {
+	rp1_uart0_14_15: rp1_uart0_14_15 {
+		pin_txd {
+			function = "uart0";
+			pins = "gpio14";
+			bias-disable;
+		};
+		pin_rxd {
+			function = "uart0";
+			pins = "gpio15";
+			bias-pull-up;
+		};
+	};
+	rp1_uart0_ctsrts_16_17: rp1_uart0_ctsrts_16_17 {
+		pin_cts {
+			function = "uart0";
+			pins = "gpio16";
+			bias-pull-up;
+		};
+		pin_rts {
+			function = "uart0";
+			pins = "gpio17";
+			bias-disable;
+		};
+	};
+	rp1_uart1_0_1: rp1_uart1_0_1 {
+		pin_txd {
+			function = "uart1";
+			pins = "gpio0";
+			bias-disable;
+		};
+		pin_rxd {
+			function = "uart1";
+			pins = "gpio1";
+			bias-pull-up;
+		};
+	};
+	rp1_uart1_ctsrts_2_3: rp1_uart1_ctsrts_2_3 {
+		pin_cts {
+			function = "uart1";
+			pins = "gpio2";
+			bias-pull-up;
+		};
+		pin_rts {
+			function = "uart1";
+			pins = "gpio3";
+			bias-disable;
+		};
+	};
+	rp1_uart2_4_5: rp1_uart2_4_5 {
+		pin_txd {
+			function = "uart2";
+			pins = "gpio4";
+			bias-disable;
+		};
+		pin_rxd {
+			function = "uart2";
+			pins = "gpio5";
+			bias-pull-up;
+		};
+	};
+	rp1_uart2_ctsrts_6_7: rp1_uart2_ctsrts_6_7 {
+		pin_cts {
+			function = "uart2";
+			pins = "gpio6";
+			bias-pull-up;
+		};
+		pin_rts {
+			function = "uart2";
+			pins = "gpio7";
+			bias-disable;
+		};
+	};
+	rp1_uart3_8_9: rp1_uart3_8_9 {
+		pin_txd {
+			function = "uart3";
+			pins = "gpio8";
+			bias-disable;
+		};
+		pin_rxd {
+			function = "uart3";
+			pins = "gpio9";
+			bias-pull-up;
+		};
+	};
+	rp1_uart3_ctsrts_10_11: rp1_uart3_ctsrts_10_11 {
+		pin_cts {
+			function = "uart3";
+			pins = "gpio10";
+			bias-pull-up;
+		};
+		pin_rts {
+			function = "uart3";
+			pins = "gpio11";
+			bias-disable;
+		};
+	};
+	rp1_uart4_12_13: rp1_uart4_12_13 {
+		pin_txd {
+			function = "uart4";
+			pins = "gpio12";
+			bias-disable;
+		};
+		pin_rxd {
+			function = "uart4";
+			pins = "gpio13";
+			bias-pull-up;
+		};
+	};
+	rp1_uart4_ctsrts_14_15: rp1_uart4_ctsrts_14_15 {
+		pin_cts {
+			function = "uart4";
+			pins = "gpio14";
+			bias-pull-up;
+		};
+		pin_rts {
+			function = "uart4";
+			pins = "gpio15";
+			bias-disable;
+		};
+	};
+
+	rp1_sdio0_22_27: rp1_sdio0_22_27 {
+		pin_clk {
+			function = "sd0";
+			pins = "gpio22";
+			bias-disable;
+			drive-strength = <12>;
+			slew-rate = <1>;
+		};
+		pin_cmd {
+			function = "sd0";
+			pins = "gpio23";
+			bias-pull-up;
+			drive-strength = <12>;
+			slew-rate = <1>;
+		};
+		pins_dat {
+			function = "sd0";
+			pins = "gpio24", "gpio25", "gpio26", "gpio27";
+			bias-pull-up;
+			drive-strength = <12>;
+			slew-rate = <1>;
+		};
+	};
+
+	rp1_sdio1_28_33: rp1_sdio1_28_33 {
+		pin_clk {
+			function = "sd1";
+			pins = "gpio28";
+			bias-disable;
+			drive-strength = <12>;
+			slew-rate = <1>;
+		};
+		pin_cmd {
+			function = "sd1";
+			pins = "gpio29";
+			bias-pull-up;
+			drive-strength = <12>;
+			slew-rate = <1>;
+		};
+		pins_dat {
+			function = "sd1";
+			pins = "gpio30", "gpio31", "gpio32", "gpio33";
+			bias-pull-up;
+			drive-strength = <12>;
+			slew-rate = <1>;
+		};
+	};
+
+	rp1_i2s0_18_21: rp1_i2s0_18_21 {
+		function = "i2s0";
+		pins = "gpio18", "gpio19", "gpio20", "gpio21";
+		bias-disable;
+	};
+
+	rp1_i2s1_18_21: rp1_i2s1_18_21 {
+		function = "i2s1";
+		pins = "gpio18", "gpio19", "gpio20", "gpio21";
+		bias-disable;
+	};
+
+	rp1_i2c4_34_35: rp1_i2c4_34_35 {
+		function = "i2c4";
+		pins = "gpio34", "gpio35";
+		drive-strength = <12>;
+		bias-pull-up;
+	};
+	rp1_i2c6_38_39: rp1_i2c6_38_39 {
+		function = "i2c6";
+		pins = "gpio38", "gpio39";
+		drive-strength = <12>;
+		bias-pull-up;
+	};
+	rp1_i2c4_40_41: rp1_i2c4_40_41 {
+		function = "i2c4";
+		pins = "gpio40", "gpio41";
+		drive-strength = <12>;
+		bias-pull-up;
+	};
+	rp1_i2c5_44_45: rp1_i2c5_44_45 {
+		function = "i2c5";
+		pins = "gpio44", "gpio45";
+		drive-strength = <12>;
+		bias-pull-up;
+	};
+	rp1_i2c0_0_1: rp1_i2c0_0_1 {
+		function = "i2c0";
+		pins = "gpio0", "gpio1";
+		drive-strength = <12>;
+		bias-pull-up;
+	};
+	rp1_i2c0_8_9: rp1_i2c0_8_9 {
+		function = "i2c0";
+		pins = "gpio8", "gpio9";
+		drive-strength = <12>;
+		bias-pull-up;
+	};
+	rp1_i2c1_2_3: rp1_i2c1_2_3 {
+		function = "i2c1";
+		pins = "gpio2", "gpio3";
+		drive-strength = <12>;
+		bias-pull-up;
+	};
+	rp1_i2c1_10_11: rp1_i2c1_10_11 {
+		function = "i2c1";
+		pins = "gpio10", "gpio11";
+		drive-strength = <12>;
+		bias-pull-up;
+	};
+	rp1_i2c2_4_5: rp1_i2c2_4_5 {
+		function = "i2c2";
+		pins = "gpio4", "gpio5";
+		drive-strength = <12>;
+		bias-pull-up;
+	};
+	rp1_i2c2_12_13: rp1_i2c2_12_13 {
+		function = "i2c2";
+		pins = "gpio12", "gpio13";
+		drive-strength = <12>;
+		bias-pull-up;
+	};
+	rp1_i2c3_6_7: rp1_i2c3_6_7 {
+		function = "i2c3";
+		pins = "gpio6", "gpio7";
+		drive-strength = <12>;
+		bias-pull-up;
+	};
+	rp1_i2c3_14_15: rp1_i2c3_14_15 {
+		function = "i2c3";
+		pins = "gpio14", "gpio15";
+		drive-strength = <12>;
+		bias-pull-up;
+	};
+	rp1_i2c3_22_23: rp1_i2c3_22_23 {
+		function = "i2c3";
+		pins = "gpio22", "gpio23";
+		drive-strength = <12>;
+		bias-pull-up;
+	};
+};
