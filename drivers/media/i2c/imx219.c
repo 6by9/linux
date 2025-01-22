@@ -223,10 +223,8 @@ static const struct cci_reg_sequence imx219_4lane_regs[] = {
 
 static const s64 imx219_link_freq_menu[] = {
 	IMX219_DEFAULT_LINK_FREQ,
-};
-
-static const s64 imx219_link_freq_4lane_menu[] = {
 	IMX219_DEFAULT_LINK_FREQ_4LANE,
+	IMX219_DEFAULT_LINK_FREQ_4LANE_UNSUPPORTED,
 };
 
 static const char * const imx219_test_pattern_menu[] = {
@@ -354,6 +352,7 @@ struct imx219 {
 
 	/* Two or Four lanes */
 	u8 lanes;
+	unsigned long link_freq_bitmap;
 };
 
 static inline struct imx219 *to_imx219(struct v4l2_subdev *_sd)
@@ -500,13 +499,11 @@ static int imx219_init_controls(struct imx219 *imx219)
 					       imx219_get_pixel_rate(imx219),
 					       imx219_get_pixel_rate(imx219), 1,
 					       imx219_get_pixel_rate(imx219));
-
+	pr_err("imx219 using link_freq_bitmap of %lx and hence offset %d\n", imx219->link_freq_bitmap, __fls(imx219->link_freq_bitmap));
 	imx219->link_freq =
 		v4l2_ctrl_new_int_menu(ctrl_hdlr, &imx219_ctrl_ops,
-				       V4L2_CID_LINK_FREQ,
-				       ARRAY_SIZE(imx219_link_freq_menu) - 1, 0,
-				       (imx219->lanes == 2) ? imx219_link_freq_menu :
-				       imx219_link_freq_4lane_menu);
+				       V4L2_CID_LINK_FREQ, 0, 0,
+				       &imx219_link_freq_menu[__fls(imx219->link_freq_bitmap)]);
 	if (imx219->link_freq)
 		imx219->link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
@@ -1059,6 +1056,7 @@ static int imx219_check_hwcfg(struct device *dev, struct imx219 *imx219)
 	};
 	int ret = -EINVAL;
 	bool link_frequency_valid = false;
+	unsigned long link_freq_bitmap;
 
 	endpoint = fwnode_graph_get_next_endpoint(dev_fwnode(dev), NULL);
 	if (!endpoint)
@@ -1085,33 +1083,44 @@ static int imx219_check_hwcfg(struct device *dev, struct imx219 *imx219)
 		goto error_out;
 	}
 
-	if (ep_cfg.nr_of_link_frequencies == 1) {
-		switch (imx219->lanes) {
-		case 2:
-			if (ep_cfg.link_frequencies[0] ==
-						IMX219_DEFAULT_LINK_FREQ)
-				link_frequency_valid = true;
-			break;
-		case 4:
-			if (ep_cfg.link_frequencies[0] ==
-						IMX219_DEFAULT_LINK_FREQ_4LANE)
-				link_frequency_valid = true;
-			else if (ep_cfg.link_frequencies[0] ==
-				   IMX219_DEFAULT_LINK_FREQ_4LANE_UNSUPPORTED) {
-				dev_warn(dev, "Link frequency of %d not supported, but has been incorrectly advertised previously\n",
-					 IMX219_DEFAULT_LINK_FREQ_4LANE_UNSUPPORTED);
-				dev_warn(dev, "Using link frequency of %d\n",
-					 IMX219_DEFAULT_LINK_FREQ_4LANE);
-				link_frequency_valid = true;
-			}
-			break;
+	ret = v4l2_link_freq_to_bitmap(dev,
+				       ep_cfg.link_frequencies,
+				       ep_cfg.nr_of_link_frequencies,
+				       imx219_link_freq_menu,
+				       ARRAY_SIZE(imx219_link_freq_menu),
+				       &imx219->link_freq_bitmap);
+	if (ret || ep_cfg.nr_of_link_frequencies != 1 ||
+	    !imx219->link_freq_bitmap) {
+		dev_err_probe(dev, -EINVAL,
+			      "No valid link-frequency found in DT\n");
+		ret = -EINVAL;
+		goto error_out;
+	}
+
+	pr_err("link_freq_bitmap returned %lu\n", link_freq_bitmap);
+	switch (imx219->lanes) {
+	case 2:
+		if (imx219->link_freq_bitmap & BIT(0))
+			link_frequency_valid = true;
+		break;
+	case 4:
+		if (imx219->link_freq_bitmap & BIT(2)) {
+			dev_warn(dev, "Link frequency of %d not supported, but has been incorrectly advertised previously\n",
+				 IMX219_DEFAULT_LINK_FREQ_4LANE_UNSUPPORTED);
+			dev_warn(dev, "Using link frequency of %d\n",
+				 IMX219_DEFAULT_LINK_FREQ_4LANE);
+			imx219->link_freq_bitmap &= ~BIT(2);
+			imx219->link_freq_bitmap |= BIT(1);
 		}
+		if (imx219->link_freq_bitmap & BIT(1))
+			link_frequency_valid = true;
+		break;
 	}
 
 	if (!link_frequency_valid) {
 		dev_err_probe(dev, -EINVAL,
-			      "Link frequency not supported: %lld\n",
-			      ep_cfg.link_frequencies[0]);
+			      "Link frequency not supported for %d lanes: %lld\n",
+			      imx219->lanes, ep_cfg.link_frequencies[0]);
 		goto error_out;
 	}
 
