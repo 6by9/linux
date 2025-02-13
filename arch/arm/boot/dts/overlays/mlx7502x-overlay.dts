@@ -18,10 +18,10 @@
 				reg = <0x57>;
 				clocks = <&mlx7502x_clk>;
 
-				vdda-supply = <&cam3_reg>;
-				vddif-supply = <&cam2_reg>;
-				vddd-supply = <&cam1_reg>;
-				vdmix-supply = <&cam1_reg>;
+				vdda-supply = <&mlx7502x_3_reg>;
+				vddif-supply = <&mlx7502x_2_reg>;
+				vddd-supply = <&mlx7502x_1_reg>;
+				vdmix-supply = <&mlx7502x_1_reg>;
 
 				rotation = <0>;
 				orientation = <2>;
@@ -33,11 +33,11 @@
 						data-lanes = <1 2>;
 						clock-noncontinuous;
 						link-frequencies = /bits/ 64 < 960000000
-														904000000
-														800000000
-														704000000
-														600000000
-														300000000 >;
+										904000000
+										800000000
+										704000000
+										600000000
+										300000000 >;
 					};
 				};
 			};
@@ -53,7 +53,7 @@
 				csi1_ep: endpoint{
 					remote-endpoint = <&mlx7502x_out_mipi_csi2>;
 					clock-lanes = <0>;
-					data-lanes = <1 2 3 4>;
+					data-lanes = <1 2>;
 				};
 			};
 		};
@@ -84,23 +84,23 @@
 	fragment@5 {
 		target-path = "/";
 		__overlay__ {
-			cam1_reg: cam1_regulator {
+			mlx7502x_1_reg: cam1_regulator {
 					compatible = "regulator-fixed";
-					regulator-name = "cam1-reg";
+					regulator-name = "mlx7502x-1-reg";
 					enable-active-high;
 				    gpio = <&gpio 4 GPIO_ACTIVE_HIGH>;
 				};
 
-			cam2_reg: cam2_regulator {
+			mlx7502x_2_reg: cam2_regulator {
 					compatible = "regulator-fixed";
-					regulator-name = "cam2-reg";
+					regulator-name = "mlx7502x-2-reg";
 					enable-active-high;
 					gpio = <&gpio 3 GPIO_ACTIVE_HIGH>;
 				};
 
-			cam3_reg: cam3_regulator {
+			mlx7502x_3_reg: cam3_regulator {
 					compatible = "regulator-fixed";
-					regulator-name = "cam3-reg";
+					regulator-name = "mlx7502x-3-reg";
 					enable-active-high;
 					gpio = <&gpio 2 GPIO_ACTIVE_HIGH>;
 				};
@@ -113,10 +113,17 @@
 	    };
 	};
 
+	fragment@100 {
+		target = <&csi1>;
+		__dormant__ {
+			compatible = "brcm,bcm2835-unicam-legacy";
+		};
+	};
+
 	__overrides__ {
 		rotation = <&mlx7502x>,"rotation:0";
 		orientation = <&mlx7502x>,"orientation:0";
-		media-controller = <&csi>,"brcm,media-controller?";
+		media-controller = <0>,"!100";
 	};
 
 };
