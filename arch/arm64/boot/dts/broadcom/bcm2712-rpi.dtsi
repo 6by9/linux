@@ -95,11 +95,21 @@
 		regulator-min-microvolt = <5000000>;
 		regulator-name = "5v0";
 	};
+
+	rp1_vdd_3v3: rp1_vdd_3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd-3v3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
 };
 
+#if 0
 pio: &rp1_pio {
 	status = "okay";
 };
+#endif
 
 / {
 	chosen: chosen {
@@ -112,17 +122,25 @@ pio: &rp1_pio {
 		blpubkey = &blpubkey;
 		bluetooth = &bluetooth;
 		console = &uart10;
-		drm-dsi1 = &dsi0;
-		drm-dsi2 = &dsi1;
-		ethernet0 = &rp1_eth;
 		fb = &fb;
-		gpio0 = &gpio;
 		gpio1 = &gio;
 		gpio2 = &gio_aon;
 		gpio3 = &pinctrl;
 		gpio4 = &pinctrl_aon;
-		gpiochip0 = &gpio;
 		gpiochip10 = &gio;
+		mailbox = &mailbox;
+		mmc0 = &sdio1;
+		serial10 = &uart10;
+		spi10 = &spi10;
+		uart10 = &uart10;
+		wifi0 = &wifi;
+		i2c12 = &i2c10;
+#if 0
+		drm-dsi1 = &dsi0;
+		drm-dsi2 = &dsi1;
+		ethernet0 = &rp1_eth;
+		gpio0 = &gpio;
+		gpiochip0 = &gpio;
 		i2c = &i2c_arm;
 		i2c0 = &i2c0;
 		i2c1 = &i2c1;
@@ -130,54 +148,74 @@ pio: &rp1_pio {
 		i2c3 = &i2c3;
 		i2c10 = &i2c_csi_dsi0;
 		i2c11 = &i2c_csi_dsi1;
-		i2c12 = &i2c10;
-		mailbox = &mailbox;
-		mmc0 = &sdio1;
 		pio0 = &pio;
 		serial0 = &uart0;
 		serial1 = &uart1;
-		serial10 = &uart10;
 		serial2 = &uart2;
 		serial3 = &uart3;
 		serial4 = &uart4;
 		spi0 = &spi0;
 		spi1 = &spi1;
-		spi10 = &spi10;
 		spi2 = &spi2;
 		spi3 = &spi3;
 		spi4 = &spi4;
 		spi5 = &spi5;
 		uart0 = &uart0;
 		uart1 = &uart1;
-		uart10 = &uart10;
 		uart2 = &uart2;
 		uart3 = &uart3;
 		uart4 = &uart4;
 		usb0 = &rp1_usb0;
 		usb1 = &rp1_usb1;
-		wifi0 = &wifi;
+#endif
 	};
 
 	__overrides__ {
-		act_led_gpio = <&led_act>,"gpios:4",<&led_act>,"gpios:0=",<&gpio>;
-		act_led_activelow = <&led_act>, "gpios:8";
-		act_led_trigger = <&led_act>, "linux,default-trigger";
 		axiperf = <&axiperf>,"status";
 		bdaddr = <&bluetooth>, "local-bd-address[";
 		button_debounce = <&pwr_key>, "debounce-interval:0";
+		drm_fb0_vc4 = <&aliases>, "drm-fb0=",&vc4;
+		drm_fb1_vc4 = <&aliases>, "drm-fb1=",&vc4;
+		drm_fb2_vc4 = <&aliases>, "drm-fb2=",&vc4;
+		krnbt = <&bluetooth>, "status";
+		nvme = <&pciex1>, "status";
+		nvmem_cust_rw = <&nvmem_cust>,"rw?";
+		nvmem_mac_rw = <&nvmem_mac>,"rw?";
+		nvmem_priv_rw = <&nvmem_priv>,"rw?";
+		pcie_tperst_clk_ms = <&pciex1>, "brcm,tperst-clk-ms:0";
+		pciex1 = <&pciex1>, "status";
+		pciex1_gen = <&pciex1> , "max-link-speed:0";
+		pciex1_no_l0s = <&pciex1>, "aspm-no-l0s?";
+		pciex1_tperst_clk_ms = <&pciex1>, "brcm,tperst-clk-ms:0";
+		random = <&random>, "status";
+		rtc = <&rpi_rtc>, "status";
+		rtc_bbat_vchg = <&rpi_rtc>, "trickle-charge-microvolt:0";
+		strict_gpiod = <&chosen>, "bootargs=pinctrl_rp1.persist_gpio_outputs=n";
+		suspend = <&pwr_key>, "linux,code:0=205";
+		wifiaddr = <&wifi>, "local-mac-address[";
+
+#if 0
+		act_led_gpio = <&led_act>,"gpios:4",<&led_act>,"gpios:0=",<&gpio>;
+		act_led_activelow = <&led_act>, "gpios:8";
+		act_led_trigger = <&led_act>, "linux,default-trigger";
+
+		cam0_reg = <&cam0_reg>,"status";
+		cam0_reg_gpio = <&cam0_reg>,"gpio:4",
+				<&cam0_reg>,"gpio:0=", <&gpio>;
+		cam1_reg = <&cam1_reg>,"status";
+		cam1_reg_gpio = <&cam1_reg>,"gpio:4",
+				<&cam1_reg>,"gpio:0=", <&gpio>;
 		cooling_fan = <&fan>, "status", <&rp1_pwm1>, "status";
+
 		drm_fb0_rp1_dpi = <&aliases>, "drm-fb0=",&dpi;
 		drm_fb0_rp1_dsi0 = <&aliases>, "drm-fb0=",&dsi0;
 		drm_fb0_rp1_dsi1 = <&aliases>, "drm-fb0=",&dsi1;
-		drm_fb0_vc4 = <&aliases>, "drm-fb0=",&vc4;
 		drm_fb1_rp1_dpi = <&aliases>, "drm-fb1=",&dpi;
 		drm_fb1_rp1_dsi0 = <&aliases>, "drm-fb1=",&dsi0;
 		drm_fb1_rp1_dsi1 = <&aliases>, "drm-fb1=",&dsi1;
-		drm_fb1_vc4 = <&aliases>, "drm-fb1=",&vc4;
 		drm_fb2_rp1_dpi = <&aliases>, "drm-fb2=",&dpi;
 		drm_fb2_rp1_dsi0 = <&aliases>, "drm-fb2=",&dsi0;
 		drm_fb2_rp1_dsi1 = <&aliases>, "drm-fb2=",&dsi1;
-		drm_fb2_vc4 = <&aliases>, "drm-fb2=",&vc4;
 		eth_led0 = <&phy1>,"led-modes:0";
 		eth_led1 = <&phy1>,"led-modes:4";
 		fan_temp0 = <&cpu_tepid>,"temperature:0";
@@ -205,35 +243,13 @@ pio: &rp1_pio {
 		i2c0_baudrate = <&i2c0>, "clock-frequency:0";
 		i2c1 = <&i2c1>, "status";
 		i2c1_baudrate = <&i2c1>, "clock-frequency:0";
-		krnbt = <&bluetooth>, "status";
-		nvme = <&pciex1>, "status";
-		nvmem_cust_rw = <&nvmem_cust>,"rw?";
-		nvmem_mac_rw = <&nvmem_mac>,"rw?";
-		nvmem_priv_rw = <&nvmem_priv>,"rw?";
-		pcie_tperst_clk_ms = <&pciex1>, "brcm,tperst-clk-ms:0";
-		pciex1 = <&pciex1>, "status";
-		pciex1_gen = <&pciex1> , "max-link-speed:0";
-		pciex1_no_l0s = <&pciex1>, "aspm-no-l0s?";
-		pciex1_tperst_clk_ms = <&pciex1>, "brcm,tperst-clk-ms:0";
 		pwr_led_gpio = <&led_pwr>, "gpios:4";
 		pwr_led_activelow = <&led_pwr>, "gpios:8";
 		pwr_led_trigger = <&led_pwr>, "linux,default-trigger";
-		random = <&random>, "status";
-		rtc = <&rpi_rtc>, "status";
-		rtc_bbat_vchg = <&rpi_rtc>, "trickle-charge-microvolt:0";
 		spi = <&spi0>, "status";
-		strict_gpiod = <&chosen>, "bootargs=pinctrl_rp1.persist_gpio_outputs=n";
-		suspend = <&pwr_key>, "linux,code:0=205";
 		uart0 = <&uart0>, "status";
 		uart0_console = <&uart0>,"status", <&aliases>, "console=",&uart0;
-		wifiaddr = <&wifi>, "local-mac-address[";
-
-		cam0_reg = <&cam0_reg>,"status";
-		cam0_reg_gpio = <&cam0_reg>,"gpio:4",
-				<&cam0_reg>,"gpio:0=", <&gpio>;
-		cam1_reg = <&cam1_reg>,"status";
-		cam1_reg_gpio = <&cam1_reg>,"gpio:4",
-				<&cam1_reg>,"gpio:0=", <&gpio>;
+#endif
 	};
 };
 
@@ -305,6 +321,7 @@ pciex4: &pcie2 { };
 	};
 };
 
+#if 0
 &rp1_adc {
 	status = "okay";
 };
@@ -326,6 +343,7 @@ pciex4: &pcie2 { };
 		chardev-name = "gpiomem0";
 	};
 };
+#endif
 
 &soc {
 	gpiomem@7d508500 {
@@ -357,6 +375,8 @@ pciex4: &pcie2 { };
 	};
 };
 
+#if 0
+pwm: &pwm0 { };
 i2c0: &rp1_i2c0 { };
 i2c1: &rp1_i2c1 { };
 i2c2: &rp1_i2c2 { };
@@ -369,7 +389,6 @@ i2s_clk_producer: &rp1_i2s0 { };
 i2s_clk_consumer: &rp1_i2s1 { };
 pwm0: &rp1_pwm0 { };
 pwm1: &rp1_pwm1 { };
-pwm: &pwm0 { };
 spi0: &rp1_spi0 { };
 spi1: &rp1_spi1 { };
 spi2: &rp1_spi2 { };
@@ -483,3 +502,5 @@ spi5_pins: &rp1_spi5_gpio13 {};
 	pinctrl-names = "default";
 	pinctrl-0 = <&spi5_pins>;
 };
+
+#endif

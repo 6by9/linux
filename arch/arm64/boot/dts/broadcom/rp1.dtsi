@@ -1224,7 +1224,7 @@
 	};
 };
 
-&clocks {
+&clocks_target {
 	clk_xosc: clk_xosc {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
@@ -1306,18 +1306,10 @@
 	};
 };
 
-/ {
+&root {
 	rp1_firmware: rp1_firmware {
 		compatible = "raspberrypi,rp1-firmware", "simple-mfd";
 		mboxes = <&rp1_mbox 0>;
 		shmem = <&rp1_fw_shmem>;
-	};
-
-	rp1_vdd_3v3: rp1_vdd_3v3 {
-		compatible = "regulator-fixed";
-		regulator-name = "vdd-3v3";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		regulator-always-on;
 	};
 };
