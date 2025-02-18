@@ -42,12 +42,14 @@
 	leds: leds {
 		compatible = "gpio-leds";
 
+#if 0
 		led_pwr: led-pwr {
 			label = "PWR";
 			gpios = <&rp1_gpio 44 GPIO_ACTIVE_LOW>;
 			default-state = "off";
 			linux,default-trigger = "none";
 		};
+#endif
 
 		led_act: led-act {
 			label = "ACT";
@@ -106,6 +108,7 @@
 		status = "disabled";
 	};
 
+#if 0
 	cam0_reg: cam0_reg {
 		compatible = "regulator-fixed";
 		regulator-name = "cam0_reg";
@@ -119,6 +122,7 @@
 		enable-active-high;
 		gpio = <&rp1_gpio 46 0>;  // CD1_IO0_MICCLK, to MIPI 1 connector
 	};
+#endif
 
 	cam_dummy_reg: cam_dummy_reg {
 		compatible = "regulator-fixed";
@@ -150,80 +154,12 @@ rp1_target: &pcie2 {
 // The system SPI for the bootloader EEPROM
 &spi10 { status = "okay"; };
 
-#include "rp1.dtsi"
 
-&rp1 {
-	// PCIe address space layout:
-	// 00_00000000-00_00xxxxxx = RP1 peripherals
-	// 10_00000000-1x_xxxxxxxx = up to 64GB system RAM
-
-	// outbound access aimed at PCIe 0_00xxxxxx -> RP1 c0_40xxxxxx
-	// This is the RP1 peripheral space
-	ranges = <0xc0 0x40000000
-		  0x02000000 0x00 0x00000000
-		  0x00 0x00410000>;
-
-	dma-ranges =
-	// inbound RP1 1x_xxxxxxxx -> PCIe 1x_xxxxxxxx
-		     <0x10 0x00000000
-		      0x43000000 0x10 0x00000000
-		      0x10 0x00000000>,
-
-	// inbound RP1 c0_40xxxxxx -> PCIe 00_00xxxxxx
-	// This allows the RP1 DMA controller to address RP1 hardware
-		     <0xc0 0x40000000
-		      0x02000000 0x0 0x00000000
-		      0x0 0x00410000>,
-
-	// inbound RP1 0x_xxxxxxxx -> PCIe 1x_xxxxxxxx
-		     <0x00 0x00000000
-		      0x02000000 0x10 0x00000000
-		      0x10 0x00000000>;
-};
-
-// Expose RP1 nodes as system nodes with labels
-
-&rp1_dma  {
-	status = "okay";
-};
-
-&rp1_eth {
-	status = "okay";
-	phy-handle = <&phy1>;
-	phy-reset-gpios = <&rp1_gpio 32 GPIO_ACTIVE_LOW>;
-	phy-reset-duration = <5>;
-
-	phy1: ethernet-phy@1 {
-		reg = <0x1>;
-		brcm,powerdown-enable;
-	};
-};
-
-/* The Debug UART, on Rpi5 it's on JST-SH 1.0mm 3-pin connector
- * labeled "UART", i.e. the interface with the system console.
- */
-&uart10 {
-	status = "okay";
-};
-
-gpio: &rp1_gpio {
-	status = "okay";
-};
-
-aux: &dummy {};
-
-&rp1_usb0 {
-	pinctrl-0 = <&usb_vbus_pins>;
-	pinctrl-names = "default";
-	status = "okay";
-};
-
-&rp1_usb1 {
-	status = "okay";
-};
+//#include "rp1.dtsi"
 
 #include "bcm2712-rpi.dtsi"
 
+#if 0
 i2c_csi_dsi0: &i2c6 { // Note: This is for MIPI0 connector only
 	pinctrl-0 = <&rp1_i2c6_38_39>;
 	pinctrl-names = "default";
@@ -282,6 +218,10 @@ dpi_16bit_gpio2:        &rp1_dpi_16bit_gpio2        { };
 &vec {
 	iommus = <&iommu5>;
 };
+
+#endif
+
+aux: &dummy {};
 
 &ddc0 {
 	status = "disabled";
@@ -405,6 +345,7 @@ dpi_16bit_gpio2:        &rp1_dpi_16bit_gpio2        { };
 };
 
 / {
+#if 0
 	fan: cooling_fan {
 		status = "disabled";
 		compatible = "pwm-fan";
@@ -416,6 +357,7 @@ dpi_16bit_gpio2:        &rp1_dpi_16bit_gpio2        { };
 		rpm-regmap = <&rp1_pwm1>;
 		rpm-offset = <0x3c>;
 	};
+#endif
 
 	pwr_button {
 		compatible = "gpio-keys";
@@ -511,12 +453,6 @@ spi10_cs_pins: &spi10_cs_gpio1 {};
 	status = "disabled";
 };
 
-&rp1_pwm1 {
-	status = "disabled";
-	pinctrl-0 = <&rp1_pwm1_gpio45>;
-	pinctrl-names = "default";
-};
-
 &thermal_trips {
 	cpu_tepid: cpu-tepid {
 		temperature = <50000>;
@@ -543,6 +479,7 @@ spi10_cs_pins: &spi10_cs_gpio1 {};
 	};
 };
 
+#if 0
 &cooling_maps {
 	tepid {
 		trip = <&cpu_tepid>;
@@ -569,6 +506,7 @@ spi10_cs_pins: &spi10_cs_gpio1 {};
 		cooling-device = <&fan 4 4>;
 	};
 };
+#endif
 
 &gio {
 	// The GPIOs above 35 are not used on Pi 5, so shrink the upper bank
@@ -649,71 +587,6 @@ spi10_cs_pins: &spi10_cs_gpio1 {};
 		gpios = <2 GPIO_ACTIVE_HIGH>;
 		output-high;
 		line-name = "RP1 RUN pin";
-	};
-};
-
-&rp1_gpio {
-	gpio-line-names =
-		"ID_SDA", // GPIO0
-		"ID_SCL", // GPIO1
-		"GPIO2", // GPIO2
-		"GPIO3", // GPIO3
-		"GPIO4", // GPIO4
-		"GPIO5", // GPIO5
-		"GPIO6", // GPIO6
-		"GPIO7", // GPIO7
-		"GPIO8", // GPIO8
-		"GPIO9", // GPIO9
-		"GPIO10", // GPIO10
-		"GPIO11", // GPIO11
-		"GPIO12", // GPIO12
-		"GPIO13", // GPIO13
-		"GPIO14", // GPIO14
-		"GPIO15", // GPIO15
-		"GPIO16", // GPIO16
-		"GPIO17", // GPIO17
-		"GPIO18", // GPIO18
-		"GPIO19", // GPIO19
-		"GPIO20", // GPIO20
-		"GPIO21", // GPIO21
-		"GPIO22", // GPIO22
-		"GPIO23", // GPIO23
-		"GPIO24", // GPIO24
-		"GPIO25", // GPIO25
-		"GPIO26", // GPIO26
-		"GPIO27", // GPIO27
-
-		"PCIE_RP1_WAKE", // GPIO28
-		"FAN_TACH", // GPIO29
-		"HOST_SDA", // GPIO30
-		"HOST_SCL", // GPIO31
-		"ETH_RST_N", // GPIO32
-		"-", // GPIO33
-
-		"CD0_IO0_MICCLK", // GPIO34
-		"CD0_IO0_MICDAT0", // GPIO35
-		"RP1_PCIE_CLKREQ_N", // GPIO36
-		"-", // GPIO37
-		"CD0_SDA", // GPIO38
-		"CD0_SCL", // GPIO39
-		"CD1_SDA", // GPIO40
-		"CD1_SCL", // GPIO41
-		"USB_VBUS_EN", // GPIO42
-		"USB_OC_N", // GPIO43
-		"RP1_STAT_LED", // GPIO44
-		"FAN_PWM", // GPIO45
-		"CD1_IO0_MICCLK", // GPIO46
-		"2712_WAKE", // GPIO47
-		"CD1_IO1_MICDAT1", // GPIO48
-		"EN_MAX_USB_CUR", // GPIO49
-		"-", // GPIO50
-		"-", // GPIO51
-		"-", // GPIO52
-		"-"; // GPIO53
-
-	usb_vbus_pins: usb_vbus_pins {
-		function = "vbus1";
-		pins = "gpio42", "gpio43";
 	};
 };
 
