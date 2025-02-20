@@ -1554,7 +1554,7 @@ static struct clk_hw *rp1_register_pll(struct rp1_clockman *clockman,
 	init.num_parents = 1;
 	init.name = pll_data->name;
 	init.ops = &rp1_pll_ops;
-	init.flags = pll_data->flags;
+	init.flags = pll_data->flags | CLK_IGNORE_UNUSED;
 
 	pll = kzalloc(sizeof(*pll), GFP_KERNEL);
 	if (!pll)
@@ -1588,7 +1588,7 @@ static struct clk_hw *rp1_register_pll_ph(struct rp1_clockman *clockman,
 	init.num_parents = 1;
 	init.name = ph_data->name;
 	init.ops = &rp1_pll_ph_ops;
-	init.flags = ph_data->flags;
+	init.flags = ph_data->flags | CLK_IGNORE_UNUSED;
 
 	ph = kzalloc(sizeof(*ph), GFP_KERNEL);
 	if (!ph)
@@ -1621,7 +1621,7 @@ static struct clk_hw *rp1_register_pll_divider(struct rp1_clockman *clockman,
 	init.num_parents = 1;
 	init.name = divider_data->name;
 	init.ops = &rp1_pll_divider_ops;
-	init.flags = divider_data->flags;
+	init.flags = divider_data->flags | CLK_IGNORE_UNUSED;
 
 	divider = devm_kzalloc(clockman->dev, sizeof(*divider), GFP_KERNEL);
 	if (!divider)
@@ -1664,7 +1664,7 @@ static struct clk_hw *rp1_register_clock(struct rp1_clockman *clockman,
 	init.num_parents =
 		clock_data->num_std_parents + clock_data->num_aux_parents;
 	init.name = clock_data->name;
-	init.flags = clock_data->flags;
+	init.flags = clock_data->flags | CLK_IGNORE_UNUSED;
 	init.ops = &rp1_clk_ops;
 
 	clock = devm_kzalloc(clockman->dev, sizeof(*clock), GFP_KERNEL);
@@ -1694,6 +1694,7 @@ static struct clk_hw *rp1_register_varsrc(struct rp1_clockman *clockman,
 	init.parent_names = &ref_clock;
 	init.num_parents = 1;
 	init.name = name;
+	init.flags = CLK_IGNORE_UNUSED;
 	init.ops = &rp1_varsrc_ops;
 
 	clock = devm_kzalloc(clockman->dev, sizeof(*clock), GFP_KERNEL);
