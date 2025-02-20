@@ -1,0 +1,220 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+
+#include <dt-bindings/gpio/gpio.h>
+//#include <dt-bindings/interrupt-controller/irq.h>
+//#include <dt-bindings/clock/raspberrypi,rp1-clocks.h>
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	fragment@0 {
+		target = <&pcie2>;
+		rp1_target: __overlay__ {
+		};
+	};
+
+	fragment@1 {
+		target = <&clocks>;
+		clocks_target: __overlay__ {
+		};
+	};
+
+	fragment@2 {
+		target-path = "/";
+		root: __overlay__ {
+		};
+	};
+
+	fragment@3 {
+		target = <&aliases>;
+		__overlay__ {
+			drm-dsi1 = &rp1_dsi0;
+			drm-dsi2 = &rp1_dsi1;
+			ethernet0 = &rp1_eth;
+			gpio0 = &rp1_gpio;
+			gpiochip0 = &rp1_gpio;
+			i2c0 = &rp1_i2c0;
+			i2c1 = &rp1_i2c1;
+			i2c2 = &rp1_i2c2;
+			i2c3 = &rp1_i2c3;
+			i2c_csi_dsi0 = &rp1_i2c6;
+			i2c_csi_dsi1 = &rp1_i2c4;
+			i2c10 = &rp1_i2c6;
+			i2c11 = &rp1_i2c4;
+			i2c_vc = &rp1_i2c0;
+			i2c_arm = &rp1_i2c1;
+			pio0 = &rp1_pio;
+			serial0 = &rp1_uart0;
+			serial1 = &rp1_uart1;
+			serial2 = &rp1_uart2;
+			serial3 = &rp1_uart3;
+			serial4 = &rp1_uart4;
+			spi0 = &rp1_spi0;
+			spi1 = &rp1_spi1;
+			spi2 = &rp1_spi2;
+			spi3 = &rp1_spi3;
+			spi4 = &rp1_spi4;
+			spi5 = &rp1_spi5;
+			uart0 = &rp1_uart0;
+			uart1 = &rp1_uart1;
+			uart2 = &rp1_uart2;
+			uart3 = &rp1_uart3;
+			uart4 = &rp1_uart4;
+			usb0 = &rp1_usb0;
+			usb1 = &rp1_usb1;
+		};
+	};
+
+	__exports__ {
+		ethernet0;
+	};
+};
+
+#include "rp1.dtsi"
+
+&rp1 {
+	// PCIe address space layout:
+	// 00_00000000-00_00xxxxxx = RP1 peripherals
+	// 10_00000000-1x_xxxxxxxx = up to 64GB system RAM
+
+	// outbound access aimed at PCIe 0_00xxxxxx -> RP1 c0_40xxxxxx
+	// This is the RP1 peripheral space
+	ranges = <0xc0 0x40000000
+		  0x02000000 0x00 0x00000000
+		  0x00 0x00410000>;
+
+	dma-ranges =
+	// inbound RP1 1x_xxxxxxxx -> PCIe 1x_xxxxxxxx
+		     <0x10 0x00000000
+		      0x43000000 0x10 0x00000000
+		      0x10 0x00000000>,
+
+	// inbound RP1 c0_40xxxxxx -> PCIe 00_00xxxxxx
+	// This allows the RP1 DMA controller to address RP1 hardware
+		     <0xc0 0x40000000
+		      0x02000000 0x0 0x00000000
+		      0x0 0x00410000>,
+
+	// inbound RP1 0x_xxxxxxxx -> PCIe 1x_xxxxxxxx
+		     <0x00 0x00000000
+		      0x02000000 0x10 0x00000000
+		      0x10 0x00000000>;
+};
+
+// Expose RP1 nodes as system nodes with labels
+
+&rp1_dma  {
+	status = "okay";
+};
+
+ethernet0: &rp1_eth {
+	status = "okay";
+	phy-handle = <&phy1>;
+	phy-reset-gpios = <&rp1_gpio 32 GPIO_ACTIVE_LOW>;
+	phy-reset-duration = <5>;
+
+	phy1: ethernet-phy@1 {
+		reg = <0x1>;
+		brcm,powerdown-enable;
+	};
+};
+
+gpio: &rp1_gpio {
+	status = "okay";
+};
+
+&rp1_usb0 {
+	pinctrl-0 = <&usb_vbus_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+&rp1_usb1 {
+	status = "okay";
+};
+
+&rp1_pwm1 {
+	status = "disabled";
+	pinctrl-0 = <&rp1_pwm1_gpio45>;
+	pinctrl-names = "default";
+};
+
+i2c_csi_dsi0: &rp1_i2c6 { // Note: This is for MIPI0 connector only
+	pinctrl-0 = <&rp1_i2c6_38_39>;
+	pinctrl-names = "default";
+	clock-frequency = <100000>;
+	symlink = "i2c-6";
+};
+
+i2c_csi_dsi1: &rp1_i2c4 { // Note: This is for MIPI1 connector only
+	pinctrl-0 = <&rp1_i2c4_40_41>;
+	pinctrl-names = "default";
+	clock-frequency = <100000>;
+	symlink = "i2c-4";
+};
+
+&rp1_gpio {
+	gpio-line-names =
+		"ID_SDA", // GPIO0
+		"ID_SCL", // GPIO1
+		"GPIO2", // GPIO2
+		"GPIO3", // GPIO3
+		"GPIO4", // GPIO4
+		"GPIO5", // GPIO5
+		"GPIO6", // GPIO6
+		"GPIO7", // GPIO7
+		"GPIO8", // GPIO8
+		"GPIO9", // GPIO9
+		"GPIO10", // GPIO10
+		"GPIO11", // GPIO11
+		"GPIO12", // GPIO12
+		"GPIO13", // GPIO13
+		"GPIO14", // GPIO14
+		"GPIO15", // GPIO15
+		"GPIO16", // GPIO16
+		"GPIO17", // GPIO17
+		"GPIO18", // GPIO18
+		"GPIO19", // GPIO19
+		"GPIO20", // GPIO20
+		"GPIO21", // GPIO21
+		"GPIO22", // GPIO22
+		"GPIO23", // GPIO23
+		"GPIO24", // GPIO24
+		"GPIO25", // GPIO25
+		"GPIO26", // GPIO26
+		"GPIO27", // GPIO27
+
+		"PCIE_RP1_WAKE", // GPIO28
+		"FAN_TACH", // GPIO29
+		"HOST_SDA", // GPIO30
+		"HOST_SCL", // GPIO31
+		"ETH_RST_N", // GPIO32
+		"-", // GPIO33
+
+		"CD0_IO0_MICCLK", // GPIO34
+		"CD0_IO0_MICDAT0", // GPIO35
+		"RP1_PCIE_CLKREQ_N", // GPIO36
+		"-", // GPIO37
+		"CD0_SDA", // GPIO38
+		"CD0_SCL", // GPIO39
+		"CD1_SDA", // GPIO40
+		"CD1_SCL", // GPIO41
+		"USB_VBUS_EN", // GPIO42
+		"USB_OC_N", // GPIO43
+		"RP1_STAT_LED", // GPIO44
+		"FAN_PWM", // GPIO45
+		"CD1_IO0_MICCLK", // GPIO46
+		"2712_WAKE", // GPIO47
+		"CD1_IO1_MICDAT1", // GPIO48
+		"EN_MAX_USB_CUR", // GPIO49
+		"-", // GPIO50
+		"-", // GPIO51
+		"-", // GPIO52
+		"-"; // GPIO53
+
+	usb_vbus_pins: usb_vbus_pins {
+		function = "vbus1";
+		pins = "gpio42", "gpio43";
+	};
+};
