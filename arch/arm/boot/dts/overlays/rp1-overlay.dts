@@ -29,8 +29,8 @@
 	fragment@3 {
 		target = <&aliases>;
 		__overlay__ {
-			drm-dsi1 = &rp1_dsi0;
-			drm-dsi2 = &rp1_dsi1;
+			//drm-dsi1 = &rp1_dsi0;
+			//drm-dsi2 = &rp1_dsi1;
 			ethernet0 = &rp1_eth;
 			gpio0 = &rp1_gpio;
 			gpiochip0 = &rp1_gpio;

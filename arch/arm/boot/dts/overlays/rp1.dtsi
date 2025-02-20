@@ -1128,7 +1128,7 @@
 			interrupts = <RP1_INT_USBHOST1_0 IRQ_TYPE_EDGE_RISING>;
 			status = "disabled";
 		};
-
+#if 0
 		rp1_dsi0: dsi@110000 {
 			compatible = "raspberrypi,rp1dsi";
 			status = "disabled";
@@ -1208,7 +1208,7 @@
 			assigned-clocks        = <&rp1_clocks RP1_CLK_DPI>;
 			assigned-clock-parents = <&rp1_clocks RP1_PLL_VIDEO>;
 		};
-
+#endif
 		sram: sram@400000 {
 			compatible = "mmio-sram";
 			reg = <0xc0 0x40400000  0x0 0x10000>;
