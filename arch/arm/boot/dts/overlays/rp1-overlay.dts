@@ -10,7 +10,25 @@
 / {
 	fragment@0 {
 		target = <&pcie2>;
-		rp1_target: __overlay__ {
+
+		__overlay__ {
+			pci@0,0 {
+				//compatible = "pci14e4,2712", "pciclass,060400", "pciclass,0604";
+				dev@0,0 {
+					compatible = "pci1de4,1";
+					#address-cells = <3>;
+					#size-cells = <2>;
+					interrupt-controller;
+					#interrupt-cells = <2>;
+
+					rp1_target: pci-ep-bus@1 {
+						ranges = <0x00 0x40000000  0x01 0x00 0x00000000  0x00 0x00400000>;
+						dma-ranges = <0x10 0x00000000  0x43000000 0x10 0x00000000  0x10 0x00000000>;
+						#address-cells = <2>;
+						#size-cells = <2>;
+					};
+				};
+			};
 		};
 	};
 

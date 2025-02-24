@@ -3,8 +3,8 @@
 #include <dt-bindings/mfd/rp1.h>
 
 &rp1_target {
-	rp1: rp1 {
-		compatible = "simple-bus";
+	rp1: pci@0,0 {
+		compatible = "raspberrypi,rp1", "simple-bus";
 		#address-cells = <2>;
 		#size-cells = <2>;
 		#interrupt-cells = <2>;
