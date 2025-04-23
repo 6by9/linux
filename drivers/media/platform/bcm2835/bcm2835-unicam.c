@@ -2650,7 +2650,9 @@ static int unicam_start_streaming(struct vb2_queue *vq, unsigned int count)
 	dev->frame_started = false;
 	unicam_start_rx(dev, buffer_addr);
 
-	ret = v4l2_subdev_call(dev->sensor, video, s_stream, 1);
+	ret = v4l2_subdev_enable_streams(dev->sensor,
+					 dev->node[IMAGE_PAD].src_pad_id,
+					 BIT(0));
 	if (ret < 0) {
 		unicam_err(dev, "stream on failed in subdev\n");
 		goto err_disable_unicam;
@@ -2691,8 +2693,9 @@ static void unicam_stop_streaming(struct vb2_queue *vq)
 		 * We cannot continue streaming embedded data with the
 		 * image pad disabled.
 		 */
-		if (v4l2_subdev_call(dev->sensor, video, s_stream, 0) < 0)
-			unicam_err(dev, "stream off failed in subdev\n");
+		v4l2_subdev_disable_streams(dev->sensor,
+					    dev->node[IMAGE_PAD].src_pad_id,
+					    BIT(0));
 
 		unicam_disable(dev);
 
