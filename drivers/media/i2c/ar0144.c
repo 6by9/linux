@@ -342,10 +342,6 @@ enum ar0144_pad_ids {
 	AR0144_NUM_PADS,
 };
 
-enum ar0144_stream_ids {
-	AR0144_STREAM_IMAGE,
-};
-
 struct ar0144_model {
 	bool mono;
 };
@@ -538,8 +534,7 @@ static int ar0144_start_streaming(struct ar0144 *sensor,
 	 */
 	__v4l2_ctrl_grab(sensor->link_freq, true);
 
-	format = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE,
-					      AR0144_STREAM_IMAGE);
+	format = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE);
 	crop = v4l2_subdev_state_get_crop(state, AR0144_PAD_IMAGE);
 	compose = v4l2_subdev_state_get_compose(state, AR0144_PAD_IMAGE);
 	info = ar0144_format_info(sensor, format->code, true);
@@ -895,8 +890,7 @@ static int ar0144_s_ctrl(struct v4l2_ctrl *ctrl)
 	 * configuration.
 	 */
 	state = v4l2_subdev_get_locked_active_state(&sensor->sd);
-	format = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE,
-					      AR0144_STREAM_IMAGE);
+	format = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE);
 	info = ar0144_format_info(sensor, format->code, true);
 	crop = v4l2_subdev_state_get_crop(state, AR0144_PAD_IMAGE);
 
@@ -1196,8 +1190,7 @@ static int ar0144_enum_frame_size(struct v4l2_subdev *sd,
 		if (!info)
 			return -EINVAL;
 
-		fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE,
-						   AR0144_STREAM_IMAGE);
+		fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE);
 		break;
 
 	default:
@@ -1224,17 +1217,15 @@ static int ar0144_set_fmt(struct v4l2_subdev *sd,
 	    format->which == V4L2_SUBDEV_FORMAT_ACTIVE)
 		return -EBUSY;
 
-	/* The format can only be set for the image stream on the source pad. */
-	if (format->pad != AR0144_PAD_SOURCE ||
-	    format->stream != AR0144_STREAM_IMAGE)
+	/* The format can only be set on the source pad. */
+	if (format->pad != AR0144_PAD_SOURCE)
 		return v4l2_subdev_get_fmt(sd, state, format);
 
 	/*
 	 * Only the media bus code can be updated on the source pad, dimensions
 	 * are set by the compose on the image pad rectangle.
 	 */
-	fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE,
-					   AR0144_STREAM_IMAGE);
+	fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE);
 	info = ar0144_format_info(sensor, format->format.code, true);
 	fmt->code = ar0144_format_code(sensor, info);
 
@@ -1358,8 +1349,7 @@ static int ar0144_set_selection(struct v4l2_subdev *sd,
 	}
 
 	/* Propagate the compose rectangle to the output format. */
-	fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE,
-					   AR0144_STREAM_IMAGE);
+	fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE);
 	fmt->width = compose->width;
 	fmt->height = compose->height;
 
@@ -1379,8 +1369,7 @@ static int ar0144_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 		return -EINVAL;
 
 	state = v4l2_subdev_lock_and_get_active_state(sd);
-	fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE,
-					   AR0144_STREAM_IMAGE);
+	fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE);
 	code = fmt->code;
 	v4l2_subdev_unlock_state(state);
 
@@ -1390,7 +1379,7 @@ static int ar0144_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 	fd->num_entries = 1;
 
 	fd->entry[0].pixelcode = code;
-	fd->entry[0].stream = AR0144_STREAM_IMAGE;
+	fd->entry[0].stream = 0;
 	fd->entry[0].bus.csi2.vc = 0;
 	fd->entry[0].bus.csi2.dt = info->dt;
 
@@ -1488,8 +1477,7 @@ static int ar0144_entity_init_state(struct v4l2_subdev *sd,
 
 	info = ar0144_format_info(sensor, 0, true);
 
-	fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE,
-					   AR0144_STREAM_IMAGE);
+	fmt = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE);
 	fmt->width = AR0144_DEF_WIDTH;
 	fmt->height = AR0144_DEF_HEIGHT;
 	fmt->code = ar0144_format_code(sensor, info);
@@ -1566,8 +1554,7 @@ static int ar0144_init_subdev(struct ar0144 *sensor)
 	 * rate) and blanking controls.
 	 */
 	state = v4l2_subdev_lock_and_get_active_state(sd);
-	format = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE,
-					      AR0144_STREAM_IMAGE);
+	format = v4l2_subdev_state_get_format(state, AR0144_PAD_SOURCE);
 	info = ar0144_format_info(sensor, format->code, true);
 
 	ar0144_update_link_freqs(sensor, info);
