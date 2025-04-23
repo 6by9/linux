@@ -1,0 +1,26 @@
+// Fragment that configures an ar0144
+
+cam_node: ar0144@10 {
+	compatible = "onnn,ar0144c";
+	reg = <0x10>;
+	status = "disabled";
+
+	clocks = <&cam1_clk>;
+	clock-names = "xclk";
+
+	vaa-supply = <&cam1_reg>;
+	vddio-supply = <&cam_dummy_reg>;
+	vdd-supply = <&cam_dummy_reg>;
+
+	rotation = <180>;
+	orientation = <2>;
+
+	port {
+		cam_endpoint: endpoint {
+			clock-lanes = <0>;
+			data-lanes = <1 2>;
+			link-frequencies =
+				/bits/ 64 <240000000>;
+		};
+	};
+};
