@@ -190,6 +190,7 @@ struct imx290_model_info {
 	size_t init_regs_num;
 	unsigned int max_analog_gain;
 	const char *name;
+	bool supports_120fps;
 };
 
 enum imx290_clk_freq {
@@ -242,6 +243,7 @@ struct imx290 {
 	u8 nlanes;
 	const struct imx290_model_info *model;
 	unsigned long link_freq_bitmap;
+	bool high_fps_mode;
 
 	struct v4l2_subdev sd;
 	struct media_pad pad;
@@ -483,6 +485,8 @@ static const struct imx290_csi_cfg imx290_csi_297mhz = {
  * optional
  */
 #define FREQ_INDEX_720P		1
+#define NUM_FREQ_INDEX		2
+
 static const s64 imx290_link_freq_2lanes[] = {
 	[FREQ_INDEX_1080P] = 445500000,
 	[FREQ_INDEX_720P] = 297000000,
@@ -491,6 +495,8 @@ static const s64 imx290_link_freq_2lanes[] = {
 static const s64 imx290_link_freq_4lanes[] = {
 	[FREQ_INDEX_1080P] = 222750000,
 	[FREQ_INDEX_720P] = 148500000,
+	[FREQ_INDEX_1080P + NUM_FREQ_INDEX] = 445500000,
+	[FREQ_INDEX_720P + NUM_FREQ_INDEX] = 297000000,
 };
 
 /*
@@ -499,10 +505,14 @@ static const s64 imx290_link_freq_4lanes[] = {
  */
 static inline const s64 *imx290_link_freqs_ptr(const struct imx290 *imx290)
 {
-	if (imx290->nlanes == 2)
+	if (imx290->nlanes == 2) {
 		return imx290_link_freq_2lanes;
-	else
-		return imx290_link_freq_4lanes;
+	} else {
+		if (imx290->high_fps_mode)
+			return &imx290_link_freq_4lanes[NUM_FREQ_INDEX];
+		else
+			return imx290_link_freq_4lanes;
+	}
 }
 
 static inline int imx290_link_freqs_num(const struct imx290 *imx290)
@@ -653,6 +663,10 @@ imx290_format_info(const struct imx290 *imx290, u32 code)
 	for (i = 0; i < ARRAY_SIZE(imx290_formats); ++i) {
 		const struct imx290_format_info *info = &imx290_formats[i];
 
+		if (imx290->high_fps_mode && info->bpp == 12)
+			/* 12 bit mode not supported in high fps mode */
+			continue;
+
 		if (info->code[imx290->model->colour_variant] == code)
 			return info;
 	}
@@ -713,7 +727,8 @@ static int imx290_set_data_lanes(struct imx290 *imx290)
 		  &ret);
 	cci_write(imx290->regmap, IMX290_CSI_LANE_MODE, imx290->nlanes - 1,
 		  &ret);
-	cci_write(imx290->regmap, IMX290_FR_FDG_SEL, IMX290_FRSEL_60FPS |
+	cci_write(imx290->regmap, IMX290_FR_FDG_SEL,
+		  imx290->high_fps_mode ? 0 : IMX290_FRSEL_60FPS |
 		  (hcg_mode ? IMX290_FDG_HCG : IMX290_FDG_LCG), &ret);
 
 	return ret;
@@ -804,7 +819,7 @@ static int imx290_set_ctrl(struct v4l2_ctrl *ctrl)
 					     struct imx290, ctrls);
 	const struct v4l2_mbus_framefmt *format;
 	struct v4l2_subdev_state *state;
-	int ret = 0, vmax;
+	int ret = 0, vmax, hmax;
 
 	/*
 	 * Return immediately for controls that don't need to be applied to the
@@ -865,8 +880,10 @@ static int imx290_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 
 	case V4L2_CID_HBLANK:
-		ret = cci_write(imx290->regmap, IMX290_HMAX,
-				ctrl->val + imx290->current_mode->width, NULL);
+		hmax = ctrl->val + imx290->current_mode->width;
+		if (imx290->high_fps_mode)
+			hmax >>= 1;
+		ret = cci_write(imx290->regmap, IMX290_HMAX, hmax, NULL);
 		break;
 
 	case V4L2_CID_HFLIP:
@@ -929,6 +946,8 @@ static void imx290_ctrl_update(struct imx290 *imx290,
 static int imx290_ctrl_init(struct imx290 *imx290)
 {
 	struct v4l2_fwnode_device_properties props;
+	u64 pixel_rate = imx290->high_fps_mode ?
+				IMX290_PIXEL_RATE * 2 : IMX290_PIXEL_RATE;
 	int ret;
 
 	ret = v4l2_fwnode_device_parse(imx290->dev, &props);
@@ -972,8 +991,8 @@ static int imx290_ctrl_init(struct imx290 *imx290)
 		imx290->link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	v4l2_ctrl_new_std(&imx290->ctrls, &imx290_ctrl_ops, V4L2_CID_PIXEL_RATE,
-			  IMX290_PIXEL_RATE, IMX290_PIXEL_RATE, 1,
-			  IMX290_PIXEL_RATE);
+			  pixel_rate, pixel_rate, 1,
+			  pixel_rate);
 
 	v4l2_ctrl_new_std_menu_items(&imx290->ctrls, &imx290_ctrl_ops,
 				     V4L2_CID_TEST_PATTERN,
@@ -1143,6 +1162,9 @@ static int imx290_enum_mbus_code(struct v4l2_subdev *sd,
 	const struct imx290 *imx290 = to_imx290(sd);
 
 	if (code->index >= ARRAY_SIZE(imx290_formats))
+		return -EINVAL;
+
+	if (imx290->high_fps_mode && imx290_formats[code->index].bpp == 12)
 		return -EINVAL;
 
 	code->code = imx290_formats[code->index].code[imx290->model->colour_variant];
@@ -1483,6 +1505,7 @@ static const struct imx290_model_info imx290_models[] = {
 		.init_regs_num = ARRAY_SIZE(imx290_global_init_settings_290),
 		.max_analog_gain = 100,
 		.name = "imx290",
+		.supports_120fps = true,
 	},
 	[IMX290_MODEL_IMX290LLR] = {
 		.colour_variant = IMX290_VARIANT_MONO,
@@ -1490,6 +1513,7 @@ static const struct imx290_model_info imx290_models[] = {
 		.init_regs_num = ARRAY_SIZE(imx290_global_init_settings_290),
 		.max_analog_gain = 100,
 		.name = "imx290",
+		.supports_120fps = true,
 	},
 	[IMX290_MODEL_IMX327LQR] = {
 		.colour_variant = IMX290_VARIANT_COLOUR,
@@ -1497,6 +1521,7 @@ static const struct imx290_model_info imx290_models[] = {
 		.init_regs_num = ARRAY_SIZE(imx290_global_init_settings_327),
 		.max_analog_gain = 98,
 		.name = "imx327",
+		.supports_120fps = false,
 	},
 	[IMX290_MODEL_IMX462LQR] = {
 		.colour_variant = IMX290_VARIANT_COLOUR,
@@ -1504,6 +1529,7 @@ static const struct imx290_model_info imx290_models[] = {
 		.init_regs_num = ARRAY_SIZE(imx290_global_init_settings_462),
 		.max_analog_gain = 98,
 		.name = "imx462",
+		.supports_120fps = true,
 	},
 	[IMX290_MODEL_IMX462LLR] = {
 		.colour_variant = IMX290_VARIANT_MONO,
@@ -1511,6 +1537,7 @@ static const struct imx290_model_info imx290_models[] = {
 		.init_regs_num = ARRAY_SIZE(imx290_global_init_settings_462),
 		.max_analog_gain = 98,
 		.name = "imx462",
+		.supports_120fps = true,
 	},
 };
 
@@ -1558,10 +1585,25 @@ static int imx290_parse_dt(struct imx290 *imx290)
 				       &imx290->link_freq_bitmap);
 
 	/* Check that at least the base link frequency is in device tree */
-	if (ret || !(imx290->link_freq_bitmap & BIT(0))) {
+	if (ret || !(imx290->link_freq_bitmap & (BIT(0) | BIT(2)))) {
 		dev_err(imx290->dev, "No valid link frequency combinations found\n");
 		ret = -EINVAL;
 		goto done;
+	}
+	if (imx290->link_freq_bitmap & BIT(2)) {
+		if (!imx290->model->supports_120fps || imx290->nlanes == 2) {
+			dev_err(imx290->dev, "120fps mode not supported on sensor variant %s or 2 lanes\n",
+				imx290->model->name);
+			if (!(imx290->link_freq_bitmap & BIT(0))) {
+				/* Lower link frequencies are not defined */
+				ret = -EINVAL;
+				goto done;
+			}
+			imx290->link_freq_bitmap &= ~(BIT(0) | BIT(1));
+		} else {
+			imx290->high_fps_mode = true;
+			imx290->link_freq_bitmap >>= NUM_FREQ_INDEX;
+		}
 	}
 
 	ret = 0;
