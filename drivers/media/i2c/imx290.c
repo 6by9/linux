@@ -730,7 +730,7 @@ static int imx290_set_csi_config(struct imx290 *imx290)
 	const struct imx290_csi_cfg *csi_cfg;
 	int ret = 0;
 
-	switch (link_freqs[imx290->current_mode->link_freq_index]) {
+	switch (link_freqs[imx290->link_freq->cur.val]) {
 	case 445500000:
 		csi_cfg = &imx290_csi_445_5mhz;
 		break;
