@@ -215,7 +215,7 @@ struct imx290_mode {
 	u32 height;
 	u32 hmax_min;
 	u32 vmax_min;
-	u8 link_freq_index;
+	u8 link_freq_index_pref;
 	u8 ctrl_07;
 
 	const struct cci_reg_sequence *data;
@@ -241,6 +241,7 @@ struct imx290 {
 	enum imx290_clk_freq xclk_idx;
 	u8 nlanes;
 	const struct imx290_model_info *model;
+	unsigned long link_freq_bitmap;
 
 	struct v4l2_subdev sd;
 	struct media_pad pad;
@@ -477,6 +478,10 @@ static const struct imx290_csi_cfg imx290_csi_297mhz = {
 
 /* supported link frequencies */
 #define FREQ_INDEX_1080P	0
+/*
+ * The 720p cropped mode can run on a lower link frequency, but this is
+ * optional
+ */
 #define FREQ_INDEX_720P		1
 static const s64 imx290_link_freq_2lanes[] = {
 	[FREQ_INDEX_1080P] = 445500000,
@@ -557,7 +562,7 @@ static const struct imx290_mode imx290_modes_2lanes[] = {
 		.height = 1080,
 		.hmax_min = 2200,
 		.vmax_min = 1125,
-		.link_freq_index = FREQ_INDEX_1080P,
+		.link_freq_index_pref = FREQ_INDEX_1080P,
 		.ctrl_07 = IMX290_WINMODE_1080P,
 		.data = imx290_1080p_settings,
 		.data_size = ARRAY_SIZE(imx290_1080p_settings),
@@ -567,7 +572,7 @@ static const struct imx290_mode imx290_modes_2lanes[] = {
 		.height = 720,
 		.hmax_min = 3300,
 		.vmax_min = 750,
-		.link_freq_index = FREQ_INDEX_720P,
+		.link_freq_index_pref = FREQ_INDEX_720P,
 		.ctrl_07 = IMX290_WINMODE_720P,
 		.data = imx290_720p_settings,
 		.data_size = ARRAY_SIZE(imx290_720p_settings),
@@ -580,7 +585,7 @@ static const struct imx290_mode imx290_modes_4lanes[] = {
 		.height = 1080,
 		.hmax_min = 2200,
 		.vmax_min = 1125,
-		.link_freq_index = FREQ_INDEX_1080P,
+		.link_freq_index_pref = FREQ_INDEX_1080P,
 		.ctrl_07 = IMX290_WINMODE_1080P,
 		.data = imx290_1080p_settings,
 		.data_size = ARRAY_SIZE(imx290_1080p_settings),
@@ -590,7 +595,7 @@ static const struct imx290_mode imx290_modes_4lanes[] = {
 		.height = 720,
 		.hmax_min = 3300,
 		.vmax_min = 750,
-		.link_freq_index = FREQ_INDEX_720P,
+		.link_freq_index_pref = FREQ_INDEX_720P,
 		.ctrl_07 = IMX290_WINMODE_720P,
 		.data = imx290_720p_settings,
 		.data_size = ARRAY_SIZE(imx290_720p_settings),
@@ -912,7 +917,8 @@ static void imx290_ctrl_update(struct imx290 *imx290,
 	unsigned int vblank_min = mode->vmax_min - mode->height;
 	unsigned int vblank_max = IMX290_VMAX_MAX - mode->height;
 
-	__v4l2_ctrl_s_ctrl(imx290->link_freq, mode->link_freq_index);
+	if (imx290->link_freq_bitmap & BIT(mode->link_freq_index_pref))
+		__v4l2_ctrl_s_ctrl(imx290->link_freq, mode->link_freq_index_pref);
 
 	__v4l2_ctrl_modify_range(imx290->hblank, hblank_min, hblank_max, 1,
 				 hblank_min);
@@ -959,7 +965,8 @@ static int imx290_ctrl_init(struct imx290 *imx290)
 	imx290->link_freq =
 		v4l2_ctrl_new_int_menu(&imx290->ctrls, &imx290_ctrl_ops,
 				       V4L2_CID_LINK_FREQ,
-				       imx290_link_freqs_num(imx290) - 1, 0,
+				       __fls(imx290->link_freq_bitmap),
+				       __ffs(imx290->link_freq_bitmap),
 				       imx290_link_freqs_ptr(imx290));
 	if (imx290->link_freq)
 		imx290->link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
@@ -1469,28 +1476,6 @@ static int imx290_init_clk(struct imx290 *imx290)
 	return 0;
 }
 
-/*
- * Returns 0 if all link frequencies used by the driver for the given number
- * of MIPI data lanes are mentioned in the device tree, or the value of the
- * first missing frequency otherwise.
- */
-static s64 imx290_check_link_freqs(const struct imx290 *imx290,
-				   const struct v4l2_fwnode_endpoint *ep)
-{
-	int i, j;
-	const s64 *freqs = imx290_link_freqs_ptr(imx290);
-	int freqs_count = imx290_link_freqs_num(imx290);
-
-	for (i = 0; i < freqs_count; i++) {
-		for (j = 0; j < ep->nr_of_link_frequencies; j++)
-			if (freqs[i] == ep->link_frequencies[j])
-				break;
-		if (j == ep->nr_of_link_frequencies)
-			return freqs[i];
-	}
-	return 0;
-}
-
 static const struct imx290_model_info imx290_models[] = {
 	[IMX290_MODEL_IMX290LQR] = {
 		.colour_variant = IMX290_VARIANT_COLOUR,
@@ -1537,7 +1522,6 @@ static int imx290_parse_dt(struct imx290 *imx290)
 	};
 	struct fwnode_handle *endpoint;
 	int ret;
-	s64 fq;
 
 	imx290->model = of_device_get_match_data(imx290->dev);
 
@@ -1567,17 +1551,15 @@ static int imx290_parse_dt(struct imx290 *imx290)
 
 	dev_dbg(imx290->dev, "Using %u data lanes\n", imx290->nlanes);
 
-	if (!ep.nr_of_link_frequencies) {
-		dev_err(imx290->dev, "link-frequency property not found in DT\n");
-		ret = -EINVAL;
-		goto done;
-	}
+	ret = v4l2_link_freq_to_bitmap(imx290->dev, ep.link_frequencies,
+				       ep.nr_of_link_frequencies,
+				       imx290_link_freqs_ptr(imx290),
+				       imx290_link_freqs_num(imx290),
+				       &imx290->link_freq_bitmap);
 
-	/* Check that link frequences for all the modes are in device tree */
-	fq = imx290_check_link_freqs(imx290, &ep);
-	if (fq) {
-		dev_err(imx290->dev, "Link frequency of %lld is not supported\n",
-			fq);
+	/* Check that at least the base link frequency is in device tree */
+	if (ret || !(imx290->link_freq_bitmap & BIT(0))) {
+		dev_err(imx290->dev, "No valid link frequency combinations found\n");
 		ret = -EINVAL;
 		goto done;
 	}
