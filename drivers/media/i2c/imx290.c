@@ -220,8 +220,6 @@ struct imx290_mode {
 
 	const struct cci_reg_sequence *data;
 	u32 data_size;
-
-	const struct imx290_clk_cfg *clk_cfg;
 };
 
 struct imx290_csi_cfg {
@@ -563,7 +561,6 @@ static const struct imx290_mode imx290_modes_2lanes[] = {
 		.ctrl_07 = IMX290_WINMODE_1080P,
 		.data = imx290_1080p_settings,
 		.data_size = ARRAY_SIZE(imx290_1080p_settings),
-		.clk_cfg = imx290_1080p_clock_config,
 	},
 	{
 		.width = 1280,
@@ -574,7 +571,6 @@ static const struct imx290_mode imx290_modes_2lanes[] = {
 		.ctrl_07 = IMX290_WINMODE_720P,
 		.data = imx290_720p_settings,
 		.data_size = ARRAY_SIZE(imx290_720p_settings),
-		.clk_cfg = imx290_720p_clock_config,
 	},
 };
 
@@ -588,7 +584,6 @@ static const struct imx290_mode imx290_modes_4lanes[] = {
 		.ctrl_07 = IMX290_WINMODE_1080P,
 		.data = imx290_1080p_settings,
 		.data_size = ARRAY_SIZE(imx290_1080p_settings),
-		.clk_cfg = imx290_1080p_clock_config,
 	},
 	{
 		.width = 1280,
@@ -599,7 +594,6 @@ static const struct imx290_mode imx290_modes_4lanes[] = {
 		.ctrl_07 = IMX290_WINMODE_720P,
 		.data = imx290_720p_settings,
 		.data_size = ARRAY_SIZE(imx290_720p_settings),
-		.clk_cfg = imx290_720p_clock_config,
 	},
 };
 
@@ -679,13 +673,22 @@ static int imx290_set_register_array(struct imx290 *imx290,
 
 static int imx290_set_clock(struct imx290 *imx290)
 {
-	const struct imx290_mode *mode = imx290->current_mode;
 	enum imx290_clk_freq clk_idx = imx290->xclk_idx;
-	const struct imx290_clk_cfg *clk_cfg = &mode->clk_cfg[clk_idx];
+	const struct imx290_clk_cfg *clk_cfg;
 	int ret;
 
 	ret = imx290_set_register_array(imx290, xclk_regs[clk_idx],
 					IMX290_NUM_CLK_REGS);
+
+	switch (imx290->link_freq->cur.val) {
+	default:
+	case FREQ_INDEX_1080P:
+		clk_cfg = &imx290_1080p_clock_config[imx290->xclk_idx];
+		break;
+	case FREQ_INDEX_720P:
+		clk_cfg = &imx290_720p_clock_config[imx290->xclk_idx];
+		break;
+	}
 
 	cci_write(imx290->regmap, IMX290_INCKSEL1, clk_cfg->incksel1, &ret);
 	cci_write(imx290->regmap, IMX290_INCKSEL2, clk_cfg->incksel2, &ret);
