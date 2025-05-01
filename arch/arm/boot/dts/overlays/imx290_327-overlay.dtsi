@@ -92,6 +92,15 @@
 		};
 	};
 
+	fragment@11 {
+		target = <&cam_endpoint>;
+		__dormant__ {
+			data-lanes = <1 2 3 4>;
+			link-frequencies =
+				/bits/ 64 <445500000 297000000>;
+		};
+	};
+
 	__overrides__ {
 		4lane = <0>, "-6+7-8+9";
 		clock-frequency = <&cam_clk>,"clock-frequency:0",
@@ -104,6 +113,7 @@
 		       <&clk_frag>, "target:0=",<&cam0_clk>,
 		       <&cam_node>, "clocks:0=",<&cam0_clk>,
 		       <&cam_node>, "vdda-supply:0=",<&cam0_reg>;
+		highfps = <0>, "-6+11-8+9";
 	};
 };
 

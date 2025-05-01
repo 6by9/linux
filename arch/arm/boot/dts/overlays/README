@@ -2796,6 +2796,8 @@ Params: 4lane                   Enable 4 CSI2 lanes. This requires a Compute
                                 configuring the sensor (default on)
         cam0                    Adopt the default configuration for CAM0 on a
                                 Compute Module (CSI0, i2c_vc, and cam0_reg).
+        highfps                 Enable 120fps mode. Requires 4 data lanes, and
+                                limits the sensor to 10bit readout.
 
 
 Name:   imx296
@@ -2840,6 +2842,9 @@ Params: 4lane                   Enable 4 CSI2 lanes. This requires a Compute
                                 configuring the sensor (default on)
         cam0                    Adopt the default configuration for CAM0 on a
                                 Compute Module (CSI0, i2c_vc, and cam0_reg).
+        highfps                 Enable 120fps mode. Invalid on this sensor
+                                variant, but the overlay shares portions with
+                                imx290 and imx462.
 
 
 Name:   imx335
@@ -2937,6 +2942,8 @@ Params: 4lane                   Enable 4 CSI2 lanes. This requires a Compute
                                 configuring the sensor (default on)
         cam0                    Adopt the default configuration for CAM0 on a
                                 Compute Module (CSI0, i2c_vc, and cam0_reg).
+        highfps                 Enable 120fps mode. Requires 4 data lanes, and
+                                limits the sensor to 10bit readout.
 
 
 Name:   imx477
