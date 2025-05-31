@@ -355,10 +355,9 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
 	wifimac.dtbo \
 	wittypi.dtbo \
 	wm8960-soundcard.dtbo \
-	ws2812-pio.dtbo
+	ws2812-pio.dtbo \
+	max96717-max96714-imx219.dtbo
 
 targets += dtbs dtbs_install
 targets += $(dtbo-y)
 
-always-y	:= $(dtbo-y)
-clean-files	:= *.dtbo
