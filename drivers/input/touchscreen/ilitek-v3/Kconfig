@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Touchscreen driver configuration
+#
+config TOUCHSCREEN_ILITEK_V3
+	tristate "Ilitek V3 based touchscreen"
+	depends on I2C
+	select CRC_CCITT
+	help
+	  Say Y here if you have a Ilitek V3 based touchscreen
+	  controller, such as that found in ILI79600A
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called ilitek_v3_touch.
+

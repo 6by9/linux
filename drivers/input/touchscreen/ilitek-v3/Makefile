@@ -1,6 +1,5 @@
 BUILD_INFAE := i2c
 BUILD_PLATFORM := qcom
-BUILD_MODULE := n
 
 ccflags-y += -Wall
 
@@ -30,8 +29,9 @@ interface=ilitek_v3_spi
 fwupdate=ilitek_v3_hostdl
 endif
 
-ifeq ($(BUILD_MODULE),n)
-obj-y += ilitek_v3.o \
+obj-$(CONFIG_TOUCHSCREEN_ILITEK_V3) += ilitek-v3.o
+
+ilitek-v3-y += ilitek_v3.o \
 	$(interface).o \
 	$(platform).o \
 	ilitek_v3_ic.o \
@@ -39,20 +39,3 @@ obj-y += ilitek_v3.o \
 	ilitek_v3_mp.o \
 	$(fwupdate).o \
 	ilitek_v3_node.o
-else
-	obj-m += ilitek.o
-	ilitek-y := ilitek_v3.o \
-		$(interface).o \
-		$(platform).o \
-		ilitek_v3_ic.o \
-		ilitek_v3_touch.o \
-		ilitek_v3_mp.o \
-		$(fwupdate).o \
-		ilitek_v3_node.o
-
-KERNEL_DIR= /home/likewise-open/ILI/1061279/workplace/rk3288_sdk/kernel
-all:
-	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) modules
-clean:
-	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) clean
-endif
