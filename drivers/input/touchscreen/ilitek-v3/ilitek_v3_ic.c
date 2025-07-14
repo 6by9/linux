@@ -695,8 +695,8 @@ int ili_ice_mode_ctrl(bool enable, bool mcu)
 
 #if (TDDI_INTERFACE == BUS_I2C)
 		if (ilits->ice_flash_cs_ctrl && !mcu) {
-		if (ili_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1) < 0)
-			ILI_ERR("Write cs high failed\n"); /* CS high */
+			if (ili_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1) < 0)
+				ILI_ERR("Write cs high failed\n"); /* CS high */
 			if (ili_ice_mode_write(FLASH0_dual_mode, 0x0, 1) < 0)
 				ILI_ERR("Write daul mode close failed\n"); /* daul mode close */
 		} else {
