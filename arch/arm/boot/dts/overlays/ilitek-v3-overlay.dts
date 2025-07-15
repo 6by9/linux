@@ -1,0 +1,65 @@
+/*
+ * Device Tree overlay for EDT 5406 touchscreen controller, as used on the
+ * Raspberry Pi 7" panel
+ *
+ */
+
+/dts-v1/;
+/plugin/;
+
+#define ENABLE_I2C0_MUX
+#include "i2c-buses.dtsi"
+/ {
+	compatible = "brcm,bcm2835";
+
+	fragment@10 {
+		target = <&ilitek_v3>;
+		__overlay__ {
+			touchscreen-inverted-x;
+		};
+	};
+
+	fragment@11 {
+		target = <&ilitek_v3>;
+		__overlay__ {
+			touchscreen-inverted-y;
+		};
+	};
+
+	fragment@12 {
+		target = <&i2cbus>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			ilitek_v3: ts@38 {
+				compatible = "tchip,ilitek";
+				reg = <0x38>;
+
+				touch,irq-gpio-gpio = <&gpio 4 0>;
+				touch,reset-gpio-gpio = <&gpio 5 0>;
+
+				touchscreen-size-x = < 1200 >;
+				touchscreen-size-y = < 1920 >;
+			};
+		};
+	};
+
+	__overrides__ {
+		sizex = <&ilitek_v3>,"touchscreen-size-x:0";
+		sizey = <&ilitek_v3>,"touchscreen-size-y:0";
+		invx = <0>, "-10";
+		invy = <0>, "-11";
+		swapxy = <&ilitek_v3>,"touchscreen-swapped-x-y?";
+	};
+};
+
+&busfrag {
+	target = <&i2c_csi_dsi>;
+};
+
+/ {
+	__overrides__ {
+		addr = <&ilitek_v3>,"reg:0";
+	};
+};
