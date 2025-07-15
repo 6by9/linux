@@ -520,6 +520,7 @@ static const struct of_device_id tp_match_table[] = {
 	{.compatible = DTS_OF_NAME},
 	{},
 };
+MODULE_DEVICE_TABLE(of, tp_match_table);
 
 #ifdef ROI
 struct ts_device_ops ilitek_ops = {
