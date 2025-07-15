@@ -456,7 +456,7 @@ static int ilitek_plat_probe(void)
 
 	ili_irq_register(ilits->irq_tirgger_type);
 
-	if (ili_tddi_init() < 0) {
+	if (ili_tddi_init() < 0 && 0) {
 		ILI_ERR("ILITEK Driver probe failed\n");
 		ili_irq_unregister();
 		ili_dev_remove(DISABLE);
