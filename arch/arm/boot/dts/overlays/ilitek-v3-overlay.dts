@@ -36,8 +36,8 @@
 				compatible = "tchip,ilitek";
 				reg = <0x38>;
 
-				touch,irq-gpio-gpio = <&gpio 4 0>;
-				touch,reset-gpio-gpio = <&gpio 5 0>;
+				touch,irq-gpio = <&gpio 4 0>;
+				touch,reset-gpio = <&gpio 5 0>;
 
 				touchscreen-size-x = < 1200 >;
 				touchscreen-size-y = < 1920 >;
