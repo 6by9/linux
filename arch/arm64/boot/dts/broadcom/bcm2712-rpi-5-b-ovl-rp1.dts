@@ -2,6 +2,10 @@
 /dts-v1/;
 
 #include <dt-bindings/gpio/gpio.h>
+
+//Temporary include of the old mfd header to give the RP1 interrupt defines.
+//#include <dt-bindings/mfd/rp1.h>
+
 #include "bcm2712.dtsi"
 
 / {
