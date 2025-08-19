@@ -113,12 +113,12 @@ watchdog: &pm {};
 		ethernet0 = &rp1_eth;
 		fb = &fb;
 		gpio0 = &gpio;
-		gpio1 = &gio;
+		//gpio1 = &gio;
 		gpio2 = &gio_aon;
-		gpio3 = &pinctrl;
+		//gpio3 = &pinctrl;
 		gpio4 = &pinctrl_aon;
 		gpiochip0 = &gpio;
-		gpiochip10 = &gio;
+		//gpiochip10 = &gio;
 		i2c = &i2c_arm;
 		i2c0 = &i2c0;
 		i2c1 = &i2c1;
@@ -138,7 +138,7 @@ watchdog: &pm {};
 		serial4 = &uart4;
 		spi0 = &spi0;
 		spi1 = &spi1;
-		spi10 = &spi10;
+		//spi10 = &spi10;
 		spi2 = &spi2;
 		spi3 = &spi3;
 		spi4 = &spi4;
@@ -161,7 +161,7 @@ watchdog: &pm {};
 		act_led_trigger = <&led_act>, "linux,default-trigger";
 		axiperf = <&axiperf>,"status";
 		bdaddr = <&bluetooth>, "local-bd-address[";
-		button_debounce = <&pwr_key>, "debounce-interval:0";
+		//button_debounce = <&pwr_key>, "debounce-interval:0";
 		cooling_fan = <&fan>, "status", <&rp1_pwm1>, "status";
 		drm_fb0_rp1_dpi = <&aliases>, "drm-fb0=",&dpi;
 		drm_fb0_rp1_dsi0 = <&aliases>, "drm-fb0=",&dsi0;
@@ -220,7 +220,7 @@ watchdog: &pm {};
 		rtc_bbat_vchg = <&rpi_rtc>, "trickle-charge-microvolt:0";
 		spi = <&spi0>, "status";
 		strict_gpiod = <&chosen>, "bootargs=pinctrl_rp1.persist_gpio_outputs=n";
-		suspend = <&pwr_key>, "linux,code:0=205";
+		//suspend = <&pwr_key>, "linux,code:0=205";
 		uart0 = <&uart0>, "status";
 		uart0_console = <&uart0>,"status", <&aliases>, "console=",&uart0;
 		uart0_dma = <&uart0>,"dmas:0=",<&rp1_dma>,
@@ -282,7 +282,7 @@ pciex4: &pcie2 { };
 		compatible = "raspberrypi,bootloader-config", "nvmem-rmem";
 		#address-cells = <1>;
 		#size-cells = <1>;
-#ifndef FIRMWARE_UPDATED
+#if 1 //ndef FIRMWARE_UPDATED
 		reg = <0x0 0x0 0x0>;
 #else
 		reg = <0x0 0x0 0x0 0x0>;
@@ -298,7 +298,7 @@ pciex4: &pcie2 { };
 		compatible = "raspberrypi,bootloader-public-key", "nvmem-rmem";
 		#address-cells = <1>;
 		#size-cells = <1>;
-#ifndef FIRMWARE_UPDATED
+#if 1 //ndef FIRMWARE_UPDATED
 		reg = <0x0 0x0 0x0>;
 #else
 		reg = <0x0 0x0 0x0 0x0>;
