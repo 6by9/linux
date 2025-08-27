@@ -1182,7 +1182,8 @@ static void vc4_dsi_bridge_pre_enable(struct drm_bridge *bridge,
 			       VC4_SET_FIELD(dsi->format, DSI_DISP0_PFORMAT) |
 			       VC4_SET_FIELD(DSI_DISP0_LP_STOP_PERFRAME,
 					     DSI_DISP0_LP_STOP_CTRL) |
-			       DSI_DISP0_ST_END);
+			       ((dsi->mode_flags & MIPI_DSI_MODE_VIDEO_SYNC_PULSE) ?
+						DSI_DISP0_ST_END : 0));
 	} else {
 		DSI_PORT_WRITE(DISP0_CTRL,
 			       DSI_DISP0_COMMAND_MODE);
