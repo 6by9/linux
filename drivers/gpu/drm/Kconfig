@@ -183,6 +183,22 @@ config DRM_LOAD_EDID_FIRMWARE
 	  default case is N. Details and instructions how to build your own
 	  EDID data are given in Documentation/admin-guide/edid.rst.
 
+config DRM_FORCE_DMA_WRITE_COMBINED_MAPPINGS
+	bool "Force write-combined mappings for DMA"
+	default y
+	help
+	  PCIe GPU device drivers may use normal cached mappings for DMA memory.
+
+	  This requires the PCIe interface to be coherent with the CPU caches,
+	  which is not supported by many Arm platforms (e.g. RK35xx), leading to
+	  data corruption on inbound transactions.
+
+	  Enable this option to force write-combined mappings instead (Normal
+	  non-cacheable on Arm).
+
+	  Disable if the hardware supports coherency, as it might cause issues on
+	  certain platforms that ignore the PCIe NoSnoop TLP attribute.
+
 source "drivers/gpu/drm/display/Kconfig"
 
 config DRM_TTM

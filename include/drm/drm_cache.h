@@ -45,6 +45,9 @@ bool drm_need_swiotlb(int dma_bits);
 
 static inline bool drm_arch_can_wc_memory(void)
 {
+#ifdef CONFIG_DRM_FORCE_DMA_WRITE_COMBINED_MAPPINGS
+	return true;
+#endif
 #if defined(CONFIG_PPC) && !defined(CONFIG_NOT_COHERENT_CACHE)
 	return false;
 #elif defined(CONFIG_MIPS) && defined(CONFIG_CPU_LOONGSON64)

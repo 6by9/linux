@@ -154,6 +154,10 @@ static void ttm_tt_init_fields(struct ttm_tt *ttm,
 			       enum ttm_caching caching,
 			       unsigned long extra_pages)
 {
+#ifdef CONFIG_DRM_FORCE_DMA_WRITE_COMBINED_MAPPINGS
+	if (caching == ttm_cached)
+		caching = ttm_write_combined;
+#endif
 	ttm->num_pages = (PAGE_ALIGN(bo->base.size) >> PAGE_SHIFT) + extra_pages;
 	ttm->page_flags = page_flags;
 	ttm->dma_address = NULL;
