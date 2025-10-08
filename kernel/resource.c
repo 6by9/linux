@@ -389,6 +389,7 @@ static int find_next_iomem_res(resource_size_t start, resource_size_t end,
 			.flags = p->flags,
 			.desc = p->desc,
 			.parent = p->parent,
+			.name = p->name,
 		};
 	}
 
@@ -565,6 +566,38 @@ int __weak page_is_ram(unsigned long pfn)
 	return walk_system_ram_range(pfn, 1, NULL, __is_ram) == 1;
 }
 EXPORT_SYMBOL_GPL(page_is_ram);
+
+static int pci_res_check(struct resource *res, void *arg)
+{
+	if (!res->name)
+		return 1;
+
+	return strncmp(res->name, "PCI", 3);
+}
+
+bool range_is_pci(phys_addr_t phys_addr, size_t size)
+{
+	u64 start, end;
+	int ret;
+
+	start = phys_addr;
+	end = phys_addr + size;
+
+	/* Check 32-bit MMIO */
+	ret = walk_iomem_res_desc(IORES_DESC_NONE, IORESOURCE_MEM,
+				  start, end, NULL, pci_res_check);
+	if (!ret)
+		return true;
+
+	/* Check 64-bit MMIO */
+	ret = walk_iomem_res_desc(IORES_DESC_NONE, IORESOURCE_MEM_64,
+				  start, end, NULL, pci_res_check);
+	if (!ret)
+		return true;
+
+	return false;
+}
+EXPORT_SYMBOL_GPL(range_is_pci);
 
 static int __region_intersects(struct resource *parent, resource_size_t start,
 			       size_t size, unsigned long flags,

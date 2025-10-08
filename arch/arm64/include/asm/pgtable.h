@@ -338,11 +338,6 @@ static inline pte_t pte_mkyoung(pte_t pte)
 	return set_pte_bit(pte, __pgprot(PTE_AF));
 }
 
-static inline pte_t pte_mkspecial(pte_t pte)
-{
-	return set_pte_bit(pte, __pgprot(PTE_SPECIAL));
-}
-
 static inline pte_t pte_mkcont(pte_t pte)
 {
 	return set_pte_bit(pte, __pgprot(PTE_CONT));
@@ -806,6 +801,21 @@ static inline void __set_puds(struct mm_struct *mm,
 #define pgprot_dmacoherent(prot) \
 	__pgprot_modify(prot, PTE_ATTRINDX_MASK, \
 			PTE_ATTRINDX(MT_NORMAL_NC) | PTE_PXN | PTE_UXN)
+
+extern bool range_is_pci(phys_addr_t phys_addr, size_t size);
+
+static inline pte_t pte_mkspecial(pte_t pte)
+{
+#ifdef CONFIG_ARM64_FORCE_PCIE_MMIO_DEVICE_MAPPINGS
+	phys_addr_t phys = __pte_to_phys(pte);
+	pgprot_t prot = __pgprot(pte_val(pte) & ~__phys_to_pte_val(__pte_to_phys(__pte(~0ull))));
+
+	if ((pgprot_val(prot) != pgprot_val(pgprot_device(prot))) &&
+	    range_is_pci(phys, PAGE_SIZE))
+		pte = __pte(__phys_to_pte_val(phys) | pgprot_val(pgprot_device(prot)));
+#endif
+	return set_pte_bit(pte, __pgprot(PTE_SPECIAL));
+}
 
 #define __HAVE_PHYS_MEM_ACCESS_PROT
 struct file;

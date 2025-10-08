@@ -1708,6 +1708,23 @@ config ARM64_TAGGED_ADDR_ABI
 	  to system calls as pointer arguments. For details, see
 	  Documentation/arch/arm64/tagged-address-abi.rst.
 
+config ARM64_FORCE_PCIE_MMIO_DEVICE_MAPPINGS
+	bool "Force Device memory mappings for PCIe MMIO space"
+	default y
+	help
+	  PCIe device drivers may map MMIO space as Normal non-cacheable,
+	  for the purpose of enabling write combining or unaligned accesses.
+
+	  On many platforms (e.g. Ampere Altra, RK35xx), the PCIe interface
+	  cannot support unaligned outbound transactions. This may lead to
+	  data corruption, for instance, when a regular memcpy is performed by
+	  an application on a GPU's VRAM BAR.
+
+	  This option forces all software that maps PCIe MMIO space as Normal
+	  non-cacheable memory to use Device-nGnRE instead. If the strict alignment
+	  is not met, the CPU will raise alignment faults that can be further
+	  handled by the kernel by enabling CONFIG_ARM64_ALIGNMENT_FIXUPS.
+
 config ARM64_ALIGNMENT_FIXUPS
 	bool "Fix up misaligned multi-word loads and stores in 64-bit kernel/user space"
 	default y
