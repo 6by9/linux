@@ -1708,6 +1708,15 @@ config ARM64_TAGGED_ADDR_ABI
 	  to system calls as pointer arguments. For details, see
 	  Documentation/arch/arm64/tagged-address-abi.rst.
 
+config ARM64_ALIGNMENT_FIXUPS
+	bool "Fix up misaligned multi-word loads and stores in 64-bit kernel/user space"
+	default y
+	help
+	  This option enables kernel/user space code to perform unaligned accesses
+	  to memory regions that do not normally support them (e.g. device mappings)
+	  by trapping alignment faults on common load/store instructions and breaking
+	  up the offending accesses into properly aligned ones.
+
 menuconfig COMPAT
 	bool "Kernel support for 32-bit EL0"
 	depends on ARM64_4K_PAGES || EXPERT
