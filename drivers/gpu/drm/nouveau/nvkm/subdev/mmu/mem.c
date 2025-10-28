@@ -133,8 +133,14 @@ int
 nvkm_mem_map_host(struct nvkm_memory *memory, void **pmap)
 {
 	struct nvkm_mem *mem = nvkm_mem(memory);
+	pgprot_t prot = PAGE_KERNEL;
+
+#ifdef CONFIG_DRM_FORCE_DMA_WRITE_COMBINED_MAPPINGS
+	prot = pgprot_writecombine(prot);
+#endif
+
 	if (mem->mem) {
-		*pmap = vmap(mem->mem, mem->pages, VM_MAP, PAGE_KERNEL);
+		*pmap = vmap(mem->mem, mem->pages, VM_MAP, prot);
 		return *pmap ? 0 : -EFAULT;
 	}
 	return -EINVAL;

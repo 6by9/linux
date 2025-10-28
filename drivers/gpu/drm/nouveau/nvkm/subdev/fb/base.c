@@ -248,9 +248,8 @@ nvkm_fb_dtor(struct nvkm_subdev *subdev)
 	nvkm_falcon_fw_dtor(&fb->vpr_scrubber);
 
 	if (fb->sysmem.flush_page) {
-		dma_unmap_page(subdev->device->dev, fb->sysmem.flush_page_addr,
-			       PAGE_SIZE, DMA_BIDIRECTIONAL);
-		__free_page(fb->sysmem.flush_page);
+		dma_free_coherent(subdev->device->dev, PAGE_SIZE,
+				  fb->sysmem.flush_page, fb->sysmem.flush_page_addr);
 	}
 
 	if (fb->func->dtor)
@@ -279,14 +278,11 @@ nvkm_fb_ctor(const struct nvkm_fb_func *func, struct nvkm_device *device,
 	mutex_init(&fb->tags.mutex);
 
 	if (func->sysmem.flush_page_init) {
-		fb->sysmem.flush_page = alloc_page(GFP_KERNEL | GFP_DMA32 | __GFP_ZERO);
+		fb->sysmem.flush_page = dma_alloc_coherent(device->dev, PAGE_SIZE,
+							   &fb->sysmem.flush_page_addr,
+							   GFP_KERNEL | __GFP_ZERO);
 		if (!fb->sysmem.flush_page)
 			return -ENOMEM;
-
-		fb->sysmem.flush_page_addr = dma_map_page(device->dev, fb->sysmem.flush_page,
-							  0, PAGE_SIZE, DMA_BIDIRECTIONAL);
-		if (dma_mapping_error(device->dev, fb->sysmem.flush_page_addr))
-			return -EFAULT;
 	}
 
 	return 0;

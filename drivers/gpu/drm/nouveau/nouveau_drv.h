@@ -317,6 +317,9 @@ nouveau_drm(struct drm_device *dev)
 static inline bool
 nouveau_drm_use_coherent_gpu_mapping(struct nouveau_drm *drm)
 {
+#ifdef CONFIG_DRM_FORCE_DMA_WRITE_COMBINED_MAPPINGS
+	return false;
+#endif
 	struct nvif_mmu *mmu = &drm->client.mmu;
 	return !(mmu->type[drm->ttm.type_host[0]].type & NVIF_MEM_UNCACHED);
 }

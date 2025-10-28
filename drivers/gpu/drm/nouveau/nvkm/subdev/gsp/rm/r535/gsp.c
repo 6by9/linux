@@ -1571,12 +1571,12 @@ nvkm_gsp_sg_free(struct nvkm_device *device, struct sg_table *sgt)
 	struct scatterlist *sgl;
 	int i;
 
-	dma_unmap_sgtable(device->dev, sgt, DMA_BIDIRECTIONAL, 0);
-
 	for_each_sgtable_sg(sgt, sgl, i) {
-		struct page *page = sg_page(sgl);
+		void *cpu_addr = sg_virt(sgl);
+		dma_addr_t dma_addr = sg_dma_address(sgl);
 
-		__free_page(page);
+		if (cpu_addr && dma_addr)
+			dma_free_coherent(device->dev, PAGE_SIZE, cpu_addr, dma_addr);
 	}
 
 	sg_free_table(sgt);
@@ -1594,21 +1594,23 @@ nvkm_gsp_sg(struct nvkm_device *device, u64 size, struct sg_table *sgt)
 		return ret;
 
 	for_each_sgtable_sg(sgt, sgl, i) {
-		struct page *page = alloc_page(GFP_KERNEL);
+		void *cpu_addr;
+		dma_addr_t dma_addr;
 
-		if (!page) {
+		cpu_addr = dma_alloc_coherent(device->dev, PAGE_SIZE,
+					      &dma_addr, GFP_KERNEL);
+		if (!cpu_addr) {
 			nvkm_gsp_sg_free(device, sgt);
 			return -ENOMEM;
 		}
 
-		sg_set_page(sgl, page, PAGE_SIZE, 0);
+		/* XXX: unsafe to use virt_to_page with dma_alloc_coherent */
+		sg_set_page(sgl, virt_to_page(cpu_addr), PAGE_SIZE, 0);
+		sg_dma_address(sgl) = dma_addr;
+		sg_dma_len(sgl) = PAGE_SIZE;
 	}
 
-	ret = dma_map_sgtable(device->dev, sgt, DMA_BIDIRECTIONAL, 0);
-	if (ret)
-		nvkm_gsp_sg_free(device, sgt);
-
-	return ret;
+	return 0;
 }
 
 static void
