@@ -138,7 +138,7 @@
 #define MULTI_REPORT_RATE			DISABLE
 #define ENGINEER_FLOW				ENABLE
 #define DMESG_SEQ_FILE				ENABLE
-#define GENERIC_KERNEL_IMAGE		DISABLE/*follow gki */
+#define GENERIC_KERNEL_IMAGE		ENABLE //DISABLE/*follow gki */
 #define SUSPEND_RESUME_SUPPORT		ENABLE
 #define ENABLE_GET_ALL_INFO 		ENABLE /*GET_ALL_INFO options*/
 #define ENABLE_PEN_MODE 			ENABLE	/*Pen mode options*/
@@ -175,7 +175,7 @@
 #if (TDDI_INTERFACE == BUS_SPI)
 #define HOST_DOWN_LOAD				ENABLE
 #else
-#define HOST_DOWN_LOAD				DISABLE
+#define HOST_DOWN_LOAD				ENABLE
 #endif
 
 /* Plaform compatibility */

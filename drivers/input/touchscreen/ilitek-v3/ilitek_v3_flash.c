@@ -2127,7 +2127,10 @@ int ili_fw_upgrade(int op)
 {
 	int i, ret = 0, retry = 3;
 
+	ILI_ERR("%s: boot %u force_fw_update %u ERR_ALLOC_MEM(pfw) %u\n", __func__, 
+	ilits->boot, ilits->force_fw_update, ERR_ALLOC_MEM(pfw));
 	if (!ilits->boot || ilits->force_fw_update || ERR_ALLOC_MEM(pfw)) {
+		ILI_ERR("A\n");
 		if (ERR_ALLOC_MEM(pfw)) {
 			ipio_vfree((void **)&pfw);
 			pfw = vmalloc(MAX_HEX_FILE_SIZE * sizeof(u8));
@@ -2169,9 +2172,13 @@ int ili_fw_upgrade(int op)
 			ret = -EFW_INTERFACE;
 			goto out;
 		}
+
+	} else {
+		ILI_ERR("!A\n");
 	}
 
 #if (ENGINEER_FLOW)
+	ILI_ERR("ENGINEER_FLOW defined. ilits->eng_flow %u\n", ilits->eng_flow);
 	if (!ilits->eng_flow) {
 		do {
 			ret = ilitek_fw_flash_upgrade(pfw, OFF);
@@ -2205,6 +2212,7 @@ int ili_fw_upgrade(int op)
 		}
 	}
 #else
+	ILI_ERR("ENGINEER_FLOW !defined.\n");
 	do {
 		ret = ilitek_fw_flash_upgrade(pfw, OFF);
 		if (ret == UPDATE_PASS)
