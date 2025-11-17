@@ -27,7 +27,7 @@
 			};
 
 			touch: ts@41 {
-				compatible = "ilitek,ili79600a";
+				compatible = "ilitek,ili79600a", "mediatek,cap_touch", "tchip,ilitek";
 				reg = <0x41>;
 
 				reset-gpio = <&display_mcu 1 GPIO_ACTIVE_LOW>;
