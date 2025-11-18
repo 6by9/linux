@@ -2172,9 +2172,6 @@ int ili_fw_upgrade(int op)
 			ret = -EFW_INTERFACE;
 			goto out;
 		}
-
-		ILI_ERR("BOMBING OUT OF FW UPGRADE\n");
-		goto out;
 	} else {
 		ILI_ERR("!A\n");
 	}
