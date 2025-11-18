@@ -1698,7 +1698,7 @@ int ili_tddi_init(void)
 
 	if (ili_ic_dummy_check() < 0) {
 		ILI_ERR("Not found ilitek chip\n");
-		//return -ENODEV;
+		return -ENODEV;
 	}
 #if ENABLE_CASCADE
 	if (ili_cascade_ic_get_info(false, false) < 0)

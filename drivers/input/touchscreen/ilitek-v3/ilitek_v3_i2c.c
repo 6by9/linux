@@ -174,7 +174,7 @@ static int ilitek_i2c_write(void *buf, int len)
 	}
 
 out:
-	return 0; //ret;
+	return ret;
 }
 
 static int ilitek_i2c_read(void *buf, int len)
@@ -196,7 +196,7 @@ static int ilitek_i2c_read(void *buf, int len)
 	}
 
 out:
-	return 0; //ret;
+	return ret;
 }
 
 static int ili_i2c_pll_clk_wakeup(void)
