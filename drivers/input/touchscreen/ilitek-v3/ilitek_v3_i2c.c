@@ -106,8 +106,10 @@ static int core_i2c_write(void *buf, int len)
 	if (!atomic_read(&ilits->ice_stat))
 		 mdelay(1);
 
-	if (i2c_transfer(ilits->i2c->adapter, msgs, 1) != 1)
+	if (i2c_transfer(ilits->i2c->adapter, msgs, 1) != 1) {
+		ILI_ERR("transfer to addr %02x of len %u failed\n", len, ilits->i2c->addr);
 		ret = -1;
+	}
 
 	ipio_kfree((void **)&mpbuf);
 	return ret;
