@@ -141,7 +141,7 @@
 #define GENERIC_KERNEL_IMAGE		ENABLE //DISABLE/*follow gki */
 #define SUSPEND_RESUME_SUPPORT		ENABLE
 #define ENABLE_GET_ALL_INFO 		ENABLE /*GET_ALL_INFO options*/
-#define ENABLE_PEN_MODE 			ENABLE	/*Pen mode options*/
+#define ENABLE_PEN_MODE 			DISABLE //ENABLE	/*Pen mode options*/
 #define ENABLE_CASCADE  			ENABLE
 #define ENABLE_COMPRESS_MODE 		DISABLE	/*Compress mode options*/
 

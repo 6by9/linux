@@ -786,6 +786,15 @@ int ili_fw_upgrade_handler(void *data)
 	}
 
 	atomic_set(&ilits->fw_stat, END);
+
+	pr_err("Trying suspend....\n");
+	ret = ili_sleep_handler(TP_SUSPEND);
+	pr_err("Suspend returned %d. Pause....\n", ret);
+	msleep(5000);
+	pr_err("Trying resume....\n");
+	ret = ili_sleep_handler(TP_RESUME);
+	pr_err("Resume returned %d. Pause....\n", ret);
+
 	return ret;
 }
 
