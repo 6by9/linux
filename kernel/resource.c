@@ -567,6 +567,7 @@ int __weak page_is_ram(unsigned long pfn)
 }
 EXPORT_SYMBOL_GPL(page_is_ram);
 
+#ifdef CONFIG_ARM64
 static int pci_res_check(struct resource *res, void *arg)
 {
 	if (!res->name)
@@ -598,6 +599,7 @@ bool range_is_pci(phys_addr_t phys_addr, size_t size)
 	return false;
 }
 EXPORT_SYMBOL_GPL(range_is_pci);
+#endif
 
 static int __region_intersects(struct resource *parent, resource_size_t start,
 			       size_t size, unsigned long flags,
