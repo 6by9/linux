@@ -79,6 +79,7 @@ enum {
 #define IMX662_CHDR_GAIN_EN			CCI_REG8(0x3069)
 #define IMX662_GAIN				CCI_REG16_LE(0x3070)
 #	define IMX662_GAIN_HCG_MIN		(0x22)
+#	define IMX662_GAIN_MAX			240
 #define IMX662_GAIN1				CCI_REG16_LE(0x3072)
 #define IMX662_EXP_GAIN				CCI_REG8(0x3081)
 #	define IMX662_EXP_GAIN_STEP		(20)
@@ -102,6 +103,9 @@ enum {
 #define IMX662_MIN_CROP_HEIGHT			(180U)
 #define IMX662_CROP_WIDTH_STEP			(16U)
 #define IMX662_CROP_HEIGHT_STEP			(4U)
+
+/* Number of lines by which exposure must be less than VMAX */
+#define IMX662_EXPOSURE_OFFSET			4
 
 #define V4L2_CID_IMX662_BASE			(V4L2_CID_USER_BASE + 0x6620)
 #define V4L2_CID_IMX662_GAIN_HCG		(V4L2_CID_IMX662_BASE + 0)
@@ -265,24 +269,22 @@ static void imx662_gain_update(struct imx662 *imx662)
 
 	gain_min = imx662->hcg->val ? IMX662_GAIN_HCG_MIN : 0;
 
-	__v4l2_ctrl_modify_range(imx662->gain, gain_min, gain_max, 1,
-				 clamp(imx662->gain->val, gain_min, 240));
+	__v4l2_ctrl_modify_range(imx662->gain, gain_min, IMX662_GAIN_MAX, 1,
+				 clamp(imx662->gain->val, gain_min,
+				       IMX662_GAIN_MAX));
 }
 
 static void imx662_exposure_update(struct imx662 *imx662, u32 height)
 {
-	s64 exposure_min, exposure_max, exposure_def;
+	unsigned int exposure_max;
 
 	if (!imx662->exposure)
 		return;
 
-	exposure_min = 4 + 1;
+	exposure_max = imx662->vblank->val + height - IMX662_EXPOSURE_OFFSET;
 
-	exposure_max = imx662->vblank->val + height - exposure_min;
-	exposure_def = clamp(imx662->exposure->val, exposure_min, exposure_max);
-
-	__v4l2_ctrl_modify_range(imx662->exposure, exposure_min,
-				 exposure_max, 1, exposure_def);
+	__v4l2_ctrl_modify_range(imx662->exposure, 1, exposure_max, 1,
+				 exposure_max);
 }
 
 static s64 imx662_get_hmax_min(struct imx662 *imx662)
@@ -771,7 +773,7 @@ static int imx662_ctrls_init(struct imx662 *imx662)
 					   1, IMX662_VMAX_MIN);
 
 	imx662->exposure = v4l2_ctrl_new_std(&imx662->ctrls, &imx662_ctrl_ops,
-					     V4L2_CID_EXPOSURE, 0, 0xffff,
+					     V4L2_CID_EXPOSURE, 1, 0xffff,
 					     1, 0xffff);
 
 	imx662->gain = v4l2_ctrl_new_std(&imx662->ctrls, &imx662_ctrl_ops,
@@ -981,7 +983,7 @@ static int imx662_probe(struct i2c_client *client)
 	if (ret)
 		return ret;
 
-	ret = v4l2_ctrl_handler_init(&imx662->ctrls, 11 + 2);
+	ret = v4l2_ctrl_handler_init(&imx662->ctrls, 10 + 2);
 	if (ret)
 		return ret;
 
