@@ -18,8 +18,8 @@ allOf:
 properties:
   compatible:
     enum:
-      - sony,imx662       # Colour variant
-      - sony,imx662-mono  # Monochrome variant
+      - sony,imx662aaqr   # Colour variant
+      - sony,imx662aamr   # Monochrome variant
 
   reg:
     maxItems: 1
