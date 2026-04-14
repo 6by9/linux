@@ -45,6 +45,9 @@
 #define IMX415_BCWAIT_TIME	  CCI_REG16_LE(0x3008)
 #define IMX415_CPWAIT_TIME	  CCI_REG16_LE(0x300a)
 #define IMX415_WINMODE		  CCI_REG8(0x301c)
+#define IMX415_WINMODE		  CCI_REG8(0x301c)
+#define IMX415_HADD		  CCI_REG8(0x3020)
+#define IMX415_VADD		  CCI_REG8(0x3021)
 #define IMX415_ADDMODE		  CCI_REG8(0x3022)
 #define IMX415_REVERSE		  CCI_REG8(0x3030)
 #define IMX415_HREVERSE_SHIFT	  (0)
@@ -696,7 +699,6 @@ struct imx415 {
 static const struct cci_reg_sequence imx415_init_table[] = {
 	/* use all-pixel readout mode, no flip */
 	{ IMX415_WINMODE, 0x00 },
-	{ IMX415_ADDMODE, 0x00 },
 	{ IMX415_REVERSE, 0x00 },
 	/* output VSYNC on XVS and low on XHS */
 	{ IMX415_OUTSEL, 0x22 },
@@ -1078,8 +1080,10 @@ static int imx415_stream_off(struct imx415 *sensor)
 
 static int imx415_s_stream(struct v4l2_subdev *sd, int enable)
 {
+	const struct v4l2_mbus_framefmt *format;
 	struct imx415 *sensor = to_imx415(sd);
 	struct v4l2_subdev_state *state;
+	const struct v4l2_rect *crop;
 	int ret;
 
 	state = v4l2_subdev_lock_and_get_active_state(sd);
@@ -1099,6 +1103,28 @@ static int imx415_s_stream(struct v4l2_subdev *sd, int enable)
 	ret = imx415_setup(sensor, state);
 	if (ret)
 		goto err_pm;
+
+	crop = v4l2_subdev_state_get_crop(state, 0);
+	format = v4l2_subdev_state_get_format(state, 0);
+    pr_err("crop %ux%u\n", crop->width, crop->height);
+	if (crop->width != format->width ||
+	    crop->height != format->height) {
+	    pr_err("Enable binning\n");
+		cci_write(sensor->regmap, IMX415_HADD, 1, &ret);
+		cci_write(sensor->regmap, IMX415_VADD, 1, &ret);
+		cci_write(sensor->regmap, IMX415_ADDMODE, 1, &ret);
+		cci_write(sensor->regmap, CCI_REG8(0x30d9), 2, &ret);
+		cci_write(sensor->regmap, CCI_REG8(0x30da), 1, &ret);
+		cci_write(sensor->regmap, IMX415_ADBIT, 0x00, &ret);
+		cci_write(sensor->regmap, IMX415_MDBIT, 0x01, &ret);
+	} else {
+	    pr_err("Disable binning\n");
+		cci_write(sensor->regmap, IMX415_HADD, 0, &ret);
+		cci_write(sensor->regmap, IMX415_VADD, 0, &ret);
+		cci_write(sensor->regmap, IMX415_ADDMODE, 0, &ret);
+		cci_write(sensor->regmap, CCI_REG8(0x30d9), 6, &ret);
+		cci_write(sensor->regmap, CCI_REG8(0x30da), 2, &ret);
+	}
 
 	ret = __v4l2_ctrl_handler_setup(&sensor->ctrls);
 	if (ret < 0)
@@ -1151,14 +1177,24 @@ static int imx415_enum_frame_size(struct v4l2_subdev *sd,
 
 	format = v4l2_subdev_state_get_format(state, fse->pad);
 
-	if (fse->index > 0 || (fse->code != MEDIA_BUS_FMT_SGBRG10_1X10 &&
-			       fse->code != MEDIA_BUS_FMT_SGBRG12_1X12))
+	switch(fse->code) {
+	case MEDIA_BUS_FMT_SGBRG10_1X10:
+		if (fse->index >= 1)
+			return -EINVAL;
+		break;
+	case MEDIA_BUS_FMT_SGBRG12_1X12:
+		if (fse->index >= 2)
+			return -EINVAL;
+		break;
+	default:
 		return -EINVAL;
+	}
 
-	fse->min_width = IMX415_PIXEL_ARRAY_WIDTH;
+	fse->min_width = IMX415_PIXEL_ARRAY_WIDTH / (fse->index + 1);
 	fse->max_width = fse->min_width;
-	fse->min_height = IMX415_PIXEL_ARRAY_HEIGHT;
+	fse->min_height = IMX415_PIXEL_ARRAY_HEIGHT / (fse->index + 1);
 	fse->max_height = fse->min_height;
+
 	return 0;
 }
 
@@ -1167,11 +1203,38 @@ static int imx415_set_format(struct v4l2_subdev *sd,
 			     struct v4l2_subdev_format *fmt)
 {
 	struct v4l2_mbus_framefmt *format;
+	struct v4l2_rect *crop;
 
+	crop = v4l2_subdev_state_get_crop(state, fmt->pad);
 	format = v4l2_subdev_state_get_format(state, fmt->pad);
 
-	format->width = fmt->format.width;
-	format->height = fmt->format.height;
+	/*
+	 * Binning is only allowed when cropping is disabled according to the
+	 * documentation. This should be double-checked.
+	 */
+	if (crop->width == IMX415_PIXEL_ARRAY_WIDTH &&
+	    crop->height == IMX415_PIXEL_ARRAY_HEIGHT) {
+		unsigned int width;
+		unsigned int height;
+		unsigned int hratio;
+		unsigned int vratio;
+
+		/* Clamp the width and height to avoid dividing by zero. */
+		width = clamp_t(unsigned int, fmt->format.width,
+				crop->width / 2, crop->width);
+		height = clamp_t(unsigned int, fmt->format.height,
+				 crop->height / 2, crop->height);
+
+		hratio = DIV_ROUND_CLOSEST(crop->width, width);
+		vratio = DIV_ROUND_CLOSEST(crop->height, height);
+
+		format->width = crop->width / hratio;
+		format->height = crop->height / vratio;
+	} else {
+		format->width = fmt->format.width;
+		format->height = fmt->format.height;
+	}
+
 	switch (fmt->format.code) {
 	case MEDIA_BUS_FMT_SGBRG10_1X10:
 	case MEDIA_BUS_FMT_SGBRG12_1X12:
@@ -1180,6 +1243,7 @@ static int imx415_set_format(struct v4l2_subdev *sd,
 	default:
 		format->code = MEDIA_BUS_FMT_SGBRG10_1X10;
 	}
+
 	format->field = V4L2_FIELD_NONE;
 	format->colorspace = V4L2_COLORSPACE_RAW;
 	format->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
@@ -1209,9 +1273,65 @@ static int imx415_get_selection(struct v4l2_subdev *sd,
 	return -EINVAL;
 }
 
+static int imx415_set_selection(struct v4l2_subdev *sd,
+				struct v4l2_subdev_state *state,
+				struct v4l2_subdev_selection *sel)
+{
+	struct v4l2_mbus_framefmt *format;
+	struct v4l2_rect *crop;
+	struct v4l2_rect rect;
+
+	if (sel->target != V4L2_SEL_TGT_CROP)
+		return -EINVAL;
+
+	/*
+	 * Clamp the crop rectangle boundaries and align them to a multiple of 4
+	 * pixels to satisfy hardware requirements.
+	 */
+/*	rect.left = clamp(ALIGN(sel->r.left, 4), 0,
+			  IMX415_PIXEL_ARRAY_WIDTH - IMX296_FID0_ROIWH1_MIN);
+	rect.top = clamp(ALIGN(sel->r.top, 4), 0,
+			 IMX415_PIXEL_ARRAY_HEIGHT - IMX296_FID0_ROIWV1_MIN);
+	rect.width = clamp_t(unsigned int, ALIGN(sel->r.width, 4),
+			     IMX296_FID0_ROIWH1_MIN, IMX296_PIXEL_ARRAY_WIDTH);
+	rect.height = clamp_t(unsigned int, ALIGN(sel->r.height, 4),
+			      IMX296_FID0_ROIWV1_MIN, IMX296_PIXEL_ARRAY_HEIGHT);
+*/
+	rect.width = sel->r.width;
+	rect.height = sel->r.height;
+	rect.left = sel->r.left;
+	rect.top = sel->r.top;
+	rect.width = min_t(unsigned int, rect.width,
+			   IMX415_PIXEL_ARRAY_WIDTH - rect.left);
+	rect.height = min_t(unsigned int, rect.height,
+			    IMX415_PIXEL_ARRAY_HEIGHT - rect.top);
+
+	crop = v4l2_subdev_state_get_crop(state, sel->pad);
+
+	if (rect.width != crop->width || rect.height != crop->height) {
+		/*
+		 * Reset the output image size if the crop rectangle size has
+		 * been modified.
+		 */
+		format = v4l2_subdev_state_get_format(state, sel->pad);
+		format->width = rect.width;
+		format->height = rect.height;
+	}
+
+	*crop = rect;
+	sel->r = rect;
+
+	return 0;
+}
+
 static int imx415_init_state(struct v4l2_subdev *sd,
 			     struct v4l2_subdev_state *state)
 {
+	struct v4l2_subdev_selection sel = {
+		.target = V4L2_SEL_TGT_CROP,
+		.r.width = IMX415_PIXEL_ARRAY_WIDTH,
+		.r.height = IMX415_PIXEL_ARRAY_HEIGHT,
+	};
 	struct v4l2_subdev_format format = {
 		.format = {
 			.width = IMX415_PIXEL_ARRAY_WIDTH,
@@ -1219,6 +1339,7 @@ static int imx415_init_state(struct v4l2_subdev *sd,
 		},
 	};
 
+	imx415_set_selection(sd, state, &sel);
 	imx415_set_format(sd, state, &format);
 
 	return 0;
