@@ -112,13 +112,6 @@ enum imx662_colour_variant {
 	IMX662_VARIANT_MAX
 };
 
-enum imx662_hdr_mode {
-	IMX662_HDR_OFF,
-	IMX662_HDR_CLRHDR,
-	IMX662_HDR_CLRHDR_DOL2,
-	IMX662_HDR_MAX
-};
-
 static const char * const imx662_supply_names[] = {
 	"avdd",
 	"dvdd",
@@ -151,8 +144,6 @@ struct imx662 {
 
 	enum imx662_colour_variant variant;
 
-	enum imx662_hdr_mode hdr;
-
 	const struct imx662_format *format;
 
 	struct v4l2_ctrl_handler ctrls;
@@ -179,32 +170,12 @@ static const struct cci_reg_sequence imx662_regs_common[] = {
 	{ IMX662_CHDR_AGAIN0_LG, 0x0000 },
 	{ IMX662_CHDR_AGAIN1, 0x0000 },
 	{ IMX662_CHDR_AGAIN0_HG, 0x0000 },
-};
-
-static const struct cci_reg_sequence imx662_regs_hdr_off[] = {
 	{ IMX662_WDMODE, 0x00 },
 	{ IMX662_THIN_V_EN, 0x00 },
 	{ IMX662_FDG_SEL1, 0x00 },
 	{ IMX662_GAIN1, 0x0000 },
 	{ IMX662_EXP_GAIN, 0x00 },
 	{ IMX662_GAIN_PGC_FIDMD, 0x01 },
-};
-
-static const struct cci_reg_sequence imx662_regs_hdr_clrhdr[] = {
-	{ IMX662_WDMODE, 0x08 },
-	{ IMX662_THIN_V_EN, 0x00 },
-	{ IMX662_FDG_SEL0, 0x02 },
-	{ IMX662_FDG_SEL1, 0x00 },
-	{ IMX662_GAIN1, 0x0000 },
-	{ IMX662_GAIN_PGC_FIDMD, 0x01 },
-};
-
-static const struct cci_reg_sequence imx662_regs_hdr_dol2[] = {
-	{ IMX662_WDMODE, 0x09 },
-	{ IMX662_THIN_V_EN, 0x01 },
-	{ IMX662_FDG_SEL0, 0x02 },
-	{ IMX662_FDG_SEL1, 0x02 },
-	{ IMX662_GAIN_PGC_FIDMD, 0x00 },
 };
 
 static const s64 imx662_link_freqs[] = {
@@ -216,12 +187,6 @@ static const s64 imx662_link_freqs[] = {
 	[IMX662_DATARATE_891]	= 891000000LL / 2,
 	[IMX662_DATARATE_720]	= 720000000LL / 2,
 	[IMX662_DATARATE_594]	= 594000000LL / 2
-};
-
-static const char * const imx662_hdr_menu[] = {
-	[IMX662_HDR_OFF] = "No HDR",
-	[IMX662_HDR_CLRHDR] = "Clear HDR",
-	[IMX662_HDR_CLRHDR_DOL2] = "Clear HDR + DOL 2 Frame",
 };
 
 static const struct imx662_format imx662_formats[] = {
@@ -284,47 +249,24 @@ static int imx662_set_gain(struct imx662 *imx662)
 {
 	int ret = 0;
 
-	if (imx662->hdr == IMX662_HDR_OFF) {
-		cci_write(imx662->regmap, IMX662_REGHOLD, 1, &ret);
-		cci_write(imx662->regmap, IMX662_GAIN, imx662->gain->val, &ret);
-		cci_write(imx662->regmap, IMX662_FDG_SEL0,
-			  imx662->hcg->val ? IMX662_FDG_SEL0_HCG :
-					     IMX662_FDG_SEL0_LCG, &ret);
-		cci_write(imx662->regmap, IMX662_REGHOLD, 0, NULL);
-	} else if (imx662->hdr == IMX662_HDR_CLRHDR) {
-		s64 exp_gain = imx662->hcg->val ?
-			       imx662->gain->val / IMX662_EXP_GAIN_STEP : 0;
-
-		cci_write(imx662->regmap, IMX662_REGHOLD, 1, &ret);
-		cci_write(imx662->regmap, IMX662_GAIN,
-			  imx662->gain->val - exp_gain * IMX662_EXP_GAIN_STEP,
-			  &ret);
-		cci_write(imx662->regmap, IMX662_EXP_GAIN, exp_gain, &ret);
-		cci_write(imx662->regmap, IMX662_REGHOLD, 0, NULL);
-	} else {
-		/* IMX662_HDR_CLRHDR_DOL2 */
-		cci_write(imx662->regmap, IMX662_REGHOLD, 1, &ret);
-		cci_write(imx662->regmap, IMX662_GAIN, imx662->gain->val,
-			  &ret);
-		cci_write(imx662->regmap, IMX662_GAIN1, imx662->gain->val,
-			  &ret);
-		cci_write(imx662->regmap, IMX662_REGHOLD, 0, NULL);
-	}
+	cci_write(imx662->regmap, IMX662_REGHOLD, 1, &ret);
+	cci_write(imx662->regmap, IMX662_GAIN, imx662->gain->val, &ret);
+	cci_write(imx662->regmap, IMX662_FDG_SEL0,
+		  imx662->hcg->val ? IMX662_FDG_SEL0_HCG :
+				     IMX662_FDG_SEL0_LCG, &ret);
+	cci_write(imx662->regmap, IMX662_REGHOLD, 0, NULL);
 
 	return ret;
 }
 
 static void imx662_gain_update(struct imx662 *imx662)
 {
-	s64 gain_min, gain_max, gain_def;
+	s64 gain_min;
 
 	gain_min = imx662->hcg->val ? IMX662_GAIN_HCG_MIN : 0;
-	gain_max = (imx662->hdr == IMX662_HDR_OFF) ? 240 : 80;
-	if (imx662->hcg->val && imx662->hdr == IMX662_HDR_CLRHDR)
-		gain_max += IMX662_EXP_GAIN_STEP * IMX662_EXP_GAIN_MAX;
-	gain_def = clamp(imx662->gain->val, gain_min, gain_max);
 
-	__v4l2_ctrl_modify_range(imx662->gain, gain_min, gain_max, 1, gain_def);
+	__v4l2_ctrl_modify_range(imx662->gain, gain_min, gain_max, 1,
+				 clamp(imx662->gain->val, gain_min, 240));
 }
 
 static void imx662_exposure_update(struct imx662 *imx662, u32 height)
@@ -334,12 +276,7 @@ static void imx662_exposure_update(struct imx662 *imx662, u32 height)
 	if (!imx662->exposure)
 		return;
 
-	if (imx662->hdr == IMX662_HDR_OFF)
-		exposure_min = 4 + 1;
-	else if (imx662->hdr == IMX662_HDR_CLRHDR)
-		exposure_min = 8 + 1;
-	else
-		exposure_min = IMX662_RHS1_DEF + 10 + 1;
+	exposure_min = 4 + 1;
 
 	exposure_max = imx662->vblank->val + height - exposure_min;
 	exposure_def = clamp(imx662->exposure->val, exposure_min, exposure_max);
@@ -390,20 +327,6 @@ static int imx662_set_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_VBLANK:
 		imx662_exposure_update(imx662, crop->height);
 		break;
-	case V4L2_CID_HDR_SENSOR_MODE:
-		if (v4l2_subdev_is_streaming(sd)) {
-			ret = -EBUSY;
-			goto ctrl_unlock;
-		}
-
-		imx662->hdr = ctrl->val;
-		v4l2_ctrl_activate(imx662->hcg,
-				   ctrl->val != IMX662_HDR_CLRHDR_DOL2);
-		imx662_gain_update(imx662);
-		imx662_blank_update(imx662, crop->width, crop->height);
-		imx662_exposure_update(imx662, crop->height);
-
-		goto ctrl_unlock;
 	case V4L2_CID_IMX662_GAIN_HCG:
 		imx662_gain_update(imx662);
 		break;
@@ -719,23 +642,6 @@ static int imx662_enable_streams(struct v4l2_subdev *sd,
 	cci_write(imx662->regmap, IMX662_MDBIT, imx662->format->ad_md_bit,
 		  &ret);
 
-	switch (imx662->hdr) {
-	case IMX662_HDR_OFF:
-		cci_multi_reg_write(imx662->regmap, imx662_regs_hdr_off,
-				    ARRAY_SIZE(imx662_regs_hdr_off), &ret);
-		break;
-	case IMX662_HDR_CLRHDR:
-		cci_multi_reg_write(imx662->regmap, imx662_regs_hdr_clrhdr,
-				    ARRAY_SIZE(imx662_regs_hdr_clrhdr), &ret);
-		break;
-	case IMX662_HDR_CLRHDR_DOL2:
-		cci_multi_reg_write(imx662->regmap, imx662_regs_hdr_dol2,
-				    ARRAY_SIZE(imx662_regs_hdr_dol2), &ret);
-		break;
-	default:
-		WARN_ON(1);
-	}
-
 	if (ret)
 		goto start_err;
 
@@ -879,11 +785,6 @@ static int imx662_ctrls_init(struct imx662 *imx662)
 
 	v4l2_ctrl_new_std(&imx662->ctrls, &imx662_ctrl_ops,
 			  V4L2_CID_BRIGHTNESS, 0, 0x3ff, 1, 50);
-
-	v4l2_ctrl_new_std_menu_items(&imx662->ctrls, &imx662_ctrl_ops,
-				     V4L2_CID_HDR_SENSOR_MODE,
-				     ARRAY_SIZE(imx662_hdr_menu) - 1, 0,
-				     IMX662_HDR_OFF, imx662_hdr_menu);
 
 	ret = v4l2_fwnode_device_parse(imx662->dev, &props);
 	if (ret)
