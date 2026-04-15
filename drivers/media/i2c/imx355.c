@@ -73,6 +73,10 @@
 #define IMX355_TEST_PATTERN_GRAY_COLOR_BARS	3
 #define IMX355_TEST_PATTERN_PN9			4
 
+#define IMX355_REG_BINNING_MODE		0x0900
+#define IMX355_REG_BINNING_TYPE		0x0901
+#define IMX355_REG_BINNING_WEIGHTING	0x0902
+
 /* Flip Control */
 #define IMX355_REG_ORIENTATION		0x0101
 
@@ -113,6 +117,8 @@ struct imx355_mode {
 
 	/* Default register values */
 	struct imx355_reg_list reg_list;
+
+	u8 binning_mode;
 };
 
 struct imx355_clk_params {
@@ -265,113 +271,71 @@ static const struct imx355_reg_list imx355_global_setting = {
 };
 
 static const struct imx355_reg mode_3268x2448_regs[] = {
-	{ 0x0900, 0x00 },
-	{ 0x0901, 0x11 },
-	{ 0x0902, 0x00 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
 
 static const struct imx355_reg mode_3264x2448_regs[] = {
-	{ 0x0900, 0x00 },
-	{ 0x0901, 0x11 },
-	{ 0x0902, 0x00 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
 
 static const struct imx355_reg mode_3280x2464_regs[] = {
-	{ 0x0900, 0x00 },
-	{ 0x0901, 0x11 },
-	{ 0x0902, 0x00 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
 
 static const struct imx355_reg mode_1940x1096_regs[] = {
-	{ 0x0900, 0x00 },
-	{ 0x0901, 0x11 },
-	{ 0x0902, 0x00 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
 
 static const struct imx355_reg mode_1936x1096_regs[] = {
-	{ 0x0900, 0x00 },
-	{ 0x0901, 0x11 },
-	{ 0x0902, 0x00 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
 
 static const struct imx355_reg mode_1924x1080_regs[] = {
-	{ 0x0900, 0x00 },
-	{ 0x0901, 0x11 },
-	{ 0x0902, 0x00 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
 
 static const struct imx355_reg mode_1920x1080_regs[] = {
-	{ 0x0900, 0x00 },
-	{ 0x0901, 0x11 },
-	{ 0x0902, 0x00 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
 
 static const struct imx355_reg mode_1640x1232_regs[] = {
-	{ 0x0900, 0x01 },
-	{ 0x0901, 0x22 },
-	{ 0x0902, 0x00 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
 
 static const struct imx355_reg mode_1640x922_regs[] = {
-	{ 0x0900, 0x01 },
-	{ 0x0901, 0x22 },
-	{ 0x0902, 0x00 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
 
 static const struct imx355_reg mode_1300x736_regs[] = {
-	{ 0x0900, 0x01 },
-	{ 0x0901, 0x22 },
-	{ 0x0902, 0x00 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
 
 static const struct imx355_reg mode_1296x736_regs[] = {
-	{ 0x0900, 0x01 },
-	{ 0x0901, 0x22 },
-	{ 0x0902, 0x00 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
 
 static const struct imx355_reg mode_1284x720_regs[] = {
-	{ 0x0900, 0x01 },
-	{ 0x0901, 0x22 },
-	{ 0x0902, 0x00 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
 
 static const struct imx355_reg mode_1280x720_regs[] = {
-	{ 0x0900, 0x01 },
-	{ 0x0901, 0x22 },
-	{ 0x0902, 0x00 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
 
 static const struct imx355_reg mode_820x616_regs[] = {
-	{ 0x0900, 0x01 },
-	{ 0x0901, 0x44 },
-	{ 0x0902, 0x00 },
 	{ 0x0700, 0x02 },
 	{ 0x0701, 0x78 },
 };
@@ -411,6 +375,7 @@ static const struct imx355_mode supported_modes[] = {
 			.num_of_regs = ARRAY_SIZE(mode_3280x2464_regs),
 			.regs = mode_3280x2464_regs,
 		},
+		.binning_mode = 0x11,
 	},
 	{
 		.width = 3268,
@@ -429,6 +394,7 @@ static const struct imx355_mode supported_modes[] = {
 			.num_of_regs = ARRAY_SIZE(mode_3268x2448_regs),
 			.regs = mode_3268x2448_regs,
 		},
+		.binning_mode = 0x11,
 	},
 	{
 		.width = 3264,
@@ -447,6 +413,7 @@ static const struct imx355_mode supported_modes[] = {
 			.num_of_regs = ARRAY_SIZE(mode_3264x2448_regs),
 			.regs = mode_3264x2448_regs,
 		},
+		.binning_mode = 0x11,
 	},
 	{
 		.width = 1940,
@@ -465,6 +432,7 @@ static const struct imx355_mode supported_modes[] = {
 			.num_of_regs = ARRAY_SIZE(mode_1940x1096_regs),
 			.regs = mode_1940x1096_regs,
 		},
+		.binning_mode = 0x11,
 	},
 	{
 		.width = 1936,
@@ -483,6 +451,7 @@ static const struct imx355_mode supported_modes[] = {
 			.num_of_regs = ARRAY_SIZE(mode_1936x1096_regs),
 			.regs = mode_1936x1096_regs,
 		},
+		.binning_mode = 0x11,
 	},
 	{
 		.width = 1924,
@@ -501,6 +470,7 @@ static const struct imx355_mode supported_modes[] = {
 			.num_of_regs = ARRAY_SIZE(mode_1924x1080_regs),
 			.regs = mode_1924x1080_regs,
 		},
+		.binning_mode = 0x11,
 	},
 	{
 		.width = 1920,
@@ -519,6 +489,7 @@ static const struct imx355_mode supported_modes[] = {
 			.num_of_regs = ARRAY_SIZE(mode_1920x1080_regs),
 			.regs = mode_1920x1080_regs,
 		},
+		.binning_mode = 0x11,
 	},
 	{
 		.width = 1640,
@@ -537,6 +508,7 @@ static const struct imx355_mode supported_modes[] = {
 			.num_of_regs = ARRAY_SIZE(mode_1640x1232_regs),
 			.regs = mode_1640x1232_regs,
 		},
+		.binning_mode = 0x22,
 	},
 	{
 		.width = 1640,
@@ -555,6 +527,7 @@ static const struct imx355_mode supported_modes[] = {
 			.num_of_regs = ARRAY_SIZE(mode_1640x922_regs),
 			.regs = mode_1640x922_regs,
 		},
+		.binning_mode = 0x22,
 	},
 	{
 		.width = 1300,
@@ -573,6 +546,7 @@ static const struct imx355_mode supported_modes[] = {
 			.num_of_regs = ARRAY_SIZE(mode_1300x736_regs),
 			.regs = mode_1300x736_regs,
 		},
+		.binning_mode = 0x22,
 	},
 	{
 		.width = 1296,
@@ -591,6 +565,7 @@ static const struct imx355_mode supported_modes[] = {
 			.num_of_regs = ARRAY_SIZE(mode_1296x736_regs),
 			.regs = mode_1296x736_regs,
 		},
+		.binning_mode = 0x22,
 	},
 	{
 		.width = 1284,
@@ -609,6 +584,7 @@ static const struct imx355_mode supported_modes[] = {
 			.num_of_regs = ARRAY_SIZE(mode_1284x720_regs),
 			.regs = mode_1284x720_regs,
 		},
+		.binning_mode = 0x22,
 	},
 	{
 		.width = 1280,
@@ -627,6 +603,7 @@ static const struct imx355_mode supported_modes[] = {
 			.num_of_regs = ARRAY_SIZE(mode_1280x720_regs),
 			.regs = mode_1280x720_regs,
 		},
+		.binning_mode = 0x22,
 	},
 	{
 		.width = 820,
@@ -645,6 +622,7 @@ static const struct imx355_mode supported_modes[] = {
 			.num_of_regs = ARRAY_SIZE(mode_820x616_regs),
 			.regs = mode_820x616_regs,
 		},
+		.binning_mode = 0x44,
 	},
 };
 
@@ -1019,6 +997,18 @@ static int imx355_start_streaming(struct imx355 *imx355)
 		return ret;
 	ret = imx355_write_reg(imx355, IMX355_REG_Y_OUT_SIZE, 2,
 			       mode->height);
+	if (ret)
+		return ret;
+
+	ret = imx355_write_reg(imx355, IMX355_REG_BINNING_MODE, 1,
+			       mode->binning_mode == 0x11 ? 0x00 : 0x01);
+	if (ret)
+		return ret;
+	ret = imx355_write_reg(imx355, IMX355_REG_BINNING_TYPE, 1,
+			       mode->binning_mode);
+	if (ret)
+		return ret;
+	ret = imx355_write_reg(imx355, IMX355_REG_BINNING_WEIGHTING, 1, 0x00);
 	if (ret)
 		return ret;
 
