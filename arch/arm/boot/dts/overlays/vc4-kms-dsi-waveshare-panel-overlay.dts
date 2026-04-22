@@ -17,7 +17,7 @@
 			status = "okay";
 			port {
 				dsi_out: endpoint {
-					remote-endpoint = <&panel_in>;
+					remote-endpoint = <&bridge_in>;
 				};
 			};
 		};
@@ -36,13 +36,26 @@
 			#size-cells = <0>;
 			status = "okay";
 
-			panel: panel_disp1@45 {
+			dsi2dpi: bridge@45 {
 				reg = <0x45>;
-				compatible = "waveshare,10.1inch-panel";
+				compatible = "waveshare,dsi2dpi";
 
-				port {
-					panel_in: endpoint {
-						remote-endpoint = <&dsi_out>;
+				ports {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					port@0 {
+						reg = <0>;
+						bridge_in: endpoint {
+							remote-endpoint = <&dsi_out>;
+							data-lanes = < 1 2 >;
+						};
+					};
+					port@1 {
+						reg = <1>;
+						bridge_out: endpoint {
+							remote-endpoint = <&panel_in>;
+						};
 					};
 				};
 			};
@@ -81,58 +94,444 @@
 		};
 	};
 
+	fragment@6 {
+		target-path = "/";
+		__overlay__ {
+			panel: panel@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <1>;
+
+				compatible = "panel-dpi";
+
+				//backlight = <&dsi2dpi>;
+				// Can't define the backlight as that causes a
+				// circular dependency (backlight is required by
+				// panel-simple, created by waveshare-dsi2dpi,
+				// but dsi2dpi needs to be able to find the
+				// panel during probe)
+				rotation = <0>;
+				bus-format = <0x100a>;
+
+				port {
+					panel_in: endpoint {
+						remote-endpoint = <&bridge_out>;
+					};
+				};
+			};
+		};
+	};
+
+	fragment@7 {
+		target = <&bridge_in>;
+		__dormant__ {
+			data-lanes = < 1 2 3 4 >;
+		};
+	};
+
+	fragment@10 {
+		/* 2.8inch 480x640
+		 * https://www.waveshare.com/product/raspberry-pi/displays/2.8inch-dsi-lcd.htm
+		 */
+		target = <&panel>;
+		__dormant__ {
+			panel-timing {
+				clock-frequency = <50000000>;
+				hactive = <480>;
+				hfront-porch = <150>;
+				hsync-len = <50>;
+				hback-porch = <150>;
+				vactive = <640>;
+				vfront-porch = <150>;
+				vsync-len = <50>;
+				vback-porch = <150>;
+
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+
+	fragment@11 {
+		/* 3.4inch 800x800 Round
+		 * https://www.waveshare.com/product/displays/lcd-oled/3.4inch-dsi-lcd-c.htm
+		 */
+		target = <&panel>;
+		__dormant__ {
+			panel-timing {
+				clock-frequency = <50000000>;
+				hactive = <800>;
+				hfront-porch = <32>;
+				hsync-len = <6>;
+				hback-porch = <120>;
+				vactive = <800>;
+				vfront-porch = <8>;
+				vsync-len = <4>;
+				vback-porch = <16>;
+
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+
+	fragment@12 {
+		/* 4.0inch 480x800
+		 * https://www.waveshare.com/product/raspberry-pi/displays/4inch-dsi-lcd.htm
+		 */
+		target = <&panel>;
+		__dormant__ {
+			panel-timing {
+				clock-frequency = <50000000>;
+				hactive = <480>;
+				hfront-porch = <150>;
+				hsync-len = <100>;
+				hback-porch = <150>;
+				vactive = <800>;
+				vfront-porch = <20>;
+				vsync-len = <100>;
+				vback-porch = <20>;
+
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+
+	fragment@13 {
+		/* 7.0inch C 1024x600
+		 * https://www.waveshare.com/product/raspberry-pi/displays/lcd-oled/7inch-dsi-lcd-c-with-case-a.htm
+		 */
+		target = <&panel>;
+		__dormant__ {
+			panel-timing {
+				clock-frequency = <50000000>;
+				hactive = <1024>;
+				hfront-porch = <100>;
+				hsync-len = <100>;
+				hback-porch = <100>;
+				vactive = <600>;
+				vfront-porch = <10>;
+				vsync-len = <10>;
+				vback-porch = <10>;
+
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+
+	fragment@14 {
+		/* 7.9inch 400x1280
+		 * https://www.waveshare.com/product/raspberry-pi/displays/7.9inch-dsi-lcd.htm
+		 */
+		target = <&panel>;
+		__dormant__ {
+			panel-timing {
+				clock-frequency = <50000000>;
+				hactive = <400>;
+				hfront-porch = <40>;
+				hsync-len = <30>;
+				hback-porch = <40>;
+				vactive = <1280>;
+				vfront-porch = <20>;
+				vsync-len = <10>;
+				vback-porch = <20>;
+
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+
+	fragment@15 {
+		/* 8.0inch or 10.1inch 1280x800
+		 * https://www.waveshare.com/product/raspberry-pi/displays/8inch-dsi-lcd-c.htm
+		 * https://www.waveshare.com/product/raspberry-pi/displays/10.1inch-dsi-lcd-c.htm
+		 */
+		target = <&panel>;
+		__dormant__ {
+			panel-timing {
+				clock-frequency = <50000000>;
+				hactive = <1024>;
+				hfront-porch = <100>;
+				hsync-len = <100>;
+				hback-porch = <100>;
+				vactive = <600>;
+				vfront-porch = <10>;
+				vsync-len = <10>;
+				vback-porch = <10>;
+
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+
+	fragment@16 {
+		/* 11.9inch 320x1480
+		 * https://www.waveshare.com/product/raspberry-pi/displays/11.9inch-dsi-lcd.htm
+		 */
+		target = <&panel>;
+		__dormant__ {
+			panel-timing {
+				clock-frequency = <50000000>;
+				hactive = <320>;
+				hfront-porch = <60>;
+				hsync-len = <60>;
+				hback-porch = <60>;
+				vactive = <1480>;
+				vfront-porch = <60>;
+				vsync-len = <60>;
+				vback-porch = <60>;
+
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+
+	fragment@17 {
+		target = <&panel>;
+		__dormant__ {
+			panel-timing {
+				clock-frequency = <50000000>;
+				hactive = <320>;
+				hfront-porch = <60>;
+				hsync-len = <60>;
+				hback-porch = <60>;
+				vactive = <1480>;
+				vfront-porch = <60>;
+				vsync-len = <60>;
+				vback-porch = <60>;
+
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+
+	fragment@18 {
+		/* 5.0inch 720x1280
+		 * https://www.waveshare.com/5inch-dsi-lcd-d.htm
+		 */
+		target = <&panel>;
+		__dormant__ {
+			panel-timing {
+				clock-frequency = <83333333>;
+				hactive = <720>;
+				hfront-porch = <100>;
+				hsync-len = <80>;
+				hback-porch = <100>;
+				vactive = <1480>;
+				vfront-porch = <60>;
+				vsync-len = <60>;
+				vback-porch = <60>;
+
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+
+	fragment@19 {
+		/* 6.25inch 720x1560
+		 * https://www.waveshare.com/6.25inch-dsi-lcd.htm
+		 */
+		target = <&panel>;
+		__dormant__ {
+			panel-timing {
+				clock-frequency = <83333333>;
+				hactive = <720>;
+				hfront-porch = <50>;
+				hsync-len = <50>;
+				hback-porch = <50>;
+				vactive = <1560>;
+				vfront-porch = <20>;
+				vsync-len = <20>;
+				vback-porch = <20>;
+
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+
+	fragment@20 {
+		/* 8.8inch 480x1920
+		 * https://www.waveshare.com/8.8inch-dsi-lcd.htm
+		 */
+		target = <&panel>;
+		__dormant__ {
+			panel-timing {
+				clock-frequency = <83333333>;
+				hactive = <480>;
+				hfront-porch = <50>;
+				hsync-len = <50>;
+				hback-porch = <50>;
+				vactive = <1920>;
+				vfront-porch = <20>;
+				vsync-len = <20>;
+				vback-porch = <20>;
+
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+
+	fragment@21 {
+		/* 13.3inch 1920x1080 4 lanes (Pi5 and CMs)
+		 * https://www.waveshare.com/13.3inch-dsi-lcd.htm
+		 */
+		target = <&panel>;
+		__dormant__ {
+			panel-timing {
+				clock-frequency = <148500000>;
+				hactive = <1920>;
+				hfront-porch = <88>;
+				hsync-len = <44>;
+				hback-porch = <148>;
+				vactive = <1080>;
+				vfront-porch = <4>;
+				vsync-len = <5>;
+				vback-porch = <36>;
+
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+
+	fragment@22 {
+		/* 13.3inch 1920x1080 2 lanes (Pi 1-4)
+		 * https://www.waveshare.com/13.3inch-dsi-lcd.htm
+		 */
+		target = <&panel>;
+		__dormant__ {
+			panel-timing {
+				clock-frequency = <83333333>;
+				hactive = <1920>;
+				hfront-porch = <88>;
+				hsync-len = <44>;
+				hback-porch = <148>;
+				vactive = <1080>;
+				vfront-porch = <4>;
+				vsync-len = <5>;
+				vback-porch = <36>;
+
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+
+	fragment@23 {
+		/* 7.0inch 1280x720
+		 * https://www.waveshare.com/7inch-dsi-lcd-h.htm
+		 */
+		target = <&panel>;
+		__dormant__ {
+			panel-timing {
+				clock-frequency = <83333333>;
+				hactive = <1280>;
+				hfront-porch = <64>;
+				hsync-len = <64>;
+				hback-porch = <64>;
+				vactive = <720>;
+				vfront-porch = <64>;
+				vsync-len = <64>;
+				vback-porch = <64>;
+
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+
 	__overrides__ {
-		2_8_inch = <&panel>, "compatible=waveshare,2.8inch-panel",
+		2_8_inch = <0>,"+10",
 				   <&touch>, "touchscreen-size-x:0=480",
 				   <&touch>, "touchscreen-size-y:0=640",
 				   <&touch>, "touchscreen-inverted-y?",
 				   <&touch>, "touchscreen-swapped-x-y?";
-		3_4_inch = <&panel>, "compatible=waveshare,3.4inch-panel",
+		3_4_inch = <0>,"+11",
 				   <&touch>, "touchscreen-size-x:0=800",
 				   <&touch>, "touchscreen-size-y:0=800";
-		4_0_inch = <&panel>, "compatible=waveshare,4.0inch-panel",
+		4_0_inch = <0>,"+12",
 				   <&touch>, "touchscreen-size-x:0=800",
 				   <&touch>, "touchscreen-size-y:0=480",
 				   <&touch>, "touchscreen-inverted-x?",
 				   <&touch>, "touchscreen-swapped-x-y?";
-		7_0_inchC = <&panel>, "compatible=waveshare,7.0inch-c-panel",
+		7_0_inchC = <0>,"+13",
 				   <&touch>, "touchscreen-size-x:0=800",
 				   <&touch>, "touchscreen-size-y:0=480";
-		7_9_inch = <&panel>, "compatible=waveshare,7.9inch-panel",
+		7_9_inch = <0>,"+14",
 				   <&touch>, "touchscreen-size-x:0=4096",
 				   <&touch>, "touchscreen-size-y:0=4096",
 				   <&touch>, "touchscreen-inverted-x?",
 				   <&touch>, "touchscreen-swapped-x-y?";
-		8_0_inch = <&panel>, "compatible=waveshare,8.0inch-panel",
+		8_0_inch = <0>,"+15",
 				   <&touch>, "touchscreen-size-x:0=800",
 				   <&touch>, "touchscreen-size-y:0=1280",
 				   <&touch>, "touchscreen-inverted-x?",
 				   <&touch>, "touchscreen-swapped-x-y?";
-		10_1_inch = <&panel>, "compatible=waveshare,10.1inch-panel",
+		10_1_inch = <0>,"+15",
 				   <&touch>, "touchscreen-size-x:0=800",
 				   <&touch>, "touchscreen-size-y:0=1280",
 				   <&touch>, "touchscreen-inverted-x?",
 				   <&touch>, "touchscreen-swapped-x-y?";
-		11_9_inch = <&panel>, "compatible=waveshare,11.9inch-panel",
+		11_9_inch = <0>,"+16",
 				   <&touch>, "touchscreen-inverted-x?",
 				   <&touch>, "touchscreen-swapped-x-y?";
-		4_0_inchC = <&panel>, "compatible=waveshare,4inch-panel",
+		4_0_inchC = <0>,"+17",
 				   <&touch>, "touchscreen-size-x:0=720",
 				   <&touch>, "touchscreen-size-y:0=720";
-		5_0_inch = <&panel>, "compatible=waveshare,5.0inch-panel",
+		5_0_inch = <0>,"+18",
 				   <&touch>, "touchscreen-inverted-x?",
 				   <&touch>, "touchscreen-inverted-y?";
-		6_25_inch = <&panel>, "compatible=waveshare,6.25inch-panel",
+		6_25_inch = <0>,"+19",
 				   <&touch>, "touchscreen-inverted-x?",
 				   <&touch>, "touchscreen-inverted-y?";
-		8_8_inch = <&panel>, "compatible=waveshare,8.8inch-panel";
-		13_3_inch_4lane = <&panel>, "compatible=waveshare,13.3inch-4lane-panel",
-				  <&touch2>, "status=okay";
-		13_3_inch_2lane = <&panel>, "compatible=waveshare,13.3inch-2lane-panel",
-				  <&touch2>, "status=okay";
-		7_0_inchH = <&panel>, "compatible=waveshare,7.0inch-h-panel",
+		8_8_inch = <0>,"+20";
+		13_3_inch_4lane = <0>,"+21+7",
+				  <&touch2>, "status=okay",
+				  <&panel>, "compatible=waveshare,13.3inch-panel\0panel-dpi";
+		13_3_inch_2lane = <0>,"+22",
+				  <&touch2>, "status=okay",
+				  <&panel>, "compatible=waveshare,13.3inch-panel\0panel-dpi";
+		7_0_inchH = <0>,"+23",
 				  <&touch>, "touchscreen-swapped-x-y?",
 				  <&touch>, "touchscreen-inverted-x?";
+
 		i2c1 = <&i2c_frag>, "target:0=",<&i2c1>,
 		       <0>, "-3-4+5";
 		disable_touch = <&touch>, "status=disabled";
@@ -140,7 +539,8 @@
 		invx = <&touch>,"touchscreen-inverted-x?";
 		invy = <&touch>,"touchscreen-inverted-y?";
 		swapxy = <&touch>,"touchscreen-swapped-x-y?";
-		dsi0 = <&dsi_frag>, "target:0=",<&dsi0>,
+		dsi0 = <&panel>, "reg:0=0",
+		       <&dsi_frag>, "target:0=",<&dsi0>,
 		       <&i2c_frag>, "target:0=",<&i2c_csi_dsi0>;
 	};
 };
