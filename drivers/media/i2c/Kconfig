@@ -287,6 +287,17 @@ config VIDEO_IMX415
 	  To compile this driver as a module, choose M here: the
 	  module will be called imx415.
 
+config VIDEO_IMX662
+	tristate "Sony IMX662 sensor support"
+	depends on OF || COMPILE_TEST
+	select V4L2_CCI_I2C
+	help
+	  This is a Video4Linux2 sensor driver for the Sony
+	  IMX662 camera.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called imx662.
+
 config VIDEO_MAX9271_LIB
 	tristate
 
