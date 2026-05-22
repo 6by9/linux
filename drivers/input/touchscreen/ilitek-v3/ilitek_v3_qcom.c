@@ -38,9 +38,9 @@ void ili_tp_reset(void)
 	/* Need accurate power sequence, do not change it to msleep */
 	gpio_direction_output(ilits->tp_rst, 1);
 	mdelay(1);
-	gpio_set_value(ilits->tp_rst, 0);
+	gpio_set_value_cansleep(ilits->tp_rst, 0);
 	mdelay(5);
-	gpio_set_value(ilits->tp_rst, 1);
+	gpio_set_value_cansleep(ilits->tp_rst, 1);
 	mdelay(ilits->rst_edge_delay);
 }
 
