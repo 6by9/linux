@@ -1,0 +1,9 @@
+/*
+ * vc4-kms-dsi-ili79600-13inch-overlay.dts
+ */
+
+#include "vc4-kms-dsi-ili79600-10-1inch-overlay.dts"
+
+&dsi_panel {
+	compatible = "raspberrypi,dsi-13inch-panel";
+};
