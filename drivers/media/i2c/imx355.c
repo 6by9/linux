@@ -27,7 +27,6 @@
 
 /* PLL registers that depend on the external clock frequency */
 #define IMX355_REG_EXTCLK_FREQ		0x0136
-#define IMX355_REG_PLL_VT_MUL		0x0306
 #define IMX355_REG_PLL_OP_MUL		0x030e
 
 /* V_TIMING internal */
@@ -107,7 +106,6 @@ struct imx355_mode {
 struct imx355_clk_params {
 	u32 ext_clk;
 	u16 extclk_freq; /* External clock (MHz) in 8.8 fixed point) */
-	u16 pll_vt_mpy;	/* VT system PLL multiplier */
 	u16 pll_op_mpy;	/* OP system PLL multiplier */
 };
 
@@ -120,13 +118,11 @@ static const struct imx355_clk_params imx355_clk_params[] = {
 	{
 		.ext_clk = 19200000,
 		.extclk_freq = 0x1333,	/* 19.2 MHz */
-		.pll_vt_mpy = 120,	/* 19.2 / 2 * 120 = 1152 MHz */
 		.pll_op_mpy = 75,	/* 19.2 / 2 * 75  = 720 MHz */
 	},
 	{
 		.ext_clk = 24000000,
 		.extclk_freq = 0x1800,	/* 24.0 MHz */
-		.pll_vt_mpy = 96,	/* 24.0 / 2 * 96  = 1152 MHz */
 		.pll_op_mpy = 60,	/* 24.0 / 2 * 60  = 720 MHz */
 	},
 };
@@ -1399,10 +1395,6 @@ static int imx355_start_streaming(struct imx355 *imx355)
 	/* Set PLL registers for the external clock frequency */
 	ret = imx355_write_reg(imx355, IMX355_REG_EXTCLK_FREQ, 2,
 			       imx355->clk_params->extclk_freq);
-	if (ret)
-		return ret;
-	ret = imx355_write_reg(imx355, IMX355_REG_PLL_VT_MUL, 2,
-			       imx355->clk_params->pll_vt_mpy);
 	if (ret)
 		return ret;
 	ret = imx355_write_reg(imx355, IMX355_REG_PLL_OP_MUL, 2,
