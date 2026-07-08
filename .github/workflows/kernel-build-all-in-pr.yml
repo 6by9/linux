@@ -1,0 +1,80 @@
+name: Compile Each PR Commit
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull Request number to compile'
+        required: true
+        type: number
+      branch:
+        description: 'Branch to checkout for PR (defaults to PR head)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  NUM_JOBS: 6
+
+jobs:
+  # Job 1: Extract commit SHAs and convert to a JSON matrix
+  generate-commit-matrix:
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      commits: ${{ steps.set-commits.outputs.commits }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: set-commits
+        run: |
+          set -eo pipefail
+
+          # Fetch commit SHAs from the PR using GitHub CLI
+          COMMITS=$(gh pr view ${{ github.event.pull_request.number }} --json commits -q '.commits[].oid')
+
+          # Convert newline-separated SHAs to a JSON array
+          COMMITS_JSON=$(echo "$COMMITS" | jq -R -s 'split("\n") | map(select(length > 0))')
+
+          echo "commits=$COMMITS_JSON" >> $GITHUB_OUTPUT
+
+  # Job 2: Compile each commit in parallel
+  compile-commits:
+    needs: generate-commit-matrix
+    runs-on: ubuntu-24.04-arm
+    # Skip if no commits (e.g., squash merge or empty PR)
+    if: needs.generate-commit-matrix.outputs.commits != '[]'
+    strategy:
+      matrix:
+        commit: ${{ fromJSON(needs.generate-commit-matrix.outputs.commits) }}
+      # Optional: Fail fast if any commit fails
+      fail-fast: true
+    steps:
+      - name: Checkout specific commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.commit }}
+          fetch-depth: 1
+
+      - name: Compile
+        run: |
+          mkdir ${{github.workspace}}/build
+          export ARCH=arm64
+          make O=${{github.workspace}}/build bcm2711_defconfig
+          scripts/config --file ${{github.workspace}}/build/.config --set-val CONFIG_WERROR y
+          make O=${{github.workspace}}/build -j ${{env.NUM_JOBS}} Image.gz modules dtbs
+
+
+      - name: Verify Build Output
+        run: |
+          set -eo pipefail
+          KERNEL_IMAGE="arch/arm64/boot/Image"
+          if [ -f "$KERNEL_IMAGE" ]; then
+            echo "✅ Kernel Image built successfully: $KERNEL_IMAGE"
+            ls -lh "$KERNEL_IMAGE"
+            file "$KERNEL_IMAGE"
+          else
+            echo "❌ Kernel build failed or Image not found"
+            exit 1
+          fi
