@@ -1,0 +1,143 @@
+name: Compile Each PR Commit
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull Request number to compile'
+        required: true
+        type: number
+      branch:
+        description: 'Branch to checkout for PR (defaults to PR head)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  NUM_JOBS: 6
+
+jobs:
+  # Job 1: Extract number of commits that need to be built
+  generate-commit-info:
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      num_commits: ${{ steps.set-commits.outputs.num_commits }}
+      source_repo: ${{ steps.set-commits.outputs.source_repo }}
+      source_branch: ${{ steps.set-commits.outputs.source_branch }}
+    steps:
+      - id: set-commits
+        run: |
+          set -eo pipefail
+
+          REPO="${{ github.repository }}"
+          PR_NUM="${{ github.event.inputs.pr_number }}"
+          TOKEN="${{ secrets.GITHUB_TOKEN }}"
+
+          RESP=$(curl -s \
+            "https://api.github.com/repos/${REPO}/pulls/${PR_NUM}")
+
+          # SOURCE_USER=$(echo "$RESP" | jq -r '.head.repo.owner.html_url')
+          # SOURCE_REPO=$(echo "$RESP" | jq -r '.head.repo.name')
+          #SOURCE_REPO_URL="${SOURCE_USER}/${SOURCE_REPO}"
+          SOURCE_REPO=$(echo "$RESP" | jq -r '.head.repo.full_name')
+          SOURCE_BRANCH=$(echo "$RESP" | jq -r '.head.ref')
+
+          echo "soure_repo: $SOURCE_REPO"
+          echo "source_branch: $SOURCE_BRANCH"
+
+          echo "source_repo=$SOURCE_REPO" >> "$GITHUB_OUTPUT"
+          echo "source_branch=$SOURCE_BRANCH" >> "$GITHUB_OUTPUT"
+
+          # Fetch commits via REST API with pagination support
+          COMMITS=""
+          PAGE=1
+          while true; do
+            RESP=$(curl -s \
+              "https://api.github.com/repos/${REPO}/pulls/${PR_NUM}/commits?per_page=100&page=${PAGE}")
+
+            PAGE_COMMITS=$(echo "$RESP" | jq -r '.[].sha')
+            COMMITS="$COMMITS $PAGE_COMMITS"
+
+            # Stop pagination if we get fewer than per_page results
+            COUNT=$(echo "$RESP" | jq 'length')
+            if [ "$COUNT" -lt 100 ]; then
+              break
+            fi
+            PAGE=$((PAGE + 1))
+          done
+
+          echo "There are $COUNT commits to build"
+          echo "num_commits=$COUNT" >> "$GITHUB_OUTPUT"
+
+
+  # Job 2: Compile each commit
+  compile-commits:
+    needs: generate-commit-info
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      matrix:
+        include:
+          #- name: bcmrpi
+          #  arch: arm
+          #  defconfig: bcmrpi_defconfig
+          #  kernel: kernel
+
+          - name: bcm2711
+            arch: arm64
+            defconfig: bcm2711_defconfig
+            kernel: kernel8
+
+    steps:
+      - name: Checkout all commits in the PR
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: ${{ needs.generate-commit-info.outputs.num_commits }}
+          repository: ${{ needs.generate-commit-info.outputs.source_repo }}
+          ref: ${{ needs.generate-commit-info.outputs.source_branch }}
+
+      - name: Build kernel ${{matrix.name}}
+        run: |
+          set -eo pipefail
+
+          echo "Checked out repo ${{ needs.generate-commit-info.outputs.source_repo }}"
+          echo "branch ${{ needs.generate-commit-info.outputs.source_branch }}"
+          echo "depth ${{ needs.generate-commit-info.outputs.num_commits }}"
+
+          mkdir ${{github.workspace}}/build
+          export ARCH=${{matrix.arch}}
+          if [[ "$ARCH" == "arm64" ]]; then
+            export DTS_SUBDIR=broadcom
+            export IMAGE=Image.gz
+          else
+            export CROSS_COMPILE=arm-linux-gnueabihf-
+            export DTS_SUBDIR=broadcom
+            export IMAGE=zImage
+          fi
+          export KERNEL_IMAGE=${{github.workspace}}/build/arch/${ARCH}/boot/$IMAGE
+
+          echo "Testing ${{ needs.generate-commit-info.outputs.num_commits }} commits"
+
+          for i in $(seq 1 ${{ needs.generate-commit-info.outputs.num_commits }});
+          do
+            echo "Build patch $i"
+            make O=${{github.workspace}}/build ${{matrix.defconfig}}
+            scripts/config --file ${{github.workspace}}/build/.config --set-val CONFIG_WERROR y
+
+            make O=${{github.workspace}}/build -j ${{env.NUM_JOBS}} $IMAGE modules dtbs
+
+            if [ -f "$KERNEL_IMAGE" ]; then
+              echo "✅ Kernel Image built successfully: $KERNEL_IMAGE"
+              ls -lh "$KERNEL_IMAGE"
+              file "$KERNEL_IMAGE"
+            else
+              echo "❌ Kernel build failed or Image not found"
+              exit 1
+            fi
+
+            if [ $i -ne ${{ needs.generate-commit-info.outputs.num_commits }} ]; then
+              git reset --hard HEAD~1
+            fi
+          done
