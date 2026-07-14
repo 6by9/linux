@@ -33,13 +33,6 @@
 #define IMX355_REG_FLL			0x0340
 #define IMX355_FLL_MAX			0xffff
 
-#define IMX355_REG_X_ADD_START		0x0344
-#define IMX355_REG_Y_ADD_START		0x0346
-#define IMX355_REG_X_ADD_END		0x0348
-#define IMX355_REG_Y_ADD_END		0x034a
-#define IMX355_REG_X_OUT_SIZE		0x034c
-#define IMX355_REG_Y_OUT_SIZE		0x034e
-
 /* Exposure control */
 #define IMX355_REG_EXPOSURE		0x0202
 #define IMX355_EXPOSURE_MIN		1
@@ -95,7 +88,6 @@ struct imx355_mode {
 	u32 width;
 	/* Frame height */
 	u32 height;
-	struct v4l2_rect crop;
 
 	/* V-timing */
 	u32 fll_def;
@@ -261,9 +253,21 @@ static const struct imx355_reg_list imx355_global_setting = {
 static const struct imx355_reg mode_3268x2448_regs[] = {
 	{ 0x0342, 0x0e },
 	{ 0x0343, 0x58 },
+	{ 0x0344, 0x00 },
+	{ 0x0345, 0x08 },
+	{ 0x0346, 0x00 },
+	{ 0x0347, 0x08 },
+	{ 0x0348, 0x0c },
+	{ 0x0349, 0xcb },
+	{ 0x034a, 0x09 },
+	{ 0x034b, 0x97 },
 	{ 0x0900, 0x00 },
 	{ 0x0901, 0x11 },
 	{ 0x0902, 0x00 },
+	{ 0x034c, 0x0c },
+	{ 0x034d, 0xc4 },
+	{ 0x034e, 0x09 },
+	{ 0x034f, 0x90 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
@@ -271,9 +275,21 @@ static const struct imx355_reg mode_3268x2448_regs[] = {
 static const struct imx355_reg mode_3264x2448_regs[] = {
 	{ 0x0342, 0x0e },
 	{ 0x0343, 0x58 },
+	{ 0x0344, 0x00 },
+	{ 0x0345, 0x08 },
+	{ 0x0346, 0x00 },
+	{ 0x0347, 0x08 },
+	{ 0x0348, 0x0c },
+	{ 0x0349, 0xc7 },
+	{ 0x034a, 0x09 },
+	{ 0x034b, 0x97 },
 	{ 0x0900, 0x00 },
 	{ 0x0901, 0x11 },
 	{ 0x0902, 0x00 },
+	{ 0x034c, 0x0c },
+	{ 0x034d, 0xc0 },
+	{ 0x034e, 0x09 },
+	{ 0x034f, 0x90 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
@@ -281,9 +297,21 @@ static const struct imx355_reg mode_3264x2448_regs[] = {
 static const struct imx355_reg mode_3280x2464_regs[] = {
 	{ 0x0342, 0x0e },
 	{ 0x0343, 0x58 },
+	{ 0x0344, 0x00 },
+	{ 0x0345, 0x00 },
+	{ 0x0346, 0x00 },
+	{ 0x0347, 0x00 },
+	{ 0x0348, 0x0c },
+	{ 0x0349, 0xcf },
+	{ 0x034a, 0x09 },
+	{ 0x034b, 0x9f },
 	{ 0x0900, 0x00 },
 	{ 0x0901, 0x11 },
 	{ 0x0902, 0x00 },
+	{ 0x034c, 0x0c },
+	{ 0x034d, 0xd0 },
+	{ 0x034e, 0x09 },
+	{ 0x034f, 0xa0 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
@@ -291,9 +319,21 @@ static const struct imx355_reg mode_3280x2464_regs[] = {
 static const struct imx355_reg mode_1940x1096_regs[] = {
 	{ 0x0342, 0x0e },
 	{ 0x0343, 0x58 },
+	{ 0x0344, 0x02 },
+	{ 0x0345, 0xa0 },
+	{ 0x0346, 0x02 },
+	{ 0x0347, 0xac },
+	{ 0x0348, 0x0a },
+	{ 0x0349, 0x33 },
+	{ 0x034a, 0x06 },
+	{ 0x034b, 0xf3 },
 	{ 0x0900, 0x00 },
 	{ 0x0901, 0x11 },
 	{ 0x0902, 0x00 },
+	{ 0x034c, 0x07 },
+	{ 0x034d, 0x94 },
+	{ 0x034e, 0x04 },
+	{ 0x034f, 0x48 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
@@ -301,9 +341,21 @@ static const struct imx355_reg mode_1940x1096_regs[] = {
 static const struct imx355_reg mode_1936x1096_regs[] = {
 	{ 0x0342, 0x0e },
 	{ 0x0343, 0x58 },
+	{ 0x0344, 0x02 },
+	{ 0x0345, 0xa0 },
+	{ 0x0346, 0x02 },
+	{ 0x0347, 0xac },
+	{ 0x0348, 0x0a },
+	{ 0x0349, 0x2f },
+	{ 0x034a, 0x06 },
+	{ 0x034b, 0xf3 },
 	{ 0x0900, 0x00 },
 	{ 0x0901, 0x11 },
 	{ 0x0902, 0x00 },
+	{ 0x034c, 0x07 },
+	{ 0x034d, 0x90 },
+	{ 0x034e, 0x04 },
+	{ 0x034f, 0x48 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
@@ -311,9 +363,21 @@ static const struct imx355_reg mode_1936x1096_regs[] = {
 static const struct imx355_reg mode_1924x1080_regs[] = {
 	{ 0x0342, 0x0e },
 	{ 0x0343, 0x58 },
+	{ 0x0344, 0x02 },
+	{ 0x0345, 0xa8 },
+	{ 0x0346, 0x02 },
+	{ 0x0347, 0xb4 },
+	{ 0x0348, 0x0a },
+	{ 0x0349, 0x2b },
+	{ 0x034a, 0x06 },
+	{ 0x034b, 0xeb },
 	{ 0x0900, 0x00 },
 	{ 0x0901, 0x11 },
 	{ 0x0902, 0x00 },
+	{ 0x034c, 0x07 },
+	{ 0x034d, 0x84 },
+	{ 0x034e, 0x04 },
+	{ 0x034f, 0x38 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
@@ -321,9 +385,21 @@ static const struct imx355_reg mode_1924x1080_regs[] = {
 static const struct imx355_reg mode_1920x1080_regs[] = {
 	{ 0x0342, 0x0e },
 	{ 0x0343, 0x58 },
+	{ 0x0344, 0x02 },
+	{ 0x0345, 0xa8 },
+	{ 0x0346, 0x02 },
+	{ 0x0347, 0xb4 },
+	{ 0x0348, 0x0a },
+	{ 0x0349, 0x27 },
+	{ 0x034a, 0x06 },
+	{ 0x034b, 0xeb },
 	{ 0x0900, 0x00 },
 	{ 0x0901, 0x11 },
 	{ 0x0902, 0x00 },
+	{ 0x034c, 0x07 },
+	{ 0x034d, 0x80 },
+	{ 0x034e, 0x04 },
+	{ 0x034f, 0x38 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
@@ -331,9 +407,21 @@ static const struct imx355_reg mode_1920x1080_regs[] = {
 static const struct imx355_reg mode_1640x1232_regs[] = {
 	{ 0x0342, 0x07 },
 	{ 0x0343, 0x2c },
+	{ 0x0344, 0x00 },
+	{ 0x0345, 0x00 },
+	{ 0x0346, 0x00 },
+	{ 0x0347, 0x00 },
+	{ 0x0348, 0x0c },
+	{ 0x0349, 0xcf },
+	{ 0x034a, 0x09 },
+	{ 0x034b, 0x9f },
 	{ 0x0900, 0x01 },
 	{ 0x0901, 0x22 },
 	{ 0x0902, 0x00 },
+	{ 0x034c, 0x06 },
+	{ 0x034d, 0x68 },
+	{ 0x034e, 0x04 },
+	{ 0x034f, 0xd0 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
@@ -341,9 +429,21 @@ static const struct imx355_reg mode_1640x1232_regs[] = {
 static const struct imx355_reg mode_1640x922_regs[] = {
 	{ 0x0342, 0x07 },
 	{ 0x0343, 0x2c },
+	{ 0x0344, 0x00 },
+	{ 0x0345, 0x00 },
+	{ 0x0346, 0x01 },
+	{ 0x0347, 0x30 },
+	{ 0x0348, 0x0c },
+	{ 0x0349, 0xcf },
+	{ 0x034a, 0x08 },
+	{ 0x034b, 0x63 },
 	{ 0x0900, 0x01 },
 	{ 0x0901, 0x22 },
 	{ 0x0902, 0x00 },
+	{ 0x034c, 0x06 },
+	{ 0x034d, 0x68 },
+	{ 0x034e, 0x03 },
+	{ 0x034f, 0x9a },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
@@ -351,9 +451,21 @@ static const struct imx355_reg mode_1640x922_regs[] = {
 static const struct imx355_reg mode_1300x736_regs[] = {
 	{ 0x0342, 0x07 },
 	{ 0x0343, 0x2c },
+	{ 0x0344, 0x01 },
+	{ 0x0345, 0x58 },
+	{ 0x0346, 0x01 },
+	{ 0x0347, 0xf0 },
+	{ 0x0348, 0x0b },
+	{ 0x0349, 0x7f },
+	{ 0x034a, 0x07 },
+	{ 0x034b, 0xaf },
 	{ 0x0900, 0x01 },
 	{ 0x0901, 0x22 },
 	{ 0x0902, 0x00 },
+	{ 0x034c, 0x05 },
+	{ 0x034d, 0x14 },
+	{ 0x034e, 0x02 },
+	{ 0x034f, 0xe0 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
@@ -361,9 +473,21 @@ static const struct imx355_reg mode_1300x736_regs[] = {
 static const struct imx355_reg mode_1296x736_regs[] = {
 	{ 0x0342, 0x07 },
 	{ 0x0343, 0x2c },
+	{ 0x0344, 0x01 },
+	{ 0x0345, 0x58 },
+	{ 0x0346, 0x01 },
+	{ 0x0347, 0xf0 },
+	{ 0x0348, 0x0b },
+	{ 0x0349, 0x77 },
+	{ 0x034a, 0x07 },
+	{ 0x034b, 0xaf },
 	{ 0x0900, 0x01 },
 	{ 0x0901, 0x22 },
 	{ 0x0902, 0x00 },
+	{ 0x034c, 0x05 },
+	{ 0x034d, 0x10 },
+	{ 0x034e, 0x02 },
+	{ 0x034f, 0xe0 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
@@ -371,9 +495,21 @@ static const struct imx355_reg mode_1296x736_regs[] = {
 static const struct imx355_reg mode_1284x720_regs[] = {
 	{ 0x0342, 0x07 },
 	{ 0x0343, 0x2c },
+	{ 0x0344, 0x01 },
+	{ 0x0345, 0x68 },
+	{ 0x0346, 0x02 },
+	{ 0x0347, 0x00 },
+	{ 0x0348, 0x0b },
+	{ 0x0349, 0x6f },
+	{ 0x034a, 0x07 },
+	{ 0x034b, 0x9f },
 	{ 0x0900, 0x01 },
 	{ 0x0901, 0x22 },
 	{ 0x0902, 0x00 },
+	{ 0x034c, 0x05 },
+	{ 0x034d, 0x04 },
+	{ 0x034e, 0x02 },
+	{ 0x034f, 0xd0 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
@@ -381,9 +517,21 @@ static const struct imx355_reg mode_1284x720_regs[] = {
 static const struct imx355_reg mode_1280x720_regs[] = {
 	{ 0x0342, 0x07 },
 	{ 0x0343, 0x2c },
+	{ 0x0344, 0x01 },
+	{ 0x0345, 0x68 },
+	{ 0x0346, 0x02 },
+	{ 0x0347, 0x00 },
+	{ 0x0348, 0x0b },
+	{ 0x0349, 0x67 },
+	{ 0x034a, 0x07 },
+	{ 0x034b, 0x9f },
 	{ 0x0900, 0x01 },
 	{ 0x0901, 0x22 },
 	{ 0x0902, 0x00 },
+	{ 0x034c, 0x05 },
+	{ 0x034d, 0x00 },
+	{ 0x034e, 0x02 },
+	{ 0x034f, 0xd0 },
 	{ 0x0700, 0x00 },
 	{ 0x0701, 0x10 },
 };
@@ -391,9 +539,21 @@ static const struct imx355_reg mode_1280x720_regs[] = {
 static const struct imx355_reg mode_820x616_regs[] = {
 	{ 0x0342, 0x0e },
 	{ 0x0343, 0x58 },
+	{ 0x0344, 0x00 },
+	{ 0x0345, 0x00 },
+	{ 0x0346, 0x00 },
+	{ 0x0347, 0x00 },
+	{ 0x0348, 0x0c },
+	{ 0x0349, 0xcf },
+	{ 0x034a, 0x09 },
+	{ 0x034b, 0x9f },
 	{ 0x0900, 0x01 },
 	{ 0x0901, 0x44 },
 	{ 0x0902, 0x00 },
+	{ 0x034c, 0x03 },
+	{ 0x034d, 0x34 },
+	{ 0x034e, 0x02 },
+	{ 0x034f, 0x68 },
 	{ 0x0700, 0x02 },
 	{ 0x0701, 0x78 },
 };
@@ -419,12 +579,6 @@ static const struct imx355_mode supported_modes[] = {
 	{
 		.width = 3280,
 		.height = 2464,
-		.crop = {
-			.width = 3280,
-			.height = 2464,
-			.left = 0,
-			.top = 0,
-		},
 		.fll_def = 2615,
 		.fll_min = 2615,
 		.llp = 3672,
@@ -437,12 +591,6 @@ static const struct imx355_mode supported_modes[] = {
 	{
 		.width = 3268,
 		.height = 2448,
-		.crop = {
-			.width = 3268,
-			.height = 2448,
-			.left = 8,
-			.top = 8,
-		},
 		.fll_def = 2615,
 		.fll_min = 2615,
 		.llp = 3672,
@@ -455,12 +603,6 @@ static const struct imx355_mode supported_modes[] = {
 	{
 		.width = 3264,
 		.height = 2448,
-		.crop = {
-			.width = 3264,
-			.height = 2448,
-			.left = 8,
-			.top = 8,
-		},
 		.fll_def = 2615,
 		.fll_min = 2615,
 		.llp = 3672,
@@ -473,12 +615,6 @@ static const struct imx355_mode supported_modes[] = {
 	{
 		.width = 1940,
 		.height = 1096,
-		.crop = {
-			.width = 1940,
-			.height = 1096,
-			.left = 672,
-			.top = 684,
-		},
 		.fll_def = 1306,
 		.fll_min = 1306,
 		.llp = 3672,
@@ -491,12 +627,6 @@ static const struct imx355_mode supported_modes[] = {
 	{
 		.width = 1936,
 		.height = 1096,
-		.crop = {
-			.width = 1936,
-			.height = 1096,
-			.left = 672,
-			.top = 684,
-		},
 		.fll_def = 1306,
 		.fll_min = 1306,
 		.llp = 3672,
@@ -509,12 +639,6 @@ static const struct imx355_mode supported_modes[] = {
 	{
 		.width = 1924,
 		.height = 1080,
-		.crop = {
-			.width = 1924,
-			.height = 1080,
-			.left = 680,
-			.top = 692,
-		},
 		.fll_def = 1306,
 		.fll_min = 1306,
 		.llp = 3672,
@@ -527,12 +651,6 @@ static const struct imx355_mode supported_modes[] = {
 	{
 		.width = 1920,
 		.height = 1080,
-		.crop = {
-			.width = 1920,
-			.height = 1080,
-			.left = 680,
-			.top = 692,
-		},
 		.fll_def = 1306,
 		.fll_min = 1306,
 		.llp = 3672,
@@ -545,12 +663,6 @@ static const struct imx355_mode supported_modes[] = {
 	{
 		.width = 1640,
 		.height = 1232,
-		.crop = {
-			.width = 3280,
-			.height = 2464,
-			.left = 0,
-			.top = 0,
-		},
 		.fll_def = 1306,
 		.fll_min = 1306,
 		.llp = 1836,
@@ -563,12 +675,6 @@ static const struct imx355_mode supported_modes[] = {
 	{
 		.width = 1640,
 		.height = 922,
-		.crop = {
-			.width = 3280,
-			.height = 1844,
-			.left = 0,
-			.top = 304,
-		},
 		.fll_def = 1306,
 		.fll_min = 1306,
 		.llp = 1836,
@@ -581,12 +687,6 @@ static const struct imx355_mode supported_modes[] = {
 	{
 		.width = 1300,
 		.height = 736,
-		.crop = {
-			.width = 2600,
-			.height = 1472,
-			.left = 344,
-			.top = 496,
-		},
 		.fll_def = 1306,
 		.fll_min = 1306,
 		.llp = 1836,
@@ -599,12 +699,6 @@ static const struct imx355_mode supported_modes[] = {
 	{
 		.width = 1296,
 		.height = 736,
-		.crop = {
-			.width = 2592,
-			.height = 1472,
-			.left = 344,
-			.top = 496,
-		},
 		.fll_def = 1306,
 		.fll_min = 1306,
 		.llp = 1836,
@@ -617,12 +711,6 @@ static const struct imx355_mode supported_modes[] = {
 	{
 		.width = 1284,
 		.height = 720,
-		.crop = {
-			.width = 2568,
-			.height = 1440,
-			.left = 360,
-			.top = 512,
-		},
 		.fll_def = 1306,
 		.fll_min = 1306,
 		.llp = 1836,
@@ -635,12 +723,6 @@ static const struct imx355_mode supported_modes[] = {
 	{
 		.width = 1280,
 		.height = 720,
-		.crop = {
-			.width = 2560,
-			.height = 1440,
-			.left = 360,
-			.top = 512,
-		},
 		.fll_def = 1306,
 		.fll_min = 1306,
 		.llp = 1836,
@@ -653,12 +735,6 @@ static const struct imx355_mode supported_modes[] = {
 	{
 		.width = 820,
 		.height = 616,
-		.crop = {
-			.width = 3280,
-			.height = 2464,
-			.left = 0,
-			.top = 0,
-		},
 		.fll_def = 652,
 		.fll_min = 652,
 		.llp = 3672,
@@ -997,7 +1073,6 @@ imx355_set_pad_format(struct v4l2_subdev *sd,
 static int imx355_start_streaming(struct imx355 *imx355)
 {
 	const struct imx355_reg_list *reg_list;
-	const struct imx355_mode *mode;
 	int ret;
 
 	/* Global Setting */
@@ -1009,39 +1084,12 @@ static int imx355_start_streaming(struct imx355 *imx355)
 	}
 
 	/* Apply default values of current mode */
-	mode = imx355->cur_mode;
-	reg_list = &mode->reg_list;
+	reg_list = &imx355->cur_mode->reg_list;
 	ret = imx355_write_regs(imx355, reg_list->regs, reg_list->num_of_regs);
 	if (ret) {
 		dev_err(imx355->dev, "failed to set mode");
 		return ret;
 	}
-
-	/* Set readout crop and size registers  */
-	ret = imx355_write_reg(imx355, IMX355_REG_X_ADD_START, 2,
-			       mode->crop.left);
-	if (ret)
-		return ret;
-	ret = imx355_write_reg(imx355, IMX355_REG_Y_ADD_START, 2,
-			       mode->crop.top);
-	if (ret)
-		return ret;
-	ret = imx355_write_reg(imx355, IMX355_REG_X_ADD_END, 2,
-			       mode->crop.width + mode->crop.left - 1);
-	if (ret)
-		return ret;
-	ret = imx355_write_reg(imx355, IMX355_REG_Y_ADD_END, 2,
-			       mode->crop.height + mode->crop.top - 1);
-	if (ret)
-		return ret;
-	ret = imx355_write_reg(imx355, IMX355_REG_X_OUT_SIZE, 2,
-			       mode->width);
-	if (ret)
-		return ret;
-	ret = imx355_write_reg(imx355, IMX355_REG_Y_OUT_SIZE, 2,
-			       mode->height);
-	if (ret)
-		return ret;
 
 	/* Set PLL registers for the external clock frequency */
 	ret = imx355_write_reg(imx355, IMX355_REG_EXTCLK_FREQ, 2,
