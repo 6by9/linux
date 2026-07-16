@@ -1446,6 +1446,11 @@ int amdgpu_dm_check_crtc_color_mgmt(struct dm_crtc_state *crtc,
 	bool is_legacy;
 	int r;
 
+	if (crtc->base.color_pipeline_enabled) {
+		r = amdgpu_dm_crtc_set_colorop_properties(&crtc->base, stream, check_only);
+		return r;
+	}
+
 	tf = amdgpu_tf_to_dc_tf(crtc->regamma_tf);
 
 	r = amdgpu_dm_verify_lut_sizes(&crtc->base);
