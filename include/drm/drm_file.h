@@ -215,6 +215,13 @@ struct drm_file {
 	bool plane_color_pipeline;
 
 	/**
+	 * @crtc_color_pipeline:
+	 *
+	 * True if client understands CRTC (post-blend) color pipelines
+	 */
+	bool crtc_color_pipeline;
+
+	/**
 	 * @was_master:
 	 *
 	 * This client has or had, master capability. Protected by struct
