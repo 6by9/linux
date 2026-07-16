@@ -1176,6 +1176,87 @@ int amdgpu_dm_verify_lut3d_size(struct amdgpu_device *adev,
 	return 0;
 }
 
+static int
+__set_dm_crtc_colorop_3x4_matrix(struct drm_crtc_state *crtc_state,
+				 struct dc_stream_state *dc_stream_state,
+				 struct drm_colorop *colorop,
+				 bool check_only)
+{
+	struct drm_colorop_state *colorop_state = NULL;
+	struct drm_atomic_commit *state = crtc_state->state;
+	const struct drm_property_blob *blob;
+	struct drm_color_ctm_3x4 *ctm = NULL;
+
+	/* If CRTC COLOR_PIPELINE property == Bypass */
+	if (!colorop) {
+		if (!check_only) {
+			dc_stream_state->gamut_remap_matrix.enable_remap = false;
+			dc_stream_state->csc_color_matrix.enable_adjustment = false;
+		}
+		return 0;
+	}
+
+	colorop_state = drm_atomic_get_new_colorop_state(state, colorop);
+
+	if (colorop_state && colorop->type == DRM_COLOROP_CTM_3X4) {
+		if (colorop_state->bypass) {
+			if (!check_only) {
+				dc_stream_state->gamut_remap_matrix.enable_remap = false;
+				dc_stream_state->csc_color_matrix.enable_adjustment = false;
+			}
+		} else {
+			drm_dbg(state->dev, "3x4 matrix colorop with ID: %d\n", colorop->base.id);
+			blob = colorop_state->data;
+			if (blob->length != sizeof(struct drm_color_ctm_3x4)) {
+				drm_warn(state->dev, "blob->length (%zu) isn't equal to drm_color_ctm_3x4 (%zu)\n",
+					 blob->length, sizeof(struct drm_color_ctm_3x4));
+				return -EINVAL;
+			}
+			if (!check_only) {
+				ctm = (struct drm_color_ctm_3x4 *) blob->data;
+				__drm_ctm_3x4_to_dc_matrix(ctm, dc_stream_state->gamut_remap_matrix.matrix);
+				dc_stream_state->gamut_remap_matrix.enable_remap = true;
+				dc_stream_state->csc_color_matrix.enable_adjustment = false;
+			}
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * amdgpu_dm_crtc_set_colorop_properties: Set colorop props if programmable by DC.
+ * @crtc_state: DRM crtc state
+ * @dc_stream_state: AMDGPU DC stream state
+ * @check_only: only check color state without update dc stream
+ *
+ * This function verifies post-blend CTM and LUT sizes: if there is enough space, and for
+ * output transfer function, if its parameters can be calculated by AMD
+ * color module. The main difference with CRTC color mgmt properties is that
+ * post-blend degamma is not part of the color pipeline since it's actually
+ * supported pre-blend only.
+ *
+ * If it's not an atomic check, DC resources are checked and updated
+ * accordingly.
+ *
+ * Returns:
+ * 0 on success. Error code if validation fails.
+ */
+
+int
+amdgpu_dm_crtc_set_colorop_properties(struct drm_crtc_state *crtc_state,
+				      struct dc_stream_state *dc_stream_state,
+				      bool check_only)
+{
+	struct drm_colorop *colorop = crtc_state->color_pipeline;
+	int ret;
+
+	/* 3x4 matrix */
+	ret = __set_dm_crtc_colorop_3x4_matrix(crtc_state, dc_stream_state, colorop, check_only);
+
+	return ret;
+}
+
 /**
  * amdgpu_dm_verify_lut_sizes - verifies if DRM luts match the hw supported sizes
  * @crtc_state: the DRM CRTC state

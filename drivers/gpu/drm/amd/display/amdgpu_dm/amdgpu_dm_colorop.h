@@ -38,4 +38,6 @@ int amdgpu_dm_build_default_pipeline(struct drm_device *dev, struct drm_plane *p
 				      bool hw_3d_lut, struct drm_prop_enum_list *list);
 #endif
 
+int amdgpu_dm_initialize_crtc_default_pipeline(struct drm_crtc *crtc, struct drm_prop_enum_list *list);
+
 #endif /* __AMDGPU_DM_COLOROP_H__*/

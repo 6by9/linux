@@ -33,6 +33,7 @@
 #include "amdgpu_dm_crtc.h"
 #include "amdgpu_dm_irq.h"
 #include "amdgpu_dm_plane.h"
+#include "amdgpu_dm_colorop.h"
 #include "amdgpu_dm_trace.h"
 #include "amdgpu_dm_debugfs.h"
 #include "modules/inc/mod_power.h"
@@ -546,6 +547,43 @@ amdgpu_dm_atomic_crtc_get_property(struct drm_crtc *crtc,
 
 	return 0;
 }
+#else
+
+#define MAX_CRTC_COLOR_PIPELINES 5
+
+static int
+dm_crtc_init_colorops(struct drm_crtc *crtc)
+{
+	struct drm_prop_enum_list pipelines[MAX_CRTC_COLOR_PIPELINES] = {};
+	struct drm_device *dev = crtc->dev;
+	struct amdgpu_device *adev = drm_to_adev(dev);
+	struct dc *dc = adev->dm.dc;
+	int len = 0;
+	int ret = 0;
+	int i;
+
+	/* initialize pipeline */
+	if (dc->ctx->dce_version >= DCN_VERSION_3_0) {
+		ret = amdgpu_dm_initialize_crtc_default_pipeline(crtc, &pipelines[len]);
+		if (ret) {
+			drm_err(dev, "Failed to create color pipeline for CRTC %d: %d\n",
+				crtc->base.id, ret);
+			goto out;
+		}
+		len++;
+
+		/* Create COLOR_PIPELINE property and attach */
+		ret = drm_crtc_create_color_pipeline_property(crtc, pipelines, len);
+	}
+
+out:
+	for (i = 0; i < len; i++)
+		kfree(pipelines[i].name);
+
+	return ret;
+}
+
+
 #endif
 
 /* Implemented only the options currently available for the driver */
