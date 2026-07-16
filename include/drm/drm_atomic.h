@@ -576,6 +576,26 @@ struct drm_atomic_commit {
 	bool plane_color_pipeline : 1;
 
 	/**
+	 * @crtc_color_pipeline:
+	 *
+	 * Indicates whether this atomic state originated with a client that
+	 * set the DRM_CLIENT_CAP_CRTC_COLOR_PIPELINE.
+	 *
+	 * Drivers and helper functions should use this to ignore legacy
+	 * properties that are incompatible with the drm_crtc COLOR_PIPELINE
+	 * behavior, such as:
+	 *
+	 *  - GAMMA_LUT
+	 *  - DEGAMMA_LUT
+	 *  - GAMMA_LUT_SIZE
+	 *  - CTM
+	 *
+	 * or any other driver-specific properties that might affect pixel
+	 * values.
+	 */
+	bool crtc_color_pipeline : 1;
+
+	/**
 	 * @colorops:
 	 *
 	 * Pointer to array of @drm_colorop and @drm_colorop_state part of this
