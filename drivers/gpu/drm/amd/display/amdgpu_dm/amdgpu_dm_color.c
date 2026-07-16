@@ -1254,6 +1254,8 @@ __set_dm_crtc_colorop_regamma(struct drm_crtc_state *crtc_state,
 	struct drm_atomic_commit *state = crtc_state->state;
 	enum dc_transfer_func_predefined default_tf = TRANSFER_FUNCTION_LINEAR;
 	struct drm_device *dev = crtc_state->state->dev;
+	const struct drm_color_lut32 *regamma_lut;
+	u32 regamma_size;
 	int ret = 0;
 
 	tf->type = TF_TYPE_BYPASS;
@@ -1269,6 +1271,34 @@ __set_dm_crtc_colorop_regamma(struct drm_crtc_state *crtc_state,
 		ret = __set_output_tf(tf, 0, 0, false);
 		if (ret)
 			return ret;
+	}
+
+	/* 1D LUT - Regamma LUT */
+	colorop = colorop->next;
+	if (!colorop) {
+		drm_dbg(dev, "no Regamma LUT colorop found\n");
+		return -EINVAL;
+	}
+
+	colorop_state = drm_atomic_get_new_colorop_state(state, colorop);
+
+	if (colorop_state && !colorop_state->bypass && colorop->type == DRM_COLOROP_1D_LUT) {
+		drm_dbg(dev, "Regamma LUT colorop with ID: %d\n", colorop->base.id);
+		tf->type = TF_TYPE_DISTRIBUTED_POINTS;
+		tf->tf = default_tf;
+		tf->sdr_ref_white_level = SDR_WHITE_LEVEL_INIT_VALUE;
+		regamma_lut = __extract_blob_lut32(colorop_state->data, &regamma_size);
+		regamma_size = regamma_lut != NULL ? regamma_size : 0;
+
+		/* Custom LUT size must be the same as supported size */
+		if (regamma_size == colorop->size) {
+			ret = __set_output_tf_32(tf, regamma_lut, regamma_size, false);
+			if (ret)
+				return ret;
+		} else {
+			drm_dbg(dev, "Regamma LUT size doesn't match blob size\n");
+			return -EINVAL;
+		}
 	}
 
 	return 0;
@@ -1320,7 +1350,7 @@ amdgpu_dm_crtc_set_colorop_properties(struct drm_crtc_state *crtc_state,
 		}
 	}
 
-	/* 1D Curve - REGAMMA TF */
+	/* 1D Curve & LUT - REGAMMA TF & LUT */
 	colorop = colorop->next;
 	if (!colorop) {
 		drm_dbg(dev, "no regamma TF colorop found\n");
@@ -1331,6 +1361,11 @@ amdgpu_dm_crtc_set_colorop_properties(struct drm_crtc_state *crtc_state,
 	ret = __set_dm_crtc_colorop_regamma(crtc_state, dc_stream_state, colorop, out_tf);
 	if (ret)
 		goto cleanup;
+
+	/* REGAMMA LUT colorop is already handled, just skip here */
+	colorop = colorop->next;
+	if (!colorop)
+		ret = -EINVAL;
 
 cleanup:
 	if (check_only)
@@ -1396,7 +1431,6 @@ EXPORT_IF_KUNIT(amdgpu_dm_verify_lut_sizes);
  * Returns:
  * 0 on success. Error code if validation fails.
  */
-
 int amdgpu_dm_check_crtc_color_mgmt(struct dm_crtc_state *crtc,
 				    bool check_only)
 {
