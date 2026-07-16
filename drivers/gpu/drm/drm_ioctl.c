@@ -392,13 +392,26 @@ drm_setclientcap(struct drm_device *dev, void *data, struct drm_file *file_priv)
 		file_priv->plane_color_pipeline = req->value;
 		break;
 	}
-	case DRM_CLIENT_CAP_CRTC_COLOR_PIPELINE:
+	case DRM_CLIENT_CAP_CRTC_COLOR_PIPELINE: {
+		struct drm_crtc *crtc;
+		bool has_crtc_with_color_pipeline = false;
+
 		if (!file_priv->atomic)
 			return -EINVAL;
 		if (req->value > 1)
 			return -EINVAL;
+		drm_for_each_crtc(crtc, dev) {
+			if (crtc->color_pipeline_property) {
+				has_crtc_with_color_pipeline = true;
+				break;
+			}
+		}
+		if (req->value == 1 && !has_crtc_with_color_pipeline)
+			return -EOPNOTSUPP;
+
 		file_priv->crtc_color_pipeline = req->value;
 		break;
+	}
 	default:
 		return -EINVAL;
 	}
