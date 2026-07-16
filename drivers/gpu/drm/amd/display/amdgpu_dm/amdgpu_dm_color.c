@@ -1244,6 +1244,36 @@ __set_dm_crtc_colorop_3x4_matrix(struct drm_crtc_state *crtc_state,
 	return 0;
 }
 
+static int
+__set_dm_crtc_colorop_regamma(struct drm_crtc_state *crtc_state,
+			      struct dc_stream_state *dc_stream_state,
+			      struct drm_colorop *colorop,
+			      struct dc_transfer_func *tf)
+{
+	struct drm_colorop_state *colorop_state = NULL;
+	struct drm_atomic_commit *state = crtc_state->state;
+	enum dc_transfer_func_predefined default_tf = TRANSFER_FUNCTION_LINEAR;
+	struct drm_device *dev = crtc_state->state->dev;
+	int ret = 0;
+
+	tf->type = TF_TYPE_BYPASS;
+
+	/* 1D Curve - Regamma TF */
+	colorop_state = drm_atomic_get_new_colorop_state(state, colorop);
+
+	if (colorop_state && !colorop_state->bypass && colorop->type == DRM_COLOROP_1D_CURVE) {
+		drm_dbg(dev, "Regamma TF colorop with ID: %d\n", colorop->base.id);
+		tf->type = TF_TYPE_DISTRIBUTED_POINTS;
+		tf->tf = default_tf = amdgpu_colorop_tf_to_dc_tf(colorop_state->curve_1d_type);
+		tf->sdr_ref_white_level = SDR_WHITE_LEVEL_INIT_VALUE;
+		ret = __set_output_tf(tf, 0, 0, false);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
 /**
  * amdgpu_dm_crtc_set_colorop_properties: Set colorop props if programmable by DC.
  * @crtc_state: DRM crtc state
@@ -1269,10 +1299,42 @@ amdgpu_dm_crtc_set_colorop_properties(struct drm_crtc_state *crtc_state,
 				      bool check_only)
 {
 	struct drm_colorop *colorop = crtc_state->color_pipeline;
+	struct drm_device *dev = crtc_state->state->dev;
+	struct dc_transfer_func *out_tf;
 	int ret;
 
 	/* 3x4 matrix */
 	ret = __set_dm_crtc_colorop_3x4_matrix(crtc_state, dc_stream_state, colorop, check_only);
+	if (ret)
+		return ret;
+
+	if (colorop && check_only) {
+		out_tf = kvzalloc_obj(*out_tf);
+		if (!out_tf)
+			return -ENOMEM;
+	} else {
+		out_tf = &dc_stream_state->out_transfer_func;
+		if (!colorop) {
+			out_tf->type = TF_TYPE_BYPASS;
+			return 0;
+		}
+	}
+
+	/* 1D Curve - REGAMMA TF */
+	colorop = colorop->next;
+	if (!colorop) {
+		drm_dbg(dev, "no regamma TF colorop found\n");
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	ret = __set_dm_crtc_colorop_regamma(crtc_state, dc_stream_state, colorop, out_tf);
+	if (ret)
+		goto cleanup;
+
+cleanup:
+	if (check_only)
+		kvfree(out_tf);
 
 	return ret;
 }

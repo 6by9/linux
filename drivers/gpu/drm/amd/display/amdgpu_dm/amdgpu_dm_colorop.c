@@ -242,6 +242,7 @@ int amdgpu_dm_initialize_crtc_default_pipeline(struct drm_crtc *crtc,
 {
 	struct drm_colorop *ops[MAX_COLOR_PIPELINE_OPS];
 	struct drm_device *dev = crtc->dev;
+	struct amdgpu_device *adev = drm_to_adev(dev);
 	int ret;
 	int i = 0;
 
@@ -262,6 +263,25 @@ int amdgpu_dm_initialize_crtc_default_pipeline(struct drm_crtc *crtc,
 	list->type = ops[i]->base.id;
 
 	i++;
+
+	if (adev->dm.dc->caps.color.mpc.ogam_ram) {
+		/* 1D Curve - REGAMMA TF */
+		ops[i] = kzalloc_obj(*ops[0]);
+		if (!ops[i]) {
+			ret = -ENOMEM;
+			goto cleanup;
+		}
+
+		ret = drm_crtc_colorop_curve_1d_init(dev, ops[i], crtc, &dm_colorop_funcs,
+						     amdgpu_dm_supported_shaper_tfs,
+						     DRM_COLOROP_FLAG_ALLOW_BYPASS);
+		if (ret)
+			goto cleanup;
+
+		drm_colorop_set_next_property(ops[i-1], ops[i]);
+
+		i++;
+	}
 
 	list->name = kasprintf(GFP_KERNEL, "Color Pipeline %d", ops[0]->base.id);
 
