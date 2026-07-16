@@ -1396,7 +1396,6 @@ int drm_atomic_set_property(struct drm_atomic_commit *state,
 		break;
 	}
 	case DRM_MODE_OBJECT_COLOROP: {
-		struct drm_plane_state *plane_state;
 		struct drm_colorop *colorop = obj_to_colorop(obj);
 		struct drm_colorop_state *colorop_state;
 		bool replaced = false;
@@ -1413,12 +1412,26 @@ int drm_atomic_set_property(struct drm_atomic_commit *state,
 		if (ret || !replaced)
 			break;
 
-		plane_state = drm_atomic_get_plane_state(state, colorop->plane);
-		if (IS_ERR(plane_state)) {
-			ret = PTR_ERR(plane_state);
-			break;
+		if (colorop->plane) {
+			struct drm_plane_state *plane_state;
+
+			plane_state = drm_atomic_get_plane_state(state, colorop->plane);
+			if (IS_ERR(plane_state)) {
+				ret = PTR_ERR(plane_state);
+				break;
+			}
+			plane_state->color_mgmt_changed |= replaced;
+		} else if (colorop->crtc) {
+			struct drm_crtc_state *crtc_state;
+
+			crtc_state = drm_atomic_get_crtc_state(state, colorop->crtc);
+			if (IS_ERR(crtc_state)) {
+				ret = PTR_ERR(crtc_state);
+				break;
+			}
+			crtc_state->color_mgmt_changed |= replaced;
+
 		}
-		plane_state->color_mgmt_changed |= replaced;
 
 		break;
 	}
