@@ -283,6 +283,14 @@ struct drm_crtc_state {
 	struct drm_colorop *color_pipeline;
 
 	/**
+	 * @color_pipeline_enabled:
+	 *
+	 * Whether color management should be done based on the &color_pipeline
+	 * or the legacy color properties (&ctm, &gamma_lut and &degamma_lut).
+	 */
+	bool color_pipeline_enabled;
+
+	/**
 	 * @background_color:
 	 *
 	 * RGB value representing the CRTC's background color.  The background
