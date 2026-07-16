@@ -1422,6 +1422,7 @@ int amdgpu_dm_check_crtc_color_mgmt(struct dm_crtc_state *crtc,
 	uint32_t degamma_size, regamma_size;
 	bool has_regamma, has_degamma;
 	enum dc_transfer_func_predefined tf = TRANSFER_FUNCTION_LINEAR;
+	struct drm_color_ctm *ctm = NULL;
 	bool is_legacy;
 	int r;
 
@@ -1491,10 +1492,38 @@ int amdgpu_dm_check_crtc_color_mgmt(struct dm_crtc_state *crtc,
 	 * have to place the CTM in the OCSC in that case.
 	 */
 	crtc->cm_has_degamma = has_degamma;
-	if (check_only)
+	if (check_only) {
 		kvfree(out_tf);
+		return r;
+	}
 
-	return r;
+	if (r)
+		return r;
+
+	/* Setup CRTC CTM. */
+	if (crtc->base.ctm) {
+		ctm = (struct drm_color_ctm *)crtc->base.ctm->data;
+
+		/*
+		 * Gamut remapping must be used for gamma correction
+		 * since it comes before the regamma correction.
+		 *
+		 * OCSC could be used for gamma correction, but we'd need to
+		 * blend the adjustments together with the required output
+		 * conversion matrix - so just use the gamut remap block
+		 * for now.
+		 */
+		__drm_ctm_to_dc_matrix(ctm, stream->gamut_remap_matrix.matrix);
+
+		stream->gamut_remap_matrix.enable_remap = true;
+		stream->csc_color_matrix.enable_adjustment = false;
+	} else {
+		/* Bypass CTM. */
+		stream->gamut_remap_matrix.enable_remap = false;
+		stream->csc_color_matrix.enable_adjustment = false;
+	}
+
+	return 0;
 }
 
 /**
@@ -1521,38 +1550,7 @@ int amdgpu_dm_check_crtc_color_mgmt(struct dm_crtc_state *crtc,
  */
 int amdgpu_dm_update_crtc_color_mgmt(struct dm_crtc_state *crtc)
 {
-	struct dc_stream_state *stream = crtc->stream;
-	struct drm_color_ctm *ctm = NULL;
-	int ret;
-
-	ret = amdgpu_dm_check_crtc_color_mgmt(crtc, false);
-	if (ret)
-		return ret;
-
-	/* Setup CRTC CTM. */
-	if (crtc->base.ctm) {
-		ctm = (struct drm_color_ctm *)crtc->base.ctm->data;
-
-		/*
-		 * Gamut remapping must be used for gamma correction
-		 * since it comes before the regamma correction.
-		 *
-		 * OCSC could be used for gamma correction, but we'd need to
-		 * blend the adjustments together with the required output
-		 * conversion matrix - so just use the gamut remap block
-		 * for now.
-		 */
-		__drm_ctm_to_dc_matrix(ctm, stream->gamut_remap_matrix.matrix);
-
-		stream->gamut_remap_matrix.enable_remap = true;
-		stream->csc_color_matrix.enable_adjustment = false;
-	} else {
-		/* Bypass CTM. */
-		stream->gamut_remap_matrix.enable_remap = false;
-		stream->csc_color_matrix.enable_adjustment = false;
-	}
-
-	return 0;
+	return amdgpu_dm_check_crtc_color_mgmt(crtc, false);
 }
 
 static int
