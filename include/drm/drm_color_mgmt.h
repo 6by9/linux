@@ -66,6 +66,40 @@ static inline u32 drm_color_lut32_extract(u32 user_input, int bit_precision)
 				     (1ULL << 32) - 1);
 }
 
+/**
+ * drm_color_ctm_to_ctm_3x4 - Copy CTM matrix contents to 3x4 dimensions matrix
+ *
+ * @dest: The destination CTM 3x4 dimensions matrix
+ * @src: The source CTM matrix (3x3 or 3x4 dimensions depending on @ctm_3x4)
+ * @ctm_3x4: Boolean indicating the source CTM matrix dimensions
+ *
+ * Copy the contents of a CTM matrix from @src, to a CTM 3x4 dimensions matrix.
+ * The source matrix can be 3x3 or 3x4 dimensions depending on the @ctm_3x4
+ * boolean argument.
+ */
+static inline void drm_color_ctm_to_ctm_3x4(struct drm_color_ctm_3x4 *dest,
+					    void *src, bool ctm_3x4)
+{
+	if (ctm_3x4) {
+		*dest = *(struct drm_color_ctm_3x4 *)src;
+	} else {
+		struct drm_color_ctm *ctm = (struct drm_color_ctm *)src;
+
+		dest->matrix[0] = ctm->matrix[0];
+		dest->matrix[1] = ctm->matrix[1];
+		dest->matrix[2] = ctm->matrix[2];
+		dest->matrix[3] = 0;
+		dest->matrix[4] = ctm->matrix[3];
+		dest->matrix[5] = ctm->matrix[4];
+		dest->matrix[6] = ctm->matrix[5];
+		dest->matrix[7] = 0;
+		dest->matrix[8] = ctm->matrix[6];
+		dest->matrix[9] = ctm->matrix[7];
+		dest->matrix[10] = ctm->matrix[8];
+		dest->matrix[11] = 0;
+	}
+}
+
 u64 drm_color_ctm_s31_32_to_qm_n(u64 user_input, u32 m, u32 n);
 
 void drm_crtc_enable_color_mgmt(struct drm_crtc *crtc,
