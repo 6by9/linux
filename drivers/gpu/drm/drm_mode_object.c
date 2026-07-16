@@ -442,10 +442,19 @@ int drm_mode_object_get_properties(struct drm_mode_object *obj, bool atomic,
 				continue;
 		}
 
-		if (!crtc_color_pipeline && obj->type == DRM_MODE_OBJECT_CRTC) {
+		if (obj->type == DRM_MODE_OBJECT_CRTC) {
 			struct drm_crtc *crtc = obj_to_crtc(obj);
+			struct drm_mode_config *config = &crtc->dev->mode_config;
 
-			if (prop == crtc->color_pipeline_property)
+			if (!crtc_color_pipeline && prop == crtc->color_pipeline_property)
+				continue;
+
+			if (crtc_color_pipeline &&
+			    (prop == config->degamma_lut_property ||
+			     prop == config->degamma_lut_size_property ||
+			     prop == config->ctm_property ||
+			     prop == config->gamma_lut_property ||
+			     prop == config->gamma_lut_size_property))
 				continue;
 		}
 
