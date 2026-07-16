@@ -297,6 +297,11 @@ bool drm_property_replace_blob(struct drm_property_blob **blob,
 struct drm_property_blob *drm_property_blob_get(struct drm_property_blob *blob);
 void drm_property_blob_put(struct drm_property_blob *blob);
 
+struct drm_property *
+drm_property_create_color_pipeline(struct drm_device *dev, struct drm_mode_object *obj,
+				   const struct drm_prop_enum_list *pipelines,
+				   int num_pipelines);
+
 /**
  * drm_property_find - find property object
  * @dev: DRM device
