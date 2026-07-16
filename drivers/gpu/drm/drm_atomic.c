@@ -554,6 +554,8 @@ static void drm_atomic_crtc_print_state(struct drm_printer *p,
 	drm_printf_indent(p, 1, "plane_mask=%llx\n", state->plane_mask);
 	drm_printf_indent(p, 1, "connector_mask=%x\n", state->connector_mask);
 	drm_printf_indent(p, 1, "encoder_mask=%x\n", state->encoder_mask);
+	drm_printf_indent(p, 1, "color-pipeline=%d\n",
+			  state->color_pipeline ? state->color_pipeline->base.id : 0);
 	drm_printf_indent(p, 1, "mode: " DRM_MODE_FMT "\n", DRM_MODE_ARG(&state->mode));
 	drm_printf_indent(p, 1, "background_color=%llx\n", state->background_color);
 
