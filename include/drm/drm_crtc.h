@@ -275,6 +275,14 @@ struct drm_crtc_state {
 	struct drm_property_blob *gamma_lut;
 
 	/**
+	 * @color_pipeline:
+	 *
+	 * The first colorop of the active color pipeline, or NULL, if no
+	 * color pipeline is active.
+	 */
+	struct drm_colorop *color_pipeline;
+
+	/**
 	 * @background_color:
 	 *
 	 * RGB value representing the CRTC's background color.  The background
