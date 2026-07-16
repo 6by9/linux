@@ -93,10 +93,11 @@ static const struct drm_prop_enum_list drm_colorop_lut3d_interpolation_list[] = 
 
 /* Init Helpers */
 
-static int drm_plane_colorop_init(struct drm_device *dev, struct drm_colorop *colorop,
-				  struct drm_plane *plane, const struct drm_colorop_funcs *funcs,
-				  enum drm_colorop_type type,
-				  uint32_t flags)
+static int drm_common_colorop_init(struct drm_device *dev,
+				   struct drm_colorop *colorop,
+				   const struct drm_colorop_funcs *funcs,
+				   enum drm_colorop_type type,
+				   uint32_t flags)
 {
 	struct drm_mode_config *config = &dev->mode_config;
 	struct drm_property *prop;
@@ -109,7 +110,6 @@ static int drm_plane_colorop_init(struct drm_device *dev, struct drm_colorop *co
 	colorop->base.properties = &colorop->properties;
 	colorop->dev = dev;
 	colorop->type = type;
-	colorop->plane = plane;
 	colorop->next = NULL;
 	colorop->funcs = funcs;
 
@@ -155,6 +155,22 @@ static int drm_plane_colorop_init(struct drm_device *dev, struct drm_colorop *co
 	drm_object_attach_property(&colorop->base,
 				   colorop->next_property,
 				   0);
+
+	return ret;
+}
+
+static int drm_plane_colorop_init(struct drm_device *dev,
+				  struct drm_colorop *colorop,
+				  struct drm_plane *plane,
+				  const struct drm_colorop_funcs *funcs,
+				  enum drm_colorop_type type,
+				  uint32_t flags)
+{
+	int ret;
+
+	ret = drm_common_colorop_init(dev, colorop, funcs, type, flags);
+
+	colorop->plane = plane;
 
 	return ret;
 }
@@ -210,45 +226,14 @@ void drm_colorop_pipeline_destroy(struct drm_device *dev)
 }
 EXPORT_SYMBOL(drm_colorop_pipeline_destroy);
 
-/**
- * drm_plane_colorop_curve_1d_init - Initialize a DRM_COLOROP_1D_CURVE
- *
- * @dev: DRM device
- * @colorop: The drm_colorop object to initialize
- * @plane: The associated drm_plane
- * @funcs: control functions for the new colorop
- * @supported_tfs: A bitfield of supported drm_plane_colorop_curve_1d_init enum values,
- *                 created using BIT(curve_type) and combined with the OR '|'
- *                 operator.
- * @flags: bitmask of misc, see DRM_COLOROP_FLAG_* defines.
- * @return zero on success, -E value on failure
- */
-int drm_plane_colorop_curve_1d_init(struct drm_device *dev, struct drm_colorop *colorop,
-				    struct drm_plane *plane, const struct drm_colorop_funcs *funcs,
-				    u64 supported_tfs, uint32_t flags)
+static int drm_common_colorop_curve_1d_init(struct drm_device *dev,
+					    struct drm_colorop *colorop,
+					    u64 supported_tfs, uint32_t flags)
 {
 	struct drm_prop_enum_list enum_list[DRM_COLOROP_1D_CURVE_COUNT];
 	int i, len;
 
 	struct drm_property *prop;
-	int ret;
-
-	if (!supported_tfs) {
-		drm_err(dev,
-			"No supported TFs for new 1D curve colorop on [PLANE:%d:%s]\n",
-			plane->base.id, plane->name);
-		return -EINVAL;
-	}
-
-	if ((supported_tfs & -BIT(DRM_COLOROP_1D_CURVE_COUNT)) != 0) {
-		drm_err(dev, "Unknown TF provided on [PLANE:%d:%s]\n",
-			plane->base.id, plane->name);
-		return -EINVAL;
-	}
-
-	ret = drm_plane_colorop_init(dev, colorop, plane, funcs, DRM_COLOROP_1D_CURVE, flags);
-	if (ret)
-		return ret;
 
 	len = 0;
 	for (i = 0; i < DRM_COLOROP_1D_CURVE_COUNT; i++) {
@@ -277,6 +262,45 @@ int drm_plane_colorop_curve_1d_init(struct drm_device *dev, struct drm_colorop *
 
 	return 0;
 }
+
+static int drm_colorop_has_supported_tf(struct drm_device *dev, struct drm_mode_object *obj,
+					const char *name, u64 supported_tfs)
+{
+	if (!supported_tfs) {
+		drm_err(dev,
+			"No supported TFs for new 1D curve colorop on [PLANE:%d:%s]\n",
+			obj->id, name);
+		return -EINVAL;
+	}
+
+	if ((supported_tfs & -BIT(DRM_COLOROP_1D_CURVE_COUNT)) != 0) {
+		drm_err(dev, "Unknown TF provided on [PLANE:%d:%s]\n",
+			obj->id, name);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+int drm_plane_colorop_curve_1d_init(struct drm_device *dev,
+				    struct drm_colorop *colorop,
+				    struct drm_plane *plane,
+				    const struct drm_colorop_funcs *funcs,
+				    u64 supported_tfs,
+				    uint32_t flags)
+{
+	int ret;
+
+	ret = drm_colorop_has_supported_tf(dev, &plane->base, plane->name, supported_tfs);
+	if (ret)
+		return ret;
+
+	ret = drm_plane_colorop_init(dev, colorop, plane, funcs, DRM_COLOROP_1D_CURVE, flags);
+	if (ret)
+		return ret;
+
+	return drm_common_colorop_curve_1d_init(dev, colorop, supported_tfs, flags);
+}
 EXPORT_SYMBOL(drm_plane_colorop_curve_1d_init);
 
 static int drm_colorop_create_data_prop(struct drm_device *dev, struct drm_colorop *colorop)
@@ -297,31 +321,14 @@ static int drm_colorop_create_data_prop(struct drm_device *dev, struct drm_color
 	return 0;
 }
 
-/**
- * drm_plane_colorop_curve_1d_lut_init - Initialize a DRM_COLOROP_1D_LUT
- *
- * @dev: DRM device
- * @colorop: The drm_colorop object to initialize
- * @plane: The associated drm_plane
- * @funcs: control functions for new colorop
- * @lut_size: LUT size supported by driver
- * @interpolation: 1D LUT interpolation type
- * @flags: bitmask of misc, see DRM_COLOROP_FLAG_* defines.
- * @return zero on success, -E value on failure
- */
-int drm_plane_colorop_curve_1d_lut_init(struct drm_device *dev, struct drm_colorop *colorop,
-					struct drm_plane *plane,
-					const struct drm_colorop_funcs *funcs,
-					uint32_t lut_size,
-					enum drm_colorop_lut1d_interpolation_type interpolation,
-					uint32_t flags)
+static int drm_common_colorop_curve_1d_lut_init(struct drm_device *dev,
+						struct drm_colorop *colorop,
+						uint32_t lut_size,
+						enum drm_colorop_lut1d_interpolation_type interpolation,
+						uint32_t flags)
 {
 	struct drm_property *prop;
 	int ret;
-
-	ret = drm_plane_colorop_init(dev, colorop, plane, funcs, DRM_COLOROP_1D_LUT, flags);
-	if (ret)
-		return ret;
 
 	/* initialize 1D LUT only attribute */
 	/* LUT size */
@@ -353,17 +360,43 @@ int drm_plane_colorop_curve_1d_lut_init(struct drm_device *dev, struct drm_color
 
 	return 0;
 }
-EXPORT_SYMBOL(drm_plane_colorop_curve_1d_lut_init);
 
-int drm_plane_colorop_ctm_3x4_init(struct drm_device *dev, struct drm_colorop *colorop,
-				   struct drm_plane *plane, const struct drm_colorop_funcs *funcs,
-				   uint32_t flags)
+/**
+ * drm_plane_colorop_curve_1d_lut_init - Initialize a DRM_COLOROP_1D_LUT
+ *
+ * @dev: DRM device
+ * @colorop: The drm_colorop object to initialize
+ * @plane: The associated drm_plane
+ * @lut_size: LUT size supported by driver
+ * @lut1d_interpolation: 1D LUT interpolation type
+ * @flags: bitmask of misc, see DRM_COLOROP_FLAG_* defines.
+ * @return zero on success, -E value on failure
+ */
+int
+drm_plane_colorop_curve_1d_lut_init(struct drm_device *dev,
+				    struct drm_colorop *colorop,
+				    struct drm_plane *plane,
+				    const struct drm_colorop_funcs *funcs,
+				    uint32_t lut_size,
+				    enum drm_colorop_lut1d_interpolation_type lut1d_interpolation,
+				    uint32_t flags)
 {
 	int ret;
 
-	ret = drm_plane_colorop_init(dev, colorop, plane, funcs, DRM_COLOROP_CTM_3X4, flags);
+	ret = drm_plane_colorop_init(dev, colorop, plane, funcs, DRM_COLOROP_1D_LUT, flags);
 	if (ret)
 		return ret;
+
+	return drm_common_colorop_curve_1d_lut_init(dev, colorop, lut_size,
+						    lut1d_interpolation, flags);
+}
+EXPORT_SYMBOL(drm_plane_colorop_curve_1d_lut_init);
+
+static int drm_common_colorop_ctm_3x4_init(struct drm_device *dev,
+					   struct drm_colorop *colorop,
+					   uint32_t flags)
+{
+	int ret;
 
 	ret = drm_colorop_create_data_prop(dev, colorop);
 	if (ret)
@@ -372,6 +405,21 @@ int drm_plane_colorop_ctm_3x4_init(struct drm_device *dev, struct drm_colorop *c
 	drm_colorop_reset(colorop);
 
 	return 0;
+}
+
+int drm_plane_colorop_ctm_3x4_init(struct drm_device *dev,
+				   struct drm_colorop *colorop,
+				   struct drm_plane *plane,
+				   const struct drm_colorop_funcs *funcs,
+				   uint32_t flags)
+{
+	int ret;
+
+	ret = drm_plane_colorop_init(dev, colorop, plane, funcs, DRM_COLOROP_CTM_3X4, flags);
+	if (ret)
+		return ret;
+
+	return drm_common_colorop_ctm_3x4_init(dev, colorop, flags);
 }
 EXPORT_SYMBOL(drm_plane_colorop_ctm_3x4_init);
 
