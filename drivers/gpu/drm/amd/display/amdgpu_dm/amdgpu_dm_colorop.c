@@ -236,3 +236,41 @@ int amdgpu_dm_initialize_default_pipeline(struct drm_plane *plane, struct drm_pr
 	return amdgpu_dm_build_default_pipeline(dev, plane, hw_3d_lut, list);
 }
 EXPORT_IF_KUNIT(amdgpu_dm_initialize_default_pipeline);
+
+int amdgpu_dm_initialize_crtc_default_pipeline(struct drm_crtc *crtc,
+					       struct drm_prop_enum_list *list)
+{
+	struct drm_colorop *ops[MAX_COLOR_PIPELINE_OPS];
+	struct drm_device *dev = crtc->dev;
+	int ret;
+	int i = 0;
+
+	memset(ops, 0, sizeof(ops));
+
+	/* 3x4 matrix */
+	ops[i] = kzalloc_obj(struct drm_colorop);
+	if (!ops[i]) {
+		ret = -ENOMEM;
+		goto cleanup;
+	}
+
+	ret = drm_crtc_colorop_ctm_3x4_init(dev, ops[i], crtc, NULL,
+					    DRM_COLOROP_FLAG_ALLOW_BYPASS);
+	if (ret)
+		goto cleanup;
+
+	list->type = ops[i]->base.id;
+
+	i++;
+
+	list->name = kasprintf(GFP_KERNEL, "Color Pipeline %d", ops[0]->base.id);
+
+	return 0;
+cleanup:
+	if (ret == -ENOMEM)
+		drm_err(crtc->dev, "KMS: Failed to allocate colorop\n");
+
+	drm_colorop_pipeline_destroy(dev);
+
+	return ret;
+}
