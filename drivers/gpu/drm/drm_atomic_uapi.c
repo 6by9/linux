@@ -1765,6 +1765,7 @@ int drm_mode_atomic_ioctl(struct drm_device *dev,
 	state->acquire_ctx = &ctx;
 	state->allow_modeset = !!(arg->flags & DRM_MODE_ATOMIC_ALLOW_MODESET);
 	state->plane_color_pipeline = file_priv->plane_color_pipeline;
+	state->crtc_color_pipeline = file_priv->crtc_color_pipeline;
 
 retry:
 	copied_objs = 0;
