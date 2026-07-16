@@ -29,6 +29,7 @@
 
 #include <drm/drm_mode_object.h>
 #include <drm/drm_mode.h>
+#include <drm/drm_modeset_lock.h>
 #include <drm/drm_property.h>
 
 /* DRM colorop flags */
@@ -250,10 +251,20 @@ struct drm_colorop {
 	/**
 	 * @plane:
 	 *
-	 * The plane on which the colorop sits. A drm_colorop is always unique
-	 * to a plane.
+	 * The plane on which the colorop sits if it is a pre-blend colorop.
+	 * In this case it is unique to the plane.
+	 * NOTE: plane and crtc are mutually exclusive.
 	 */
 	struct drm_plane *plane;
+
+	/**
+	 * @crtc:
+	 *
+	 * The CRTC on which the colorop sits if it is a post-blend colorop.
+	 * In this case it is unique to the CRTC.
+	 * NOTE: plane and crtc are mutually exclusive.
+	 */
+	struct drm_crtc *crtc;
 
 	/**
 	 * @state:
@@ -483,4 +494,7 @@ drm_get_colorop_lut3d_interpolation_name(enum drm_colorop_lut3d_interpolation_ty
 
 void drm_colorop_set_next_property(struct drm_colorop *colorop, struct drm_colorop *next);
 
+int drm_colorop_modeset_lock(struct drm_colorop *colorop, struct drm_modeset_acquire_ctx *ctx);
+void drm_colorop_modeset_unlock(struct drm_colorop *colorop);
+ 
 #endif /* __DRM_COLOROP_H__ */
