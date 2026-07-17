@@ -1,0 +1,14 @@
+digraph board {
+	rankdir=TB
+	n00000001 [label="bcm2835-isp-output0\n/dev/video13", shape=box, style=filled, fillcolor=yellow]
+	n00000001 -> n00000015 [style=bold]
+	n00000005 [label="bcm2835-isp-capture0\n/dev/video14", shape=box, style=filled, fillcolor=yellow]
+	n00000009 [label="bcm2835-isp-capture1\n/dev/video15", shape=box, style=filled, fillcolor=yellow]
+	n0000000d [label="bcm2835-isp-stats2\n/dev/video16", shape=box, style=filled, fillcolor=yellow]
+	n00000011 [label="bcm2835-isp-params\n/dev/video17", shape=box, style=filled, fillcolor=yellow]
+	n00000011 -> n00000015 [style=bold]
+	n00000015 [label="bcm2835-isp\n", shape=box, style=filled, fillcolor=yellow]
+	n00000015 -> n00000005 [style=bold]
+	n00000015 -> n00000009 [style=bold]
+	n00000015 -> n0000000d [style=bold]
+}

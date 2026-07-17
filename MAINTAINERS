@@ -5141,6 +5141,15 @@ S:	Maintained
 F:	Documentation/devicetree/bindings/media/brcm,bcm2835-unicam.yaml
 F:	drivers/media/platform/broadcom/bcm2835-unicam/*
 
+BROADCOM BCM2835 ISP DRIVER
+M:	Raspberry Pi Kernel Maintenance <kernel-list@raspberrypi.com>
+L:	linux-media@vger.kernel.org
+S:	Maintained
+F:	Documentation/admin-guide/media/bcm2835-isp.rst
+F:	Documentation/userspace-api/media/v4l/metafmt-bcm2835-isp.rst
+F:	drivers/media/platform/broadcom/bcm2835-isp/*
+F:	include/uapi/linux/bcm2835-isp.h
+
 BROADCOM BCM47XX MIPS ARCHITECTURE
 M:	Hauke Mehrtens <hauke@hauke-m.de>
 M:	Rafał Miłecki <zajec5@gmail.com>
