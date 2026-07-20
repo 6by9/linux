@@ -1,0 +1,105 @@
+/*
+ * vc4-kms-dsi-sn65dsi86-overlay.dts
+ */
+
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+/ {
+	compatible = "brcm,bcm2835";
+
+	fragment@0 {
+		target-path = "/";
+		__overlay__ {
+			sn65dsi86_refclk: sn65dsi86-refclk {
+				compatible = "fixed-clock";
+				#clock-cells = <0>;
+
+				clock-frequency = <27000000>;
+			};
+
+			dp_connector {
+				compatible = "dp-connector";
+				label = "DisplayPort";
+				type = "full-size";
+				hpd-gpios = <&gpio 23 GPIO_ACTIVE_HIGH>;
+
+				port {
+					display_port_con_in: endpoint {
+						remote-endpoint = <&bridge_out>;
+					};
+				};
+			};
+		};
+	};
+
+	fragment@3 {
+		target = <&i2c_arm>;
+		__overlay__ {
+			#gpio-cells = <2>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			bridge@2d {
+				compatible = "ti,sn65dsi86";
+				reg = <0x2d>;
+
+				//interrupt-parent = <&gpio>;
+				//interrupts = <24 IRQ_TYPE_LEVEL_HIGH>;
+
+				enable-gpios = <&gpio 25 GPIO_ACTIVE_HIGH>;
+
+				//vpll-supply = <&src_pp1800_s4a>;
+				//vccio-supply = <&src_pp1800_s4a>;
+				//vcca-supply = <&src_pp1200_l2a>;
+				//vcc-supply = <&src_pp1200_l2a>;
+
+				clocks = <&sn65dsi86_refclk>;
+				clock-names = "refclk";
+
+				no-hpd;
+
+				ports {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					port@0 {
+						reg = <0>;
+
+						bridge_in: endpoint {
+							remote-endpoint = <&dsi_out_port>;
+						};
+					};
+
+					port@1 {
+						reg = <1>;
+
+						bridge_out: endpoint {
+							data-lanes = <3 2 1 0>;
+							lane-polarities = <1 1 1 1>;
+							remote-endpoint = <&display_port_con_in>;
+						};
+					};
+				};
+			};
+		};
+	};
+
+	fragment@4 {
+		target = <&dsi1>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+			port {
+				dsi_out_port: endpoint {
+					remote-endpoint = <&bridge_in>;
+					data-lanes = <0 1 2 3>;
+				};
+			};
+		};
+	};
+};
