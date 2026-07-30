@@ -347,6 +347,17 @@ config VIDEO_IMX519
 	  To compile this driver as a module, choose M here: the
 	  module will be called IMX519.
 
+config VIDEO_IMX675
+	tristate "Sony IMX675 sensor support"
+	depends on GPIOLIB
+	select V4L2_CCI_I2C
+	help
+	  This is a Video4Linux2 sensor driver for the Sony
+	  IMX675 camera.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called imx675.
+
 config VIDEO_IMX678
 	tristate "Sony IMX678 sensor support"
 	depends on GPIOLIB
