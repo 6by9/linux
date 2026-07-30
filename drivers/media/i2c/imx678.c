@@ -148,30 +148,9 @@
 /* Subdev pads */
 #define IMX678_SOURCE_PAD		0
 
-/* IMX678 native and active pixel array size. */
-static const struct v4l2_rect imx678_native_area = {
-	.top = 0,
-	.left = 0,
-	.width = 3857,
-	.height = 2201,
-};
-
-static const struct v4l2_rect imx678_active_area = {
-	.top = 20,
-	.left = 0,
-	.width = 3856,
-	.height = 2180,
-};
-
 enum imx678_type {
 	IMX678_COLOR = 0,
 	IMX678_MONOCHROME = 1,
-};
-
-struct imx678_model_info {
-	enum imx678_type type;
-	const u32 *codes;
-	unsigned int num_codes;
 };
 
 enum imx678_lanemode {
@@ -213,7 +192,7 @@ static const u64 link_freqs[] = {
 	[IMX678_LINK_FREQ_1188MHZ] = 1188000000,
 };
 
-static const u16 min_hmax_4lane[] = {
+static const u16 imx678_min_hmax_4lane[] = {
 	[IMX678_LINK_FREQ_297MHZ] = 1584,
 	[IMX678_LINK_FREQ_360MHZ] = 1320,
 	[IMX678_LINK_FREQ_445MHZ] = 1100,
@@ -273,7 +252,7 @@ static const int imx678_tpg_val[] = {
 };
 
 /* Common configuration */
-static const struct cci_reg_sequence common_regs[] = {
+static const struct cci_reg_sequence imx678_common_regs[] = {
 	{ IMX678_REG_THIN_V_EN, 0x00 },
 	{ IMX678_REG_VCMODE, 0x01 },
 	{ CCI_REG8(0x306b), 0x00 },
@@ -656,16 +635,72 @@ static const u32 codes_monochrome[] = {
 	MEDIA_BUS_FMT_Y12_1X12,
 };
 
+struct imx678_variant {
+	const char *name;
+	u32 id_reg;
+	u32 id_value;
+	struct v4l2_rect native_area;
+	struct v4l2_rect active_area;
+	u64 pixel_rate;
+	unsigned int pix_per_clk;
+	const struct cci_reg_sequence *common_regs;
+	unsigned int num_common_regs;
+	unsigned int vmax_default;
+	const u16 *hmax_min;
+};
+
+const struct imx678_variant imx678_variant_def = {
+	.name = "imx678",
+	.id_reg = IMX678_REG_MODULE_ID,
+	.id_value = IMX678_ID,
+	.native_area = {
+		.top = 0,
+		.left = 0,
+		.width = 3857,
+		.height = 2201,
+	},
+	.active_area = {
+		.top = 20,
+		.left = 0,
+		.width = 3856,
+		.height = 2180,
+	},
+	.pixel_rate = IMX678_PIXEL_RATE,
+	.pix_per_clk = IMX678_PIX_PER_CLK,
+	.common_regs = imx678_common_regs,
+	.num_common_regs = ARRAY_SIZE(imx678_common_regs),
+	.vmax_default = IMX678_VMAX_DEFAULT,
+	.hmax_min = imx678_min_hmax_4lane,
+};
+
+struct imx678_model_info {
+	enum imx678_type type;
+	const u32 *codes;
+	unsigned int num_codes;
+	const struct imx678_variant *variant;
+
+	const struct imx678_model_info *auto_detect_colour;
+	const struct imx678_model_info *auto_detect_mono;
+};
+
 static const struct imx678_model_info imx678_aaqr_info = {
 	.type = IMX678_COLOR,
 	.codes = codes_bayer,
 	.num_codes = ARRAY_SIZE(codes_bayer),
+	.variant = &imx678_variant_def,
 };
 
 static const struct imx678_model_info imx678_aamr_info = {
 	.type = IMX678_MONOCHROME,
 	.codes = codes_monochrome,
 	.num_codes = ARRAY_SIZE(codes_monochrome),
+	.variant = &imx678_variant_def,
+};
+
+static const struct imx678_model_info imx678_autodetect_info = {
+	.variant = &imx678_variant_def,
+	.auto_detect_colour = &imx678_aaqr_info,
+	.auto_detect_mono = &imx678_aamr_info,
 };
 
 static const char * const imx678_supply_name[] = {
@@ -680,6 +715,7 @@ struct imx678 {
 	struct regmap *cci;
 
 	const struct imx678_model_info *info;
+	const struct imx678_variant *variant;
 
 	struct clk *xclk;
 	u32 xclk_freq;
@@ -774,7 +810,7 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 		cci_write(imx678->cci, IMX678_REG_GAIN, ctrl->val, &ret);
 		break;
 	case V4L2_CID_HBLANK: {
-		u32 hmax = (format->width + ctrl->val) / IMX678_PIX_PER_CLK;
+		u32 hmax = (format->width + ctrl->val) / imx678->variant->pix_per_clk;
 
 		cci_write(imx678->cci, IMX678_REG_HMAX, hmax, &ret);
 		break;
@@ -851,18 +887,20 @@ static int imx678_get_selection(struct v4l2_subdev *sd,
 				struct v4l2_subdev_state *sd_state,
 				struct v4l2_subdev_selection *sel)
 {
+	struct imx678 *imx678 = to_imx678(sd);
+
 	switch (sel->target) {
 	case V4L2_SEL_TGT_CROP:
 		sel->r = *v4l2_subdev_state_get_crop(sd_state, sel->pad);
 		return 0;
 
 	case V4L2_SEL_TGT_NATIVE_SIZE:
-		sel->r = imx678_native_area;
+		sel->r = imx678->variant->native_area;
 		return 0;
 
 	case V4L2_SEL_TGT_CROP_DEFAULT:
 	case V4L2_SEL_TGT_CROP_BOUNDS:
-		sel->r = imx678_active_area;
+		sel->r = imx678->variant->active_area;
 		return 0;
 	}
 
@@ -877,12 +915,12 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 	struct v4l2_rect *crop;
 
 	crop = v4l2_subdev_state_get_crop(state, IMX678_SOURCE_PAD);
-	*crop = imx678_active_area;
+	*crop = imx678->variant->active_area;
 
 	format = v4l2_subdev_state_get_format(state, IMX678_SOURCE_PAD);
 	format->code = imx678_default_mbus_code(imx678);
-	format->width = imx678_active_area.width;
-	format->height = imx678_active_area.height;
+	format->width = imx678->variant->active_area.width;
+	format->height = imx678->variant->active_area.height;
 	format->field = V4L2_FIELD_NONE;
 	format->colorspace = V4L2_COLORSPACE_RAW;
 	format->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
@@ -896,8 +934,8 @@ static int imx678_write_common(struct imx678 *imx678)
 {
 	int ret = 0;
 
-	cci_multi_reg_write(imx678->cci, common_regs, ARRAY_SIZE(common_regs),
-			    &ret);
+	cci_multi_reg_write(imx678->cci, imx678->variant->common_regs,
+			    imx678->variant->num_common_regs, &ret);
 
 	cci_write(imx678->cci, IMX678_REG_INCK_SEL, imx678->inck_sel_val, &ret);
 	cci_write(imx678->cci, IMX678_REG_DATARATE_SEL,
@@ -918,10 +956,10 @@ static int imx678_program_window(struct imx678 *imx678,
 	cci_write(imx678->cci, IMX678_REG_ADDMODE, 0x00, &ret);
 	cci_write(imx678->cci, IMX678_REG_WINMODE, 0x04, &ret);
 	cci_write(imx678->cci, IMX678_REG_PIX_HST,
-		  crop->left - imx678_active_area.left, &ret);
+		  crop->left - imx678->variant->active_area.left, &ret);
 	cci_write(imx678->cci, IMX678_REG_PIX_HWIDTH, crop->width, &ret);
 	cci_write(imx678->cci, IMX678_REG_PIX_VST,
-		  crop->top - imx678_active_area.top, &ret);
+		  crop->top - imx678->variant->active_area.top, &ret);
 	cci_write(imx678->cci, IMX678_REG_PIX_VWIDTH, crop->height, &ret);
 	cci_write(imx678->cci, IMX678_REG_ADBIT, 0x01, &ret);
 
@@ -1026,11 +1064,13 @@ static int imx678_power_on(struct device *dev)
 
 	fsleep(20); /* T4 > 20us */
 
-	ret = imx678_write_common(imx678);
-	if (ret) {
-		dev_err(&client->dev, "%s failed to write registers\n",
-			__func__);
-		goto clk_off;
+	if (imx678->variant) {
+		ret = imx678_write_common(imx678);
+		if (ret) {
+			dev_err(&client->dev, "%s failed to write registers\n",
+				__func__);
+			goto clk_off;
+		}
 	}
 
 	return 0;
@@ -1064,11 +1104,16 @@ static int imx678_identify_model(struct imx678 *imx678)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
 	const struct imx678_model_info *info;
+	const struct imx678_variant *variant;
 	enum imx678_type detected;
 	int ret = 0;
 	u64 val = 0;
 
 	info = device_get_match_data(&client->dev);
+	if (!info)
+		return -EINVAL;
+
+	variant = info->variant;
 
 	/*
 	 * This sensor's ID registers become accessible 80ms after coming out
@@ -1077,7 +1122,7 @@ static int imx678_identify_model(struct imx678 *imx678)
 	cci_write(imx678->cci, IMX678_REG_MODE_SELECT, 0, &ret);
 	fsleep(IMX678_MODULE_ID_DELAY);
 
-	cci_read(imx678->cci, IMX678_REG_MODULE_ID, &val, &ret);
+	cci_read(imx678->cci, variant->id_reg, &val, &ret);
 
 	if (ret) {
 		dev_err(&client->dev,
@@ -1085,9 +1130,9 @@ static int imx678_identify_model(struct imx678 *imx678)
 		return ret;
 	}
 
-	if (val != IMX678_ID) {
-		dev_err(&client->dev,
-			"Chip ID mismatch: %x!=%llx\n", IMX678_ID, val);
+	if (val != variant->id_value) {
+		dev_err(&client->dev, "Chip ID mismatch: %x!=%llx\n",
+			variant->id_value, val);
 		return -ENXIO;
 	}
 
@@ -1102,7 +1147,7 @@ static int imx678_identify_model(struct imx678 *imx678)
 	detected = val & IMX678_TYPE;
 
 	/* Prefer to use sensor type specified in device tree */
-	if (info) {
+	if (info->codes) {
 		imx678->info = info;
 		if (detected != info->type)
 			dev_err(&client->dev,
@@ -1111,11 +1156,13 @@ static int imx678_identify_model(struct imx678 *imx678)
 				info->type == IMX678_COLOR ? "color" : "mono");
 	} else {
 		imx678->info = detected == IMX678_MONOCHROME ?
-			       &imx678_aamr_info : &imx678_aaqr_info;
+			       info->auto_detect_mono : info->auto_detect_colour;
 		dev_info(&client->dev,
 			 "sensor type missing in DT; detected %s sensor\n",
 			 detected == IMX678_MONOCHROME ? "mono" : "color");
 	}
+
+	imx678->variant = imx678->info->variant;
 
 	return 0;
 }
@@ -1146,7 +1193,7 @@ static const struct v4l2_subdev_internal_ops imx678_internal_ops = {
 static int imx678_init_controls(struct imx678 *imx678)
 {
 	struct v4l2_ctrl_handler *ctrl_hdlr;
-	const u32 hmax_4lane = min_hmax_4lane[__ffs(imx678->link_freq_bitmap)];
+	const u32 hmax_4lane = imx678->variant->hmax_min[__ffs(imx678->link_freq_bitmap)];
 	const u32 lane_scale = imx678->lane_mode == IMX678_LANEMODE_2L ? 2 : 1;
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
 	struct v4l2_fwnode_device_properties props;
@@ -1164,13 +1211,14 @@ static int imx678_init_controls(struct imx678 *imx678)
 	if (ret)
 		return ret;
 
-	imx678->vmax = IMX678_VMAX_DEFAULT;
+	imx678->vmax = imx678->variant->vmax_default;
 	hmax = hmax_4lane * lane_scale;
 
 	/* PIXEL_RATE is fixed and read-only */
 	v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_PIXEL_RATE,
-			  IMX678_PIXEL_RATE, IMX678_PIXEL_RATE, 1,
-			  IMX678_PIXEL_RATE);
+			  imx678->variant->pixel_rate,
+			  imx678->variant->pixel_rate, 1,
+			  imx678->variant->pixel_rate);
 
 	/* LINK_FREQ is also read only */
 	link_freq = v4l2_ctrl_new_int_menu(ctrl_hdlr, &imx678_ctrl_ops,
@@ -1182,15 +1230,16 @@ static int imx678_init_controls(struct imx678 *imx678)
 	if (link_freq)
 		link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
-	vblank = imx678->vmax - imx678_active_area.height;
-	max_vblank = IMX678_VMAX_MAX - imx678_active_area.height;
+	vblank = imx678->vmax - imx678->variant->active_area.height;
+	max_vblank = IMX678_VMAX_MAX - imx678->variant->active_area.height;
 	imx678->vblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops,
 					   V4L2_CID_VBLANK, vblank, max_vblank,
 					   2, vblank);
 
-	hblank = hmax * IMX678_PIX_PER_CLK - imx678_active_area.width;
-	max_hblank = IMX678_HMAX_MAX * IMX678_PIX_PER_CLK -
-		     imx678_active_area.width;
+	hblank = hmax * imx678->variant->pix_per_clk -
+					imx678->variant->active_area.width;
+	max_hblank = IMX678_HMAX_MAX * imx678->variant->pix_per_clk -
+		     imx678->variant->active_area.width;
 	imx678->hblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops,
 					   V4L2_CID_HBLANK, hblank, max_hblank,
 					   IMX678_PIX_PER_CLK, hblank);
@@ -1334,10 +1383,12 @@ static int imx678_probe(struct i2c_client *client)
 	ret = imx678_power_on(dev);
 	if (ret)
 		return ret;
-
 	ret = imx678_identify_model(imx678);
 	if (ret)
 		goto error_power_off;
+
+	v4l2_i2c_subdev_set_name(&imx678->sd, client,
+				 imx678->variant->name, NULL);
 
 	pm_runtime_set_active(dev);
 	pm_runtime_enable(dev);
@@ -1419,7 +1470,7 @@ static const struct of_device_id imx678_of_match[] = {
 	{ .compatible = "sony,imx678-aamr", .data = &imx678_aamr_info },
 	{ .compatible = "sony,imx678-aaqr", .data = &imx678_aaqr_info },
 	/* for non-conforming DTs that rely on runtime check */
-	{ .compatible = "sony,imx678" },
+	{ .compatible = "sony,imx678", .data = &imx678_autodetect_info },
 	{ /* sentinel */ }
 };
 
