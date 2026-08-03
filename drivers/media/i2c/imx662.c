@@ -1015,11 +1015,11 @@ static void imx662_remove(struct i2c_client *client)
 
 static const struct of_device_id imx662_of_match[] __maybe_unused = {
 	{
-		.compatible = "sony,imx662aaqr",
+		.compatible = "sony,imx662-aaqr",
 		.data = (void *)IMX662_VARIANT_COLOUR,
 	},
 	{
-		.compatible = "sony,imx662aamr",
+		.compatible = "sony,imx662-aamr",
 		.data = (void *)IMX662_VARIANT_MONO,
 	},
 	{ }
