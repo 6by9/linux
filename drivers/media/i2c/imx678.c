@@ -674,6 +674,7 @@ const struct imx678_variant imx678_variant_def = {
 };
 
 static const struct cci_reg_sequence imx662_common_regs[] = {
+#if 0
 	{ IMX678_REG_THIN_V_EN, 0x00 },
 	{ IMX678_REG_VCMODE, 0x01 },
 	{ CCI_REG8(0x306b), 0x00 },
@@ -1043,7 +1044,7 @@ static const struct cci_reg_sequence imx662_common_regs[] = {
 	{ CCI_REG8(0x47c1), 0x01 },
 	{ CCI_REG8(0x47c2), 0x3e },
 	{ CCI_REG8(0x47c3), 0x01 },
-
+#endif
 	{ IMX678_REG_WDMODE, 0x00 },
 	{ IMX678_REG_MDBIT, 0x01 },
 	{ IMX678_REG_XXS_DRV, 0x00 },
