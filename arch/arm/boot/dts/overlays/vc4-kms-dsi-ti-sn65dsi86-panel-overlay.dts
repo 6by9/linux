@@ -1,0 +1,114 @@
+/*
+ * vc4-kms-dsi-sn65dsi86-overlay.dts
+ */
+
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+/ {
+	compatible = "brcm,bcm2835";
+
+	fragment@0 {
+		target-path = "/";
+		__overlay__ {
+			sn65dsi86_refclk: sn65dsi86-refclk {
+				compatible = "fixed-clock";
+				#clock-cells = <0>;
+
+				clock-frequency = <27000000>;
+			};
+
+			backlight: backlight {
+				compatible = "pwm-backlight";
+				pwms = <&sn65dsi86 1000000>;
+				enable-gpios = <&gpio 9 GPIO_ACTIVE_HIGH>;
+			};
+
+		};
+	};
+
+	fragment@3 {
+		target = <&i2c_csi_dsi0>;
+		__overlay__ {
+			#gpio-cells = <2>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			sn65dsi86: bridge@2c {
+				compatible = "ti,sn65dsi86";
+				reg = <0x2c>;
+
+				interrupt-parent = <&gpio>;
+				interrupts = <17 IRQ_TYPE_LEVEL_HIGH>;
+
+				enable-gpios = <&gpio 27 GPIO_ACTIVE_HIGH>;
+
+				//vpll-supply = <&src_pp1800_s4a>;
+				//vccio-supply = <&src_pp1800_s4a>;
+				//vcca-supply = <&src_pp1200_l2a>;
+				//vcc-supply = <&src_pp1200_l2a>;
+
+				clocks = <&sn65dsi86_refclk>;
+				clock-names = "refclk";
+
+				no-hpd;
+				#pwm-cells = <1>;
+
+				ports {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					port@0 {
+						reg = <0>;
+
+						bridge_in: endpoint {
+							remote-endpoint = <&dsi_out_port>;
+						};
+					};
+
+					port@1 {
+						reg = <1>;
+
+						bridge_out: endpoint {
+							data-lanes = <0 1 2 3>;
+							lane-polarities = <0 0 0 0>;
+							remote-endpoint = <&panel_in_edp>;
+						};
+					};
+				};
+
+				aux-bus {
+					panel: panel {
+						compatible = "edp-panel";
+						backlight = <&backlight>;
+						//power-supply = <&vlcm_3v3>;
+
+						port {
+							panel_in_edp: endpoint {
+								remote-endpoint = <&bridge_out>;
+							};
+						};
+					};
+				};
+			};
+		};
+	};
+
+	fragment@4 {
+		target = <&dsi0>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+			port {
+				dsi_out_port: endpoint {
+					remote-endpoint = <&bridge_in>;
+					data-lanes = <0 1 2 3>;
+				};
+			};
+		};
+	};
+};

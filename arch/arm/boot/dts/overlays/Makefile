@@ -357,6 +357,7 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
 	vc4-kms-dsi-waveshare-panel.dtbo \
 	vc4-kms-dsi-waveshare-panel-v2.dtbo \
 	vc4-kms-dsi-ti-sn65dsi86.dtbo \
+	vc4-kms-dsi-ti-sn65dsi86-panel.dtbo \
 	vc4-kms-kippah-7inch.dtbo \
 	vc4-kms-v3d.dtbo \
 	vc4-kms-v3d-pi4.dtbo \

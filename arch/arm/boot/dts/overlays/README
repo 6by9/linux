@@ -6023,6 +6023,17 @@ Load:   dtoverlay=vc4-kms-dsi-ti-sn65dsi86
 Params: <None>
 
 
+Name:   vc4-kms-dsi-ti-sn65dsi86-panel
+Info:   Enable a TI SN65DSI86 DSI to (e)DP bridge on DSI0 / i2c_csi_dsi0 for the
+        reference CM5IO board using it.
+        The generic "panel-edp" compatible has been used which relies on the
+        display identifying itself correctly, and does cause a kernel WARN
+        backtrace.
+        Requires vc4-kms-v3d to be loaded.
+Load:   dtoverlay=vc4-kms-dsi-ti-sn65dsi86-panel
+Params: <None>
+
+
 Name:   vc4-kms-dsi-tdo-panel
 Info:   Enable the Tdo DSI screen,keep adding.
         Requires vc4-kms-v3d to be loaded.
