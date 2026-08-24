@@ -62,7 +62,8 @@ union bcm2835_isp_params_block {
 	const __u8 *data;
 };
 
-typedef void (*bcm2835_isp_params_handler)(struct bcm2835_isp_params *params,
+typedef void (*bcm2835_isp_params_handler)(struct mmal_parameter_isp_parameters *mmal_param,
+					   struct bcm2835_isp_params *params,
 					   union bcm2835_isp_params_block block);
 
 struct bcm2835_isp_params_buffer {
@@ -114,27 +115,32 @@ static int map_ls_table(struct bcm2835_isp_params *params,
 
 /* Block handlers */
 
-#define BCM2835_ISP_PARAMS_HANDLER(_name, _mmal_param, _field)			\
-static void bcm2835_isp_params_##_name(struct bcm2835_isp_params *params,	\
+#define BCM2835_ISP_PARAMS_HANDLER(_name, _param_field, _mmal_field)		\
+static void bcm2835_isp_params_##_name(struct mmal_parameter_isp_parameters *mmal_param, \
+				       struct bcm2835_isp_params *params,	\
 				       union bcm2835_isp_params_block block)	\
 {										\
-	isp_set_param(params, _mmal_param,					\
-		      (void *)&block._field->_field,				\
-		      sizeof(block._field->_field));				\
+	memcpy(&mmal_param->_mmal_field,					\
+		      (void *)&block._param_field->_param_field,		\
+		      sizeof(block._param_field->_param_field));		\
+	u32 *ptr = (u32 *)&mmal_param->_mmal_field;				\
+	ptr--;									\
+	*ptr = 1;								\
 }
 
-BCM2835_ISP_PARAMS_HANDLER(black_level, MMAL_PARAMETER_BLACK_LEVEL, black_level)
-BCM2835_ISP_PARAMS_HANDLER(geq, MMAL_PARAMETER_GEQ, geq)
-BCM2835_ISP_PARAMS_HANDLER(gamma, MMAL_PARAMETER_GAMMA, gamma)
-BCM2835_ISP_PARAMS_HANDLER(denoise, MMAL_PARAMETER_DENOISE, denoise)
-BCM2835_ISP_PARAMS_HANDLER(sharpen, MMAL_PARAMETER_SHARPEN, sharpen)
-BCM2835_ISP_PARAMS_HANDLER(dpc, MMAL_PARAMETER_DPC, dpc)
-BCM2835_ISP_PARAMS_HANDLER(cdn, MMAL_PARAMETER_CDN, cdn)
-BCM2835_ISP_PARAMS_HANDLER(cc_matrix, MMAL_PARAMETER_CUSTOM_CCM, ccm)
-BCM2835_ISP_PARAMS_HANDLER(awb_gains, MMAL_PARAMETER_CUSTOM_AWB_GAINS, awb_gains)
-BCM2835_ISP_PARAMS_HANDLER(digital_gain, MMAL_PARAMETER_DIGITAL_GAIN, digital_gain)
+BCM2835_ISP_PARAMS_HANDLER(black_level, black_level, black_level.enable)
+BCM2835_ISP_PARAMS_HANDLER(geq, geq, green_eq.enable)
+BCM2835_ISP_PARAMS_HANDLER(gamma, gamma, gamma.enable)
+BCM2835_ISP_PARAMS_HANDLER(denoise, denoise, denoise.enable)
+BCM2835_ISP_PARAMS_HANDLER(sharpen, sharpen, sharpen.enable)
+BCM2835_ISP_PARAMS_HANDLER(dpc, dpc, dpc.enable)
+BCM2835_ISP_PARAMS_HANDLER(cdn, cdn, colour_denoise.enable)
+BCM2835_ISP_PARAMS_HANDLER(cc_matrix, ccm, ccm.enable)
+BCM2835_ISP_PARAMS_HANDLER(awb_gains, awb_gains, awb_gains.r_gain)
+BCM2835_ISP_PARAMS_HANDLER(digital_gain, digital_gain, digital_gain.value)
 
-static void bcm2835_isp_params_lens_shading(struct bcm2835_isp_params *params,
+static void bcm2835_isp_params_lens_shading(struct mmal_parameter_isp_parameters *mmal_param,
+					    struct bcm2835_isp_params *params,
 					    union bcm2835_isp_params_block block)
 {
 	struct dma_buf *dmabuf;
@@ -143,13 +149,14 @@ static void bcm2835_isp_params_lens_shading(struct bcm2835_isp_params *params,
 	dmabuf = dma_buf_get(block.ls->ls.dmabuf);
 	if (IS_ERR(dmabuf))
 		return;
-
 	if (dmabuf != params->last_ls_dmabuf)
 		ret = map_ls_table(params, dmabuf, &block.ls->ls);
-	if (!ret && params->ls.mem_handle_table)
-		isp_set_param(params, MMAL_PARAMETER_LENS_SHADING_OVERRIDE,
-			      &params->ls, sizeof(params->ls));
 
+	if (!ret && mmal_param->lens_shading.mem_handle_table) {
+		memcpy(&mmal_param->lens_shading.enabled, &params->ls,
+		       sizeof(params->ls));
+		mmal_param->lens_shading.update = 1;
+	}
 	dma_buf_put(dmabuf);
 }
 
@@ -213,6 +220,7 @@ static void bcm2835_isp_params_apply(struct bcm2835_isp_params *params,
 	const struct v4l2_isp_params_buffer *config = buf->config;
 	size_t block_offset = 0;
 	size_t max_offset = config->data_size;
+	struct mmal_parameter_isp_parameters mmal_param = { 0 };
 
 	while (block_offset < max_offset) {
 		union bcm2835_isp_params_block block;
@@ -220,10 +228,13 @@ static void bcm2835_isp_params_apply(struct bcm2835_isp_params *params,
 
 		block.data = &config->data[block_offset];
 		handler = bcm2835_isp_params_handlers[block.header->type];
-		handler(params, block);
+		handler(&mmal_param, params, block);
 
 		block_offset += block.header->size;
 	}
+
+	isp_set_param(params, MMAL_PARAMETER_ISP_SETTINGS, &mmal_param,
+		      sizeof(mmal_param));
 
 	vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_DONE);
 }
