@@ -9,6 +9,7 @@
  * Contact: Sakari Ailus <sakari.ailus@linux.intel.com>
  */
 
+#define DEBUG 1
 #include <linux/device.h>
 #include <linux/gcd.h>
 #include <linux/lcm.h>
@@ -162,6 +163,7 @@ static int check_fr_bounds(struct device *dev,
 	const char *s = pll_string(which);
 	int rval;
 
+pr_err("%s: which %s\n", __func__, which == PLL_OP ? "PLL_OP": "PLL_VT");
 	if (which == PLL_OP) {
 		lim_fr = &lim->op_fr;
 		pll_fr = &pll->op_fr;
@@ -201,6 +203,8 @@ static int check_bk_bounds(struct device *dev,
 	const struct ccs_pll_branch_bk *pll_bk;
 	const char *s = pll_string(which);
 	int rval;
+
+pr_err("%s: which %s\n", __func__, which == PLL_OP ? "PLL_OP": "PLL_VT");
 
 	if (which == PLL_OP) {
 		if (pll->flags & CCS_PLL_FLAG_NO_OP_CLOCKS)
@@ -701,12 +705,13 @@ ccs_pll_calculate_op(struct device *dev, const struct ccs_pll_limits *lim,
 	op_pll_fr->pll_op_clk_freq_hz = op_pll_fr->pll_ip_clk_freq_hz
 		* op_pll_fr->pll_multiplier;
 
-	if (pll->flags & CCS_PLL_FLAG_LANE_SPEED_MODEL)
+	if (pll->flags & CCS_PLL_FLAG_LANE_SPEED_MODEL) {
 		op_pll_bk->pix_clk_div =
 			(pll->bits_per_pixel
 			 * pll->op_lanes * (phy_const << op_sys_ddr(pll->flags))
 			 / PHY_CONST_DIV / pll->csi2.lanes / l)
 			>> op_pix_ddr(pll->flags);
+	}
 	else
 		op_pll_bk->pix_clk_div =
 			(pll->bits_per_pixel
@@ -856,33 +861,45 @@ int ccs_pll_calculate(struct device *dev, const struct ccs_pll_limits *lim,
 					    op_pll_fr, op_pll_bk, mul, div,
 					    op_sys_clk_freq_hz_sdr, l, cphy,
 					    phy_const);
-		if (rval)
+		if (rval) {
+			pr_err("%s: op_pll_fr->pre_pll_clk_div of %u failed pll_calulate_op\n", __func__, op_pll_fr->pre_pll_clk_div);
 			continue;
+		}
 
 		rval = check_fr_bounds(dev, lim, pll,
 				       pll->flags & CCS_PLL_FLAG_DUAL_PLL ?
 				       PLL_OP : PLL_VT);
-		if (rval)
+		if (rval) {
+			pr_err("%s: op_pll_fr->pre_pll_clk_div of %u failed check_fr_bounds VT\n", __func__, op_pll_fr->pre_pll_clk_div);
 			continue;
+		}
 
 		rval = check_bk_bounds(dev, lim, pll, PLL_OP);
-		if (rval)
+		if (rval) {
+			pr_err("%s: op_pll_fr->pre_pll_clk_div of %u failed check_bk_bounds OP\n", __func__, op_pll_fr->pre_pll_clk_div);
 			continue;
+		}
 
 		if (pll->flags & CCS_PLL_FLAG_DUAL_PLL)
 			break;
 
 		rval = ccs_pll_calculate_vt(dev, lim, op_lim_bk, pll, op_pll_fr,
 					    op_pll_bk, cphy, phy_const);
-		if (rval)
+		if (rval) {
+			pr_err("%s: op_pll_fr->pre_pll_clk_div of %u failed\n", __func__, op_pll_fr->pre_pll_clk_div);
 			continue;
+		}
 
 		rval = check_bk_bounds(dev, lim, pll, PLL_VT);
-		if (rval)
+		if (rval) {
+			pr_err("%s: op_pll_fr->pre_pll_clk_div of %u failed check_bk_bounds VT\n", __func__, op_pll_fr->pre_pll_clk_div);
 			continue;
+		}
 		rval = check_ext_bounds(dev, pll);
-		if (rval)
+		if (rval) {
+			pr_err("%s: op_pll_fr->pre_pll_clk_div of %u failed check_ext_bounds\n", __func__, op_pll_fr->pre_pll_clk_div);
 			continue;
+		}
 
 		break;
 	}
