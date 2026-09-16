@@ -161,6 +161,7 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
 	imx675.dtbo \
 	imx678.dtbo \
 	imx708.dtbo \
+	imx832.dtbo \
 	interludeaudio-analog.dtbo \
 	interludeaudio-digital.dtbo \
 	iqaudio-codec.dtbo \

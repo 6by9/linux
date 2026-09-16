@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Definitions for IMX832 camera module on VC I2C bus
+// Configuration near identical to IMX662, so just update the compatible
+
+#include "imx662-overlay.dts"
+
+&cam_node {
+	compatible = "sony,imx832-aaqr";
+};
