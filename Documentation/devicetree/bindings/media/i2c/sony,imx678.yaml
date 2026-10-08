@@ -48,6 +48,8 @@ properties:
             - sony,imx832-amr
             - sony,imx832-aqr
         - const: sony,imx832
+      - items:
+        - const: sony,starvis2
 
     description:
       The IMX678 sensor exists in a colour variant (IMX678-AAQR) and a mono
