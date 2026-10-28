@@ -130,8 +130,6 @@ struct ov7251 {
 	struct v4l2_subdev sd;
 	struct media_pad pad;
 	struct v4l2_fwnode_endpoint ep;
-	struct v4l2_mbus_framefmt fmt;
-	struct v4l2_rect crop;
 	struct clk *xclk;
 	u32 xclk_freq;
 
@@ -157,7 +155,6 @@ struct ov7251 {
 	u8 timing_format1;
 	u8 timing_format2;
 
-	struct mutex lock; /* lock to protect power state, ctrls and mode */
 	bool power_on;
 
 	struct gpio_desc *enable_gpio;
@@ -1041,8 +1038,6 @@ static int ov7251_s_ctrl(struct v4l2_ctrl *ctrl)
 					     exposure_max));
 	}
 
-	/* v4l2_ctrl_lock() locks our mutex */
-
 	if (!pm_runtime_get_if_in_use(ov7251->dev))
 		return 0;
 
@@ -1130,52 +1125,6 @@ static int ov7251_enum_frame_ival(struct v4l2_subdev *subdev,
 	return -EINVAL;
 }
 
-static struct v4l2_mbus_framefmt *
-__ov7251_get_pad_format(struct ov7251 *ov7251,
-			struct v4l2_subdev_state *sd_state,
-			unsigned int pad,
-			enum v4l2_subdev_format_whence which)
-{
-	switch (which) {
-	case V4L2_SUBDEV_FORMAT_TRY:
-		return v4l2_subdev_state_get_format(sd_state, pad);
-	case V4L2_SUBDEV_FORMAT_ACTIVE:
-		return &ov7251->fmt;
-	default:
-		return NULL;
-	}
-}
-
-static int ov7251_get_format(struct v4l2_subdev *sd,
-			     struct v4l2_subdev_state *sd_state,
-			     struct v4l2_subdev_format *format)
-{
-	struct ov7251 *ov7251 = to_ov7251(sd);
-
-	mutex_lock(&ov7251->lock);
-	format->format = *__ov7251_get_pad_format(ov7251, sd_state,
-						  format->pad,
-						  format->which);
-	mutex_unlock(&ov7251->lock);
-
-	return 0;
-}
-
-static struct v4l2_rect *
-__ov7251_get_pad_crop(struct ov7251 *ov7251,
-		      struct v4l2_subdev_state *sd_state,
-		      unsigned int pad, enum v4l2_subdev_format_whence which)
-{
-	switch (which) {
-	case V4L2_SUBDEV_FORMAT_TRY:
-		return v4l2_subdev_state_get_crop(sd_state, pad);
-	case V4L2_SUBDEV_FORMAT_ACTIVE:
-		return &ov7251->crop;
-	default:
-		return NULL;
-	}
-}
-
 static inline u32 avg_fps(const struct v4l2_fract *t)
 {
 	return (t->denominator + (t->numerator >> 1)) / t->numerator;
@@ -1219,12 +1168,9 @@ static int ov7251_set_format(struct v4l2_subdev *sd,
 	int vblank_max, vblank_def;
 	struct v4l2_rect *__crop;
 	const struct ov7251_mode_info *new_mode;
-	int ret = 0;
+	int ret;
 
-	mutex_lock(&ov7251->lock);
-
-	__crop = __ov7251_get_pad_crop(ov7251, sd_state, format->pad,
-				       format->which);
+	__crop = v4l2_subdev_state_get_crop(sd_state, format->pad);
 
 	new_mode = v4l2_find_nearest_size(ov7251_mode_info_data,
 				ARRAY_SIZE(ov7251_mode_info_data),
@@ -1239,16 +1185,16 @@ static int ov7251_set_format(struct v4l2_subdev *sd,
 					       1, new_mode->exposure_max,
 					       1, new_mode->exposure_def);
 		if (ret < 0)
-			goto exit;
+			return ret;
 
 		ret = __v4l2_ctrl_s_ctrl(ov7251->exposure,
 					 new_mode->exposure_def);
 		if (ret < 0)
-			goto exit;
+			return ret;
 
 		ret = __v4l2_ctrl_s_ctrl(ov7251->gain, 16);
 		if (ret < 0)
-			goto exit;
+			return ret;
 
 		vblank_max = OV7251_TIMING_MAX_VTS - new_mode->height;
 		vblank_def = new_mode->vts - new_mode->height;
@@ -1256,17 +1202,16 @@ static int ov7251_set_format(struct v4l2_subdev *sd,
 					       OV7251_TIMING_MIN_VTS,
 					       vblank_max, 1, vblank_def);
 		if (ret < 0)
-			goto exit;
+			return ret;
 
 		ret = __v4l2_ctrl_s_ctrl(ov7251->vblank, vblank_def);
 		if (ret < 0)
-			goto exit;
+			return ret;
 
 		ov7251->current_mode = new_mode;
 	}
 
-	__format = __ov7251_get_pad_format(ov7251, sd_state, format->pad,
-					   format->which);
+	__format = v4l2_subdev_state_get_format(sd_state, format->pad);
 	__format->width = __crop->width;
 	__format->height = __crop->height;
 	__format->code = MEDIA_BUS_FMT_Y10_1X10;
@@ -1279,42 +1224,31 @@ static int ov7251_set_format(struct v4l2_subdev *sd,
 
 	format->format = *__format;
 
-exit:
-	mutex_unlock(&ov7251->lock);
-
-	return ret;
+	return 0;
 }
 
 static int ov7251_init_state(struct v4l2_subdev *subdev,
 			     struct v4l2_subdev_state *sd_state)
 {
 	struct v4l2_subdev_format fmt = {
-		.which = sd_state ? V4L2_SUBDEV_FORMAT_TRY
-		: V4L2_SUBDEV_FORMAT_ACTIVE,
+		.which = V4L2_SUBDEV_FORMAT_TRY,
 		.format = {
 			.width = 640,
 			.height = 480
 		}
 	};
 
-	ov7251_set_format(subdev, sd_state, &fmt);
-
-	return 0;
+	return ov7251_set_format(subdev, sd_state, &fmt);
 }
 
 static int ov7251_get_selection(struct v4l2_subdev *sd,
 				struct v4l2_subdev_state *sd_state,
 				struct v4l2_subdev_selection *sel)
 {
-	struct ov7251 *ov7251 = to_ov7251(sd);
-
 	switch (sel->target) {
 	case V4L2_SEL_TGT_CROP_DEFAULT:
 	case V4L2_SEL_TGT_CROP:
-	mutex_lock(&ov7251->lock);
-		sel->r = *__ov7251_get_pad_crop(ov7251, sd_state, sel->pad,
-						sel->which);
-		mutex_unlock(&ov7251->lock);
+		sel->r = *v4l2_subdev_state_get_crop(sd_state, sel->pad);
 		break;
 	case V4L2_SEL_TGT_NATIVE_SIZE:
 		sel->r.top = 0;
@@ -1338,14 +1272,15 @@ static int ov7251_get_selection(struct v4l2_subdev *sd,
 static int ov7251_s_stream(struct v4l2_subdev *subdev, int enable)
 {
 	struct ov7251 *ov7251 = to_ov7251(subdev);
+	struct v4l2_subdev_state *state;
 	int ret;
 
-	mutex_lock(&ov7251->lock);
+	state = v4l2_subdev_lock_and_get_active_state(subdev);
 
 	if (enable) {
 		ret = pm_runtime_resume_and_get(ov7251->dev);
 		if (ret) {
-			mutex_unlock(&ov7251->lock);
+			v4l2_subdev_unlock_state(state);
 			return ret;
 		}
 
@@ -1379,12 +1314,12 @@ static int ov7251_s_stream(struct v4l2_subdev *subdev, int enable)
 		pm_runtime_put(ov7251->dev);
 	}
 
-	mutex_unlock(&ov7251->lock);
+	v4l2_subdev_unlock_state(state);
 	return ret;
 
 err_power_down:
 	pm_runtime_put(ov7251->dev);
-	mutex_unlock(&ov7251->lock);
+	v4l2_subdev_unlock_state(state);
 	return ret;
 }
 
@@ -1401,9 +1336,7 @@ static int ov7251_get_frame_interval(struct v4l2_subdev *subdev,
 	if (fi->which != V4L2_SUBDEV_FORMAT_ACTIVE)
 		return -EINVAL;
 
-	mutex_lock(&ov7251->lock);
 	fi->interval = ov7251->current_mode->timeperframe;
-	mutex_unlock(&ov7251->lock);
 
 	return 0;
 }
@@ -1415,7 +1348,7 @@ static int ov7251_set_frame_interval(struct v4l2_subdev *subdev,
 	struct ov7251 *ov7251 = to_ov7251(subdev);
 	const struct ov7251_mode_info *new_mode;
 	int vblank_def;
-	int ret = 0;
+	int ret;
 
 	/*
 	 * FIXME: Implement support for V4L2_SUBDEV_FORMAT_TRY, using the V4L2
@@ -1424,7 +1357,6 @@ static int ov7251_set_frame_interval(struct v4l2_subdev *subdev,
 	if (fi->which != V4L2_SUBDEV_FORMAT_ACTIVE)
 		return -EINVAL;
 
-	mutex_lock(&ov7251->lock);
 	new_mode = ov7251_find_mode_by_ival(ov7251, &fi->interval);
 
 	if (new_mode != ov7251->current_mode) {
@@ -1432,16 +1364,16 @@ static int ov7251_set_frame_interval(struct v4l2_subdev *subdev,
 					       1, new_mode->exposure_max,
 					       1, new_mode->exposure_def);
 		if (ret < 0)
-			goto exit;
+			return ret;
 
 		ret = __v4l2_ctrl_s_ctrl(ov7251->exposure,
 					 new_mode->exposure_def);
 		if (ret < 0)
-			goto exit;
+			return ret;
 
 		ret = __v4l2_ctrl_s_ctrl(ov7251->gain, 16);
 		if (ret < 0)
-			goto exit;
+			return ret;
 
 		vblank_def = new_mode->vts - new_mode->height;
 		ret = __v4l2_ctrl_modify_range(ov7251->vblank,
@@ -1450,21 +1382,18 @@ static int ov7251_set_frame_interval(struct v4l2_subdev *subdev,
 					       new_mode->height,
 					       1, vblank_def);
 		if (ret < 0)
-			goto exit;
+			return ret;
 
 		ret = __v4l2_ctrl_s_ctrl(ov7251->vblank, vblank_def);
 		if (ret < 0)
-			goto exit;
+			return ret;
 
 		ov7251->current_mode = new_mode;
 	}
 
 	fi->interval = ov7251->current_mode->timeperframe;
 
-exit:
-	mutex_unlock(&ov7251->lock);
-
-	return ret;
+	return 0;
 }
 
 static const struct v4l2_subdev_video_ops ov7251_video_ops = {
@@ -1475,7 +1404,7 @@ static const struct v4l2_subdev_pad_ops ov7251_subdev_pad_ops = {
 	.enum_mbus_code = ov7251_enum_mbus_code,
 	.enum_frame_size = ov7251_enum_frame_size,
 	.enum_frame_interval = ov7251_enum_frame_ival,
-	.get_fmt = ov7251_get_format,
+	.get_fmt = v4l2_subdev_get_fmt,
 	.set_fmt = ov7251_set_format,
 	.get_selection = ov7251_get_selection,
 	.get_frame_interval = ov7251_get_frame_interval,
@@ -1580,18 +1509,20 @@ static int ov7251_detect_chip(struct ov7251 *ov7251)
 
 static int ov7251_init_ctrls(struct ov7251 *ov7251)
 {
+	const struct ov7251_mode_info *mode = ov7251->current_mode;
 	int vblank_max, vblank_def;
 	int hblank;
 
 	v4l2_ctrl_handler_init(&ov7251->ctrls, 7);
-	ov7251->ctrls.lock = &ov7251->lock;
 
 	v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
 			  V4L2_CID_HFLIP, 0, 1, 1, 0);
 	v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
 			  V4L2_CID_VFLIP, 0, 1, 1, 0);
 	ov7251->exposure = v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
-					     V4L2_CID_EXPOSURE, 1, 32, 1, 32);
+					     V4L2_CID_EXPOSURE, 1,
+					     mode->exposure_max, 1,
+					     mode->exposure_def);
 	ov7251->gain = v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
 					 V4L2_CID_GAIN, 16, 1023, 1, 16);
 	v4l2_ctrl_new_std_menu_items(&ov7251->ctrls, &ov7251_ctrl_ops,
@@ -1701,14 +1632,10 @@ static int ov7251_probe(struct i2c_client *client)
 		return PTR_ERR(ov7251->enable_gpio);
 	}
 
-	mutex_init(&ov7251->lock);
-
 	ov7251->current_mode = &ov7251_mode_info_data[0];
 	ret = ov7251_init_ctrls(ov7251);
-	if (ret) {
-		dev_err_probe(dev, ret, "error during v4l2 ctrl init\n");
-		goto destroy_mutex;
-	}
+	if (ret)
+		return dev_err_probe(dev, ret, "error during v4l2 ctrl init\n");
 
 	v4l2_i2c_subdev_init(&ov7251->sd, client, &ov7251_subdev_ops);
 	ov7251->sd.internal_ops = &ov7251_internal_ops;
@@ -1723,9 +1650,16 @@ static int ov7251_probe(struct i2c_client *client)
 		goto free_ctrl;
 	}
 
+	ov7251->sd.state_lock = ov7251->ctrls.lock;
+	ret = v4l2_subdev_init_finalize(&ov7251->sd);
+	if (ret < 0) {
+		dev_err(dev, "could not initialize subdev state\n");
+		goto free_entity;
+	}
+
 	ret = ov7251_set_power_on(ov7251->dev);
 	if (ret)
-		goto free_entity;
+		goto subdev_cleanup;
 
 	ret = ov7251_detect_chip(ov7251);
 	if (ret)
@@ -1766,10 +1700,8 @@ static int ov7251_probe(struct i2c_client *client)
 	ret = v4l2_async_register_subdev(&ov7251->sd);
 	if (ret < 0) {
 		dev_err(dev, "could not register v4l2 device\n");
-		goto free_entity;
+		goto subdev_cleanup;
 	}
-
-	ov7251_init_state(&ov7251->sd, NULL);
 
 	return 0;
 
@@ -1778,12 +1710,12 @@ err_pm_runtime:
 	pm_runtime_put_noidle(ov7251->dev);
 power_down:
 	ov7251_set_power_off(ov7251->dev);
+subdev_cleanup:
+	v4l2_subdev_cleanup(&ov7251->sd);
 free_entity:
 	media_entity_cleanup(&ov7251->sd.entity);
 free_ctrl:
 	v4l2_ctrl_handler_free(&ov7251->ctrls);
-destroy_mutex:
-	mutex_destroy(&ov7251->lock);
 
 	return ret;
 }
@@ -1794,9 +1726,9 @@ static void ov7251_remove(struct i2c_client *client)
 	struct ov7251 *ov7251 = to_ov7251(sd);
 
 	v4l2_async_unregister_subdev(&ov7251->sd);
+	v4l2_subdev_cleanup(sd);
 	media_entity_cleanup(&ov7251->sd.entity);
 	v4l2_ctrl_handler_free(&ov7251->ctrls);
-	mutex_destroy(&ov7251->lock);
 
 	pm_runtime_disable(ov7251->dev);
 	if (!pm_runtime_status_suspended(ov7251->dev))
