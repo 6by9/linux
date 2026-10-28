@@ -1510,10 +1510,16 @@ static int ov7251_detect_chip(struct ov7251 *ov7251)
 static int ov7251_init_ctrls(struct ov7251 *ov7251)
 {
 	const struct ov7251_mode_info *mode = ov7251->current_mode;
+	struct v4l2_fwnode_device_properties props;
 	int vblank_max, vblank_def;
 	int hblank;
+	int ret;
 
-	v4l2_ctrl_handler_init(&ov7251->ctrls, 7);
+	ret = v4l2_fwnode_device_parse(ov7251->dev, &props);
+	if (ret)
+		return ret;
+
+	v4l2_ctrl_handler_init(&ov7251->ctrls, 11);
 
 	v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
 			  V4L2_CID_HFLIP, 0, 1, 1, 0);
@@ -1560,6 +1566,9 @@ static int ov7251_init_ctrls(struct ov7251 *ov7251)
 					   V4L2_CID_VBLANK,
 					   OV7251_TIMING_MIN_VTS, vblank_max, 1,
 					   vblank_def);
+
+	v4l2_ctrl_new_fwnode_properties(&ov7251->ctrls, &ov7251_ctrl_ops,
+					&props);
 
 	ov7251->sd.ctrl_handler = &ov7251->ctrls;
 
