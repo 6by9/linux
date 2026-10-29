@@ -70,7 +70,9 @@
 #define OV7251_ACTIVE_WIDTH		648
 #define OV7251_ACTIVE_HEIGHT		488
 
-#define OV7251_FIXED_PPL		928
+#define OV7251_TIMING_HTS_REG		CCI_REG16(0x380c)
+#define OV7251_TIMING_MIN_HTS		928
+#define OV7251_TIMING_MAX_HTS		0xffff
 #define OV7251_TIMING_VTS_REG		CCI_REG16(0x380e)
 #define OV7251_TIMING_MIN_VTS		41
 #define OV7251_TIMING_MAX_VTS		0xffff
@@ -310,7 +312,6 @@ static const struct cci_reg_sequence ov7251_global_init_setting[] = {
 	{ CCI_REG8(0x3809), 0x80 }, /* width low */
 	{ CCI_REG8(0x380a), 0x01 }, /* height high */
 	{ CCI_REG8(0x380b), 0xe0 }, /* height low */
-	{ CCI_REG16(0x380c), OV7251_FIXED_PPL }, /* total horiz timing */
 	{ CCI_REG8(0x3810), 0x00 },
 	{ CCI_REG8(0x3811), 0x04 },
 	{ CCI_REG8(0x3812), 0x00 },
@@ -766,6 +767,10 @@ static int ov7251_s_ctrl(struct v4l2_ctrl *ctrl)
 		if (!ret && ov7251->strobe->val)
 			ret = ov7251_set_strobe_span(ov7251);
 		break;
+	case V4L2_CID_HBLANK:
+		ret = cci_write(ov7251->cci, OV7251_TIMING_HTS_REG,
+				ctrl->val + ov7251->current_mode->width, NULL);
+		break;
 	case V4L2_CID_FLASH_STROBE_OE:
 		ret = ov7251_set_strobe(ov7251, ctrl->val);
 		break;
@@ -1098,6 +1103,11 @@ static int ov7251_set_frame_interval(struct v4l2_subdev *subdev,
 		if (ret < 0)
 			return ret;
 
+		ret = __v4l2_ctrl_s_ctrl(ov7251->hblank, OV7251_TIMING_MIN_HTS -
+							new_mode->width);
+		if (ret < 0)
+			return ret;
+
 		ov7251->current_mode = new_mode;
 	}
 
@@ -1258,12 +1268,12 @@ static int ov7251_init_ctrls(struct ov7251 *ov7251)
 	if (ov7251->pixel_clock)
 		ov7251->pixel_clock->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
-	hblank = OV7251_FIXED_PPL - ov7251->current_mode->width;
+	hblank = OV7251_TIMING_MIN_HTS - ov7251->current_mode->width;
 	ov7251->hblank = v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
-					   V4L2_CID_HBLANK, hblank, hblank, 1,
+					   V4L2_CID_HBLANK, hblank,
+					   OV7251_TIMING_MAX_HTS -
+						ov7251->current_mode->width, 1,
 					   hblank);
-	if (ov7251->hblank)
-		ov7251->hblank->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	vblank_max = OV7251_TIMING_MAX_VTS - ov7251->current_mode->height;
 	vblank_def = ov7251->current_mode->vts - ov7251->current_mode->height;
