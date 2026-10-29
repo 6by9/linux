@@ -123,6 +123,7 @@ enum xclk_rate {
 enum supported_link_freqs {
 	OV7251_LINK_FREQ_240_MHZ,
 	OV7251_LINK_FREQ_319_2_MHZ,
+	OV7251_LINK_FREQ_400_MHZ,
 	OV7251_NUM_SUPPORTED_LINK_FREQS
 };
 
@@ -185,18 +186,35 @@ static const struct ov7251_pll1_cfg ov7251_pll1_cfg_19_2_mhz_319_2_mhz = {
 	.mipi_div = 0x05,
 };
 
+static const struct ov7251_pll1_cfg ov7251_pll1_cfg_19_2_mhz_400_mhz = {
+	.pre_div = 0x03,
+	.mult = 0x7d,
+	.div = 0x01,
+	.pix_div = 0x0a,
+	.mipi_div = 0x05,
+};
+
 static const struct ov7251_pll1_cfg ov7251_pll1_cfg_24_mhz_240_mhz = {
 	.pre_div = 0x03,
-	.mult = 0x64,
+	.mult = 0x3c,
 	.div = 0x01,
 	.pix_div = 0x0a,
 	.mipi_div = 0x05,
 };
 
 static const struct ov7251_pll1_cfg ov7251_pll1_cfg_24_mhz_319_2_mhz = {
-	.pre_div = 0x05,
-	.mult = 0x85,
-	.div = 0x02,
+	/* Actually 320MHz */
+	.pre_div = 0x03,
+	.mult = 0x50,
+	.div = 0x01,
+	.pix_div = 0x0a,
+	.mipi_div = 0x05,
+};
+
+static const struct ov7251_pll1_cfg ov7251_pll1_cfg_24_mhz_400_mhz = {
+	.pre_div = 0x03,
+	.mult = 0x64,
+	.div = 0x01,
 	.pix_div = 0x0a,
 	.mipi_div = 0x05,
 };
@@ -222,6 +240,7 @@ static const struct ov7251_pll_cfgs ov7251_pll_cfgs_19_2_mhz = {
 	.pll1 = {
 		[OV7251_LINK_FREQ_240_MHZ] = &ov7251_pll1_cfg_19_2_mhz_240_mhz,
 		[OV7251_LINK_FREQ_319_2_MHZ] = &ov7251_pll1_cfg_19_2_mhz_319_2_mhz,
+		[OV7251_LINK_FREQ_400_MHZ] = &ov7251_pll1_cfg_19_2_mhz_400_mhz,
 	},
 };
 
@@ -230,6 +249,7 @@ static const struct ov7251_pll_cfgs ov7251_pll_cfgs_24_mhz = {
 	.pll1 = {
 		[OV7251_LINK_FREQ_240_MHZ] = &ov7251_pll1_cfg_24_mhz_240_mhz,
 		[OV7251_LINK_FREQ_319_2_MHZ] = &ov7251_pll1_cfg_24_mhz_319_2_mhz,
+		[OV7251_LINK_FREQ_400_MHZ] = &ov7251_pll1_cfg_24_mhz_400_mhz,
 	},
 };
 
@@ -395,6 +415,7 @@ static const unsigned long supported_xclk_rates[] = {
 static const s64 link_freq[] = {
 	[OV7251_LINK_FREQ_240_MHZ] = 240000000,
 	[OV7251_LINK_FREQ_319_2_MHZ] = 319200000,
+	[OV7251_LINK_FREQ_400_MHZ] = 400000000,
 };
 
 static const struct ov7251_mode_info ov7251_mode_info_data[] = {
