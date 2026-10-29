@@ -310,8 +310,7 @@ static const struct cci_reg_sequence ov7251_global_init_setting[] = {
 	{ CCI_REG8(0x3809), 0x80 }, /* width low */
 	{ CCI_REG8(0x380a), 0x01 }, /* height high */
 	{ CCI_REG8(0x380b), 0xe0 }, /* height low */
-	{ CCI_REG8(0x380c), 0x03 }, /* total horiz timing high */
-	{ CCI_REG8(0x380d), 0xa0 }, /* total horiz timing low */
+	{ CCI_REG16(0x380c), OV7251_FIXED_PPL }, /* total horiz timing */
 	{ CCI_REG8(0x3810), 0x00 },
 	{ CCI_REG8(0x3811), 0x04 },
 	{ CCI_REG8(0x3812), 0x00 },
