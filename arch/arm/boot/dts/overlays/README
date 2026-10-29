@@ -3977,6 +3977,8 @@ Params: rotation                Mounting rotation of the camera sensor (0 or
                                 configuring the sensor (default off)
         cam0                    Adopt the default configuration for CAM0 on a
                                 Compute Module (CSI0, i2c_vc, and cam0_reg).
+        link-frequency          Confgures the link frequency to be used.
+                                The default is 240MHz for 480Mbit/s.
 
 
 Name:   ov9281
