@@ -748,6 +748,7 @@ config VIDEO_OV64A40
 
 config VIDEO_OV7251
 	tristate "OmniVision OV7251 sensor support"
+	select V4L2_CCI_I2C
 	help
 	  This is a Video4Linux2 sensor driver for the OmniVision
 	  OV7251 camera.

@@ -18,6 +18,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/types.h>
+#include <media/v4l2-cci.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-subdev.h>
@@ -25,36 +26,31 @@
 /* PLL2 sys_clk: the pixel array clock at both link frequencies */
 #define OV7251_PIXEL_CLOCK 48000000
 
-#define OV7251_SC_MODE_SELECT		0x0100
+#define OV7251_SC_MODE_SELECT		CCI_REG8(0x0100)
 #define OV7251_SC_MODE_SELECT_SW_STANDBY	0x0
 #define OV7251_SC_MODE_SELECT_STREAMING		0x1
 
-#define OV7251_CHIP_ID_HIGH		0x300a
-#define OV7251_CHIP_ID_HIGH_BYTE	0x77
-#define OV7251_CHIP_ID_LOW		0x300b
-#define OV7251_CHIP_ID_LOW_BYTE		0x50
-#define OV7251_SC_GP_IO_IN1		0x3029
-#define OV7251_AEC_EXPO_0		0x3500
-#define OV7251_AEC_EXPO_1		0x3501
-#define OV7251_AEC_EXPO_2		0x3502
-#define OV7251_AEC_AGC_ADJ_0		0x350a
-#define OV7251_AEC_AGC_ADJ_1		0x350b
-#define OV7251_TIMING_FORMAT1		0x3820
+#define OV7251_CHIP_ID			CCI_REG16(0x300a)
+#define OV7251_CHIP_ID_VALUE		0x7750
+#define OV7251_SC_GP_IO_IN1		CCI_REG8(0x3029)
+#define OV7251_AEC_EXPO_0		CCI_REG24(0x3500)
+#define OV7251_AEC_AGC_ADJ_0		CCI_REG16(0x350a)
+#define OV7251_TIMING_FORMAT1		CCI_REG8(0x3820)
 #define OV7251_TIMING_FORMAT1_VFLIP	BIT(2)
-#define OV7251_TIMING_FORMAT2		0x3821
+#define OV7251_TIMING_FORMAT2		CCI_REG8(0x3821)
 #define OV7251_TIMING_FORMAT2_MIRROR	BIT(2)
-#define OV7251_PRE_ISP_00		0x5e00
+#define OV7251_PRE_ISP_00		CCI_REG8(0x5e00)
 #define OV7251_PRE_ISP_00_TEST_PATTERN	BIT(7)
-#define OV7251_PLL1_PRE_DIV_REG		0x30b4
-#define OV7251_PLL1_MULT_REG		0x30b3
-#define OV7251_PLL1_DIVIDER_REG		0x30b1
-#define OV7251_PLL1_PIX_DIV_REG		0x30b0
-#define OV7251_PLL1_MIPI_DIV_REG	0x30b5
-#define OV7251_PLL2_PRE_DIV_REG		0x3098
-#define OV7251_PLL2_MULT_REG		0x3099
-#define OV7251_PLL2_DIVIDER_REG		0x309d
-#define OV7251_PLL2_SYS_DIV_REG		0x309a
-#define OV7251_PLL2_ADC_DIV_REG		0x309b
+#define OV7251_PLL1_PRE_DIV_REG		CCI_REG8(0x30b4)
+#define OV7251_PLL1_MULT_REG		CCI_REG8(0x30b3)
+#define OV7251_PLL1_DIVIDER_REG		CCI_REG8(0x30b1)
+#define OV7251_PLL1_PIX_DIV_REG		CCI_REG8(0x30b0)
+#define OV7251_PLL1_MIPI_DIV_REG	CCI_REG8(0x30b5)
+#define OV7251_PLL2_PRE_DIV_REG		CCI_REG8(0x3098)
+#define OV7251_PLL2_MULT_REG		CCI_REG8(0x3099)
+#define OV7251_PLL2_DIVIDER_REG		CCI_REG8(0x309d)
+#define OV7251_PLL2_SYS_DIV_REG		CCI_REG8(0x309a)
+#define OV7251_PLL2_ADC_DIV_REG		CCI_REG8(0x309b)
 
 #define OV7251_NATIVE_WIDTH		656
 #define OV7251_NATIVE_HEIGHT		496
@@ -64,21 +60,16 @@
 #define OV7251_ACTIVE_HEIGHT		488
 
 #define OV7251_FIXED_PPL		928
-#define OV7251_TIMING_VTS_REG		0x380e
+#define OV7251_TIMING_VTS_REG		CCI_REG16(0x380e)
 #define OV7251_TIMING_MIN_VTS		41
 #define OV7251_TIMING_MAX_VTS		0xffff
 #define OV7251_INTEGRATION_MARGIN	20
-
-struct reg_value {
-	u16 reg;
-	u8 val;
-};
 
 struct ov7251_mode_info {
 	u32 width;
 	u32 height;
 	u32 vts;
-	const struct reg_value *data;
+	const struct cci_reg_sequence *data;
 	u32 data_size;
 	u32 pixel_clock;
 	u32 link_freq;
@@ -127,6 +118,7 @@ enum supported_link_freqs {
 struct ov7251 {
 	struct i2c_client *i2c_client;
 	struct device *dev;
+	struct regmap *cci;
 	struct v4l2_subdev sd;
 	struct media_pad pad;
 	struct v4l2_fwnode_endpoint ep;
@@ -234,153 +226,153 @@ static const struct ov7251_pll_cfgs *ov7251_pll_cfgs[] = {
 	[OV7251_24_MHZ] = &ov7251_pll_cfgs_24_mhz,
 };
 
-static const struct reg_value ov7251_global_init_setting[] = {
-	{ 0x0103, 0x01 },
-	{ 0x303b, 0x02 },
-	{ 0x3005, 0x00 },
-	{ 0x3012, 0xc0 },
-	{ 0x3013, 0xd2 },
-	{ 0x3014, 0x04 },
-	{ 0x3023, 0x05 },
-	{ 0x3037, 0xf0 },
-	{ 0x3106, 0xda },
-	{ 0x3503, 0x07 },
-	{ 0x3509, 0x10 },
-	{ 0x3600, 0x1c },
-	{ 0x3602, 0x62 },
-	{ 0x3620, 0xb7 },
-	{ 0x3622, 0x04 },
-	{ 0x3626, 0x21 },
-	{ 0x3627, 0x30 },
-	{ 0x3630, 0x44 },
-	{ 0x3631, 0x35 },
-	{ 0x3634, 0x60 },
-	{ 0x3636, 0x00 },
-	{ 0x3662, 0x01 },
-	{ 0x3663, 0x70 },
-	{ 0x3664, 0x50 },
-	{ 0x3666, 0x0a },
-	{ 0x3669, 0x1a },
-	{ 0x366a, 0x00 },
-	{ 0x366b, 0x50 },
-	{ 0x3673, 0x01 },
-	{ 0x3674, 0xff },
-	{ 0x3675, 0x03 },
-	{ 0x3705, 0xc1 },
-	{ 0x3709, 0x40 },
-	{ 0x373c, 0x08 },
-	{ 0x3742, 0x00 },
-	{ 0x3757, 0xb3 },
-	{ 0x3788, 0x00 },
-	{ 0x37a8, 0x01 },
-	{ 0x37a9, 0xc0 },
-	{ 0x3800, 0x00 },
-	{ 0x3801, 0x04 },
-	{ 0x3802, 0x00 },
-	{ 0x3803, 0x04 },
-	{ 0x3804, 0x02 },
-	{ 0x3805, 0x8b },
-	{ 0x3806, 0x01 },
-	{ 0x3807, 0xeb },
-	{ 0x3808, 0x02 }, /* width high */
-	{ 0x3809, 0x80 }, /* width low */
-	{ 0x380a, 0x01 }, /* height high */
-	{ 0x380b, 0xe0 }, /* height low */
-	{ 0x380c, 0x03 }, /* total horiz timing high */
-	{ 0x380d, 0xa0 }, /* total horiz timing low */
-	{ 0x3810, 0x00 },
-	{ 0x3811, 0x04 },
-	{ 0x3812, 0x00 },
-	{ 0x3813, 0x05 },
-	{ 0x3814, 0x11 },
-	{ 0x3815, 0x11 },
-	{ 0x3820, 0x40 },
-	{ 0x3821, 0x00 },
-	{ 0x382f, 0x0e },
-	{ 0x3832, 0x00 },
-	{ 0x3833, 0x05 },
-	{ 0x3834, 0x00 },
-	{ 0x3835, 0x0c },
-	{ 0x3837, 0x00 },
-	{ 0x3b80, 0x00 },
-	{ 0x3b81, 0xa5 },
-	{ 0x3b82, 0x10 },
-	{ 0x3b83, 0x00 },
-	{ 0x3b84, 0x08 },
-	{ 0x3b85, 0x00 },
-	{ 0x3b86, 0x01 },
-	{ 0x3b87, 0x00 },
-	{ 0x3b88, 0x00 },
-	{ 0x3b89, 0x00 },
-	{ 0x3b8a, 0x00 },
-	{ 0x3b8b, 0x05 },
-	{ 0x3b8c, 0x00 },
-	{ 0x3b8d, 0x00 },
-	{ 0x3b8e, 0x00 },
-	{ 0x3b8f, 0x1a },
-	{ 0x3b94, 0x05 },
-	{ 0x3b95, 0xf2 },
-	{ 0x3b96, 0x40 },
-	{ 0x3c00, 0x89 },
-	{ 0x3c01, 0x63 },
-	{ 0x3c02, 0x01 },
-	{ 0x3c03, 0x00 },
-	{ 0x3c04, 0x00 },
-	{ 0x3c05, 0x03 },
-	{ 0x3c06, 0x00 },
-	{ 0x3c07, 0x06 },
-	{ 0x3c0c, 0x01 },
-	{ 0x3c0d, 0xd0 },
-	{ 0x3c0e, 0x02 },
-	{ 0x3c0f, 0x0a },
-	{ 0x4001, 0x42 },
-	{ 0x4004, 0x04 },
-	{ 0x4005, 0x00 },
-	{ 0x404e, 0x01 },
-	{ 0x4300, 0xff },
-	{ 0x4301, 0x00 },
-	{ 0x4315, 0x00 },
-	{ 0x4501, 0x48 },
-	{ 0x4600, 0x00 },
-	{ 0x4601, 0x4e },
-	{ 0x4801, 0x0f },
-	{ 0x4806, 0x0f },
-	{ 0x4819, 0xaa },
-	{ 0x4823, 0x3e },
-	{ 0x4837, 0x19 },
-	{ 0x4a0d, 0x00 },
-	{ 0x4a47, 0x7f },
-	{ 0x4a49, 0xf0 },
-	{ 0x4a4b, 0x30 },
-	{ 0x5000, 0x85 },
-	{ 0x5001, 0x80 },
+static const struct cci_reg_sequence ov7251_global_init_setting[] = {
+	{ CCI_REG8(0x0103), 0x01 },
+	{ CCI_REG8(0x303b), 0x02 },
+	{ CCI_REG8(0x3005), 0x00 },
+	{ CCI_REG8(0x3012), 0xc0 },
+	{ CCI_REG8(0x3013), 0xd2 },
+	{ CCI_REG8(0x3014), 0x04 },
+	{ CCI_REG8(0x3023), 0x05 },
+	{ CCI_REG8(0x3037), 0xf0 },
+	{ CCI_REG8(0x3106), 0xda },
+	{ CCI_REG8(0x3503), 0x07 },
+	{ CCI_REG8(0x3509), 0x10 },
+	{ CCI_REG8(0x3600), 0x1c },
+	{ CCI_REG8(0x3602), 0x62 },
+	{ CCI_REG8(0x3620), 0xb7 },
+	{ CCI_REG8(0x3622), 0x04 },
+	{ CCI_REG8(0x3626), 0x21 },
+	{ CCI_REG8(0x3627), 0x30 },
+	{ CCI_REG8(0x3630), 0x44 },
+	{ CCI_REG8(0x3631), 0x35 },
+	{ CCI_REG8(0x3634), 0x60 },
+	{ CCI_REG8(0x3636), 0x00 },
+	{ CCI_REG8(0x3662), 0x01 },
+	{ CCI_REG8(0x3663), 0x70 },
+	{ CCI_REG8(0x3664), 0x50 },
+	{ CCI_REG8(0x3666), 0x0a },
+	{ CCI_REG8(0x3669), 0x1a },
+	{ CCI_REG8(0x366a), 0x00 },
+	{ CCI_REG8(0x366b), 0x50 },
+	{ CCI_REG8(0x3673), 0x01 },
+	{ CCI_REG8(0x3674), 0xff },
+	{ CCI_REG8(0x3675), 0x03 },
+	{ CCI_REG8(0x3705), 0xc1 },
+	{ CCI_REG8(0x3709), 0x40 },
+	{ CCI_REG8(0x373c), 0x08 },
+	{ CCI_REG8(0x3742), 0x00 },
+	{ CCI_REG8(0x3757), 0xb3 },
+	{ CCI_REG8(0x3788), 0x00 },
+	{ CCI_REG8(0x37a8), 0x01 },
+	{ CCI_REG8(0x37a9), 0xc0 },
+	{ CCI_REG8(0x3800), 0x00 },
+	{ CCI_REG8(0x3801), 0x04 },
+	{ CCI_REG8(0x3802), 0x00 },
+	{ CCI_REG8(0x3803), 0x04 },
+	{ CCI_REG8(0x3804), 0x02 },
+	{ CCI_REG8(0x3805), 0x8b },
+	{ CCI_REG8(0x3806), 0x01 },
+	{ CCI_REG8(0x3807), 0xeb },
+	{ CCI_REG8(0x3808), 0x02 }, /* width high */
+	{ CCI_REG8(0x3809), 0x80 }, /* width low */
+	{ CCI_REG8(0x380a), 0x01 }, /* height high */
+	{ CCI_REG8(0x380b), 0xe0 }, /* height low */
+	{ CCI_REG8(0x380c), 0x03 }, /* total horiz timing high */
+	{ CCI_REG8(0x380d), 0xa0 }, /* total horiz timing low */
+	{ CCI_REG8(0x3810), 0x00 },
+	{ CCI_REG8(0x3811), 0x04 },
+	{ CCI_REG8(0x3812), 0x00 },
+	{ CCI_REG8(0x3813), 0x05 },
+	{ CCI_REG8(0x3814), 0x11 },
+	{ CCI_REG8(0x3815), 0x11 },
+	{ CCI_REG8(0x3820), 0x40 },
+	{ CCI_REG8(0x3821), 0x00 },
+	{ CCI_REG8(0x382f), 0x0e },
+	{ CCI_REG8(0x3832), 0x00 },
+	{ CCI_REG8(0x3833), 0x05 },
+	{ CCI_REG8(0x3834), 0x00 },
+	{ CCI_REG8(0x3835), 0x0c },
+	{ CCI_REG8(0x3837), 0x00 },
+	{ CCI_REG8(0x3b80), 0x00 },
+	{ CCI_REG8(0x3b81), 0xa5 },
+	{ CCI_REG8(0x3b82), 0x10 },
+	{ CCI_REG8(0x3b83), 0x00 },
+	{ CCI_REG8(0x3b84), 0x08 },
+	{ CCI_REG8(0x3b85), 0x00 },
+	{ CCI_REG8(0x3b86), 0x01 },
+	{ CCI_REG8(0x3b87), 0x00 },
+	{ CCI_REG8(0x3b88), 0x00 },
+	{ CCI_REG8(0x3b89), 0x00 },
+	{ CCI_REG8(0x3b8a), 0x00 },
+	{ CCI_REG8(0x3b8b), 0x05 },
+	{ CCI_REG8(0x3b8c), 0x00 },
+	{ CCI_REG8(0x3b8d), 0x00 },
+	{ CCI_REG8(0x3b8e), 0x00 },
+	{ CCI_REG8(0x3b8f), 0x1a },
+	{ CCI_REG8(0x3b94), 0x05 },
+	{ CCI_REG8(0x3b95), 0xf2 },
+	{ CCI_REG8(0x3b96), 0x40 },
+	{ CCI_REG8(0x3c00), 0x89 },
+	{ CCI_REG8(0x3c01), 0x63 },
+	{ CCI_REG8(0x3c02), 0x01 },
+	{ CCI_REG8(0x3c03), 0x00 },
+	{ CCI_REG8(0x3c04), 0x00 },
+	{ CCI_REG8(0x3c05), 0x03 },
+	{ CCI_REG8(0x3c06), 0x00 },
+	{ CCI_REG8(0x3c07), 0x06 },
+	{ CCI_REG8(0x3c0c), 0x01 },
+	{ CCI_REG8(0x3c0d), 0xd0 },
+	{ CCI_REG8(0x3c0e), 0x02 },
+	{ CCI_REG8(0x3c0f), 0x0a },
+	{ CCI_REG8(0x4001), 0x42 },
+	{ CCI_REG8(0x4004), 0x04 },
+	{ CCI_REG8(0x4005), 0x00 },
+	{ CCI_REG8(0x404e), 0x01 },
+	{ CCI_REG8(0x4300), 0xff },
+	{ CCI_REG8(0x4301), 0x00 },
+	{ CCI_REG8(0x4315), 0x00 },
+	{ CCI_REG8(0x4501), 0x48 },
+	{ CCI_REG8(0x4600), 0x00 },
+	{ CCI_REG8(0x4601), 0x4e },
+	{ CCI_REG8(0x4801), 0x0f },
+	{ CCI_REG8(0x4806), 0x0f },
+	{ CCI_REG8(0x4819), 0xaa },
+	{ CCI_REG8(0x4823), 0x3e },
+	{ CCI_REG8(0x4837), 0x19 },
+	{ CCI_REG8(0x4a0d), 0x00 },
+	{ CCI_REG8(0x4a47), 0x7f },
+	{ CCI_REG8(0x4a49), 0xf0 },
+	{ CCI_REG8(0x4a4b), 0x30 },
+	{ CCI_REG8(0x5000), 0x85 },
+	{ CCI_REG8(0x5001), 0x80 },
 };
 
-static const struct reg_value ov7251_setting_vga_30fps[] = {
-	{ 0x3016, 0xf0 },
-	{ 0x3017, 0xf0 },
-	{ 0x3018, 0xf0 },
-	{ 0x301a, 0xf0 },
-	{ 0x301b, 0xf0 },
-	{ 0x301c, 0xf0 },
+static const struct cci_reg_sequence  ov7251_setting_vga_30fps[] = {
+	{ CCI_REG8(0x3016), 0xf0 },
+	{ CCI_REG8(0x3017), 0xf0 },
+	{ CCI_REG8(0x3018), 0xf0 },
+	{ CCI_REG8(0x301a), 0xf0 },
+	{ CCI_REG8(0x301b), 0xf0 },
+	{ CCI_REG8(0x301c), 0xf0 },
 };
 
-static const struct reg_value ov7251_setting_vga_60fps[] = {
-	{ 0x3016, 0x10 },
-	{ 0x3017, 0x00 },
-	{ 0x3018, 0x00 },
-	{ 0x301a, 0x00 },
-	{ 0x301b, 0x00 },
-	{ 0x301c, 0x00 },
+static const struct cci_reg_sequence  ov7251_setting_vga_60fps[] = {
+	{ CCI_REG8(0x3016), 0x10 },
+	{ CCI_REG8(0x3017), 0x00 },
+	{ CCI_REG8(0x3018), 0x00 },
+	{ CCI_REG8(0x301a), 0x00 },
+	{ CCI_REG8(0x301b), 0x00 },
+	{ CCI_REG8(0x301c), 0x00 },
 };
 
-static const struct reg_value ov7251_setting_vga_90fps[] = {
-	{ 0x3016, 0x10 },
-	{ 0x3017, 0x00 },
-	{ 0x3018, 0x00 },
-	{ 0x301a, 0x00 },
-	{ 0x301b, 0x00 },
-	{ 0x301c, 0x00 },
+static const struct cci_reg_sequence  ov7251_setting_vga_90fps[] = {
+	{ CCI_REG8(0x3016), 0x10 },
+	{ CCI_REG8(0x3017), 0x00 },
+	{ CCI_REG8(0x3018), 0x00 },
+	{ CCI_REG8(0x301a), 0x00 },
+	{ CCI_REG8(0x301b), 0x00 },
+	{ CCI_REG8(0x301c), 0x00 },
 };
 
 static const unsigned long supported_xclk_rates[] = {
@@ -489,76 +481,6 @@ static void ov7251_regulators_disable(struct ov7251 *ov7251)
 		dev_err(ov7251->dev, "io regulator disable failed\n");
 }
 
-static int ov7251_write_reg(struct ov7251 *ov7251, u16 reg, u8 val)
-{
-	u8 regbuf[3];
-	int ret;
-
-	regbuf[0] = reg >> 8;
-	regbuf[1] = reg & 0xff;
-	regbuf[2] = val;
-
-	ret = i2c_master_send(ov7251->i2c_client, regbuf, 3);
-	if (ret < 0) {
-		dev_err(ov7251->dev, "%s: write reg error %d: reg=%x, val=%x\n",
-			__func__, ret, reg, val);
-		return ret;
-	}
-
-	return 0;
-}
-
-static int ov7251_write_seq_regs(struct ov7251 *ov7251, u16 reg, u8 *val,
-				 u8 num)
-{
-	u8 regbuf[5];
-	u8 nregbuf = sizeof(reg) + num * sizeof(*val);
-	int ret = 0;
-
-	if (nregbuf > sizeof(regbuf))
-		return -EINVAL;
-
-	regbuf[0] = reg >> 8;
-	regbuf[1] = reg & 0xff;
-
-	memcpy(regbuf + 2, val, num);
-
-	ret = i2c_master_send(ov7251->i2c_client, regbuf, nregbuf);
-	if (ret < 0) {
-		dev_err(ov7251->dev,
-			"%s: write seq regs error %d: first reg=%x\n",
-			__func__, ret, reg);
-		return ret;
-	}
-
-	return 0;
-}
-
-static int ov7251_read_reg(struct ov7251 *ov7251, u16 reg, u8 *val)
-{
-	u8 regbuf[2];
-	int ret;
-
-	regbuf[0] = reg >> 8;
-	regbuf[1] = reg & 0xff;
-
-	ret = i2c_master_send(ov7251->i2c_client, regbuf, 2);
-	if (ret < 0) {
-		dev_err(ov7251->dev, "%s: write reg error %d: reg=%x\n",
-			__func__, ret, reg);
-		return ret;
-	}
-
-	ret = i2c_master_recv(ov7251->i2c_client, val, 1);
-	if (ret < 0) {
-		dev_err(ov7251->dev, "%s: read reg error %d: reg=%x\n",
-			__func__, ret, reg);
-		return ret;
-	}
-
-	return 0;
-}
-
 static int ov7251_pll_configure(struct ov7251 *ov7251)
 {
 	const struct ov7251_pll_cfgs *configs;
@@ -566,95 +488,45 @@ static int ov7251_pll_configure(struct ov7251 *ov7251)
 
 	configs = ov7251->pll_cfgs;
 
-	ret = ov7251_write_reg(ov7251, OV7251_PLL1_PRE_DIV_REG,
-			       configs->pll1[ov7251->link_freq_idx]->pre_div);
-	if (ret < 0)
-		return ret;
+	ret = cci_write(ov7251->cci, OV7251_PLL1_PRE_DIV_REG,
+			configs->pll1[ov7251->link_freq_idx]->pre_div, NULL);
 
-	ret = ov7251_write_reg(ov7251, OV7251_PLL1_MULT_REG,
-			       configs->pll1[ov7251->link_freq_idx]->mult);
-	if (ret < 0)
-		return ret;
-	ret = ov7251_write_reg(ov7251, OV7251_PLL1_DIVIDER_REG,
-			       configs->pll1[ov7251->link_freq_idx]->div);
-	if (ret < 0)
-		return ret;
+	cci_write(ov7251->cci, OV7251_PLL1_MULT_REG,
+		  configs->pll1[ov7251->link_freq_idx]->mult, &ret);
+	cci_write(ov7251->cci, OV7251_PLL1_DIVIDER_REG,
+		  configs->pll1[ov7251->link_freq_idx]->div, &ret);
 
-	ret = ov7251_write_reg(ov7251, OV7251_PLL1_PIX_DIV_REG,
-			       configs->pll1[ov7251->link_freq_idx]->pix_div);
-	if (ret < 0)
-		return ret;
+	cci_write(ov7251->cci, OV7251_PLL1_PIX_DIV_REG,
+		  configs->pll1[ov7251->link_freq_idx]->pix_div, &ret);
 
-	ret = ov7251_write_reg(ov7251, OV7251_PLL1_MIPI_DIV_REG,
-			       configs->pll1[ov7251->link_freq_idx]->mipi_div);
-	if (ret < 0)
-		return ret;
+	cci_write(ov7251->cci, OV7251_PLL1_MIPI_DIV_REG,
+		  configs->pll1[ov7251->link_freq_idx]->mipi_div, &ret);
 
-	ret = ov7251_write_reg(ov7251, OV7251_PLL2_PRE_DIV_REG,
-			       configs->pll2->pre_div);
-	if (ret < 0)
-		return ret;
+	cci_write(ov7251->cci, OV7251_PLL2_PRE_DIV_REG, configs->pll2->pre_div,
+		  &ret);
 
-	ret = ov7251_write_reg(ov7251, OV7251_PLL2_MULT_REG,
-			       configs->pll2->mult);
-	if (ret < 0)
-		return ret;
+	cci_write(ov7251->cci, OV7251_PLL2_MULT_REG, configs->pll2->mult, &ret);
 
-	ret = ov7251_write_reg(ov7251, OV7251_PLL2_DIVIDER_REG,
-			       configs->pll2->div);
-	if (ret < 0)
-		return ret;
+	cci_write(ov7251->cci, OV7251_PLL2_DIVIDER_REG, configs->pll2->div,
+		  &ret);
 
-	ret = ov7251_write_reg(ov7251, OV7251_PLL2_SYS_DIV_REG,
-			       configs->pll2->sys_div);
-	if (ret < 0)
-		return ret;
+	cci_write(ov7251->cci, OV7251_PLL2_SYS_DIV_REG, configs->pll2->sys_div,
+		  &ret);
 
-	ret = ov7251_write_reg(ov7251, OV7251_PLL2_ADC_DIV_REG,
-			       configs->pll2->adc_div);
+	cci_write(ov7251->cci, OV7251_PLL2_ADC_DIV_REG, configs->pll2->adc_div,
+		  &ret);
 
 	return ret;
 }
 
 static int ov7251_set_exposure(struct ov7251 *ov7251, s32 exposure)
 {
-	u16 reg;
-	u8 val[3];
-
-	reg = OV7251_AEC_EXPO_0;
-	val[0] = (exposure & 0xf000) >> 12; /* goes to OV7251_AEC_EXPO_0 */
-	val[1] = (exposure & 0x0ff0) >> 4;  /* goes to OV7251_AEC_EXPO_1 */
-	val[2] = (exposure & 0x000f) << 4;  /* goes to OV7251_AEC_EXPO_2 */
-
-	return ov7251_write_seq_regs(ov7251, reg, val, 3);
+	return cci_write(ov7251->cci, OV7251_AEC_EXPO_0, exposure << 4, NULL);
 }
 
 static int ov7251_set_gain(struct ov7251 *ov7251, s32 gain)
 {
-	u16 reg;
-	u8 val[2];
-
-	reg = OV7251_AEC_AGC_ADJ_0;
-	val[0] = (gain & 0x0300) >> 8; /* goes to OV7251_AEC_AGC_ADJ_0 */
-	val[1] = gain & 0xff;          /* goes to OV7251_AEC_AGC_ADJ_1 */
-
-	return ov7251_write_seq_regs(ov7251, reg, val, 2);
-}
-
-static int ov7251_set_register_array(struct ov7251 *ov7251,
-				     const struct reg_value *settings,
-				     unsigned int num_settings)
-{
-	unsigned int i;
-	int ret;
-
-	for (i = 0; i < num_settings; ++i, ++settings) {
-		ret = ov7251_write_reg(ov7251, settings->reg, settings->val);
-		if (ret < 0)
-			return ret;
-	}
-
-	return 0;
+	return cci_write(ov7251->cci, OV7251_AEC_AGC_ADJ_0, gain, NULL);
 }
 
 static int ov7251_set_power_on(struct device *dev)
@@ -685,9 +557,8 @@ static int ov7251_set_power_on(struct device *dev)
 			       DIV_ROUND_UP(ov7251->xclk_freq, 1000));
 	usleep_range(wait_us, wait_us + 1000);
 
-	ret = ov7251_set_register_array(ov7251,
-					ov7251_global_init_setting,
-					ARRAY_SIZE(ov7251_global_init_setting));
+	ret = cci_multi_reg_write(ov7251->cci, ov7251_global_init_setting,
+				  ARRAY_SIZE(ov7251_global_init_setting), NULL);
 	if (ret < 0) {
 		dev_err(ov7251->dev, "error during global init\n");
 		gpiod_set_value_cansleep(ov7251->enable_gpio, 0);
@@ -722,7 +593,7 @@ static int ov7251_set_hflip(struct ov7251 *ov7251, s32 value)
 	else
 		val &= ~OV7251_TIMING_FORMAT2_MIRROR;
 
-	ret = ov7251_write_reg(ov7251, OV7251_TIMING_FORMAT2, val);
+	ret = cci_write(ov7251->cci, OV7251_TIMING_FORMAT2, val, NULL);
 	if (!ret)
 		ov7251->timing_format2 = val;
 
@@ -739,7 +610,7 @@ static int ov7251_set_vflip(struct ov7251 *ov7251, s32 value)
 	else
 		val &= ~OV7251_TIMING_FORMAT1_VFLIP;
 
-	ret = ov7251_write_reg(ov7251, OV7251_TIMING_FORMAT1, val);
+	ret = cci_write(ov7251->cci, OV7251_TIMING_FORMAT2, val, NULL);
 	if (!ret)
 		ov7251->timing_format1 = val;
 
@@ -756,7 +627,7 @@ static int ov7251_set_test_pattern(struct ov7251 *ov7251, s32 value)
 	else
 		val &= ~OV7251_PRE_ISP_00_TEST_PATTERN;
 
-	ret = ov7251_write_reg(ov7251, OV7251_PRE_ISP_00, val);
+	ret = cci_write(ov7251->cci, OV7251_PRE_ISP_00, val, NULL);
 	if (!ret)
 		ov7251->pre_isp_00 = val;
 
@@ -770,12 +641,8 @@ static const char * const ov7251_test_pattern_menu[] = {
 
 static int ov7251_vts_configure(struct ov7251 *ov7251, s32 vblank)
 {
-	u8 vts[2];
-
-	vts[0] = ((ov7251->current_mode->height + vblank) & 0xff00) >> 8;
-	vts[1] = ((ov7251->current_mode->height + vblank) & 0x00ff);
-
-	return ov7251_write_seq_regs(ov7251, OV7251_TIMING_VTS_REG, vts, 2);
+	return cci_write(ov7251->cci, OV7251_TIMING_VTS_REG,
+			 ov7251->current_mode->height + vblank, NULL);
 }
 
 static int ov7251_s_ctrl(struct v4l2_ctrl *ctrl)
@@ -1050,9 +917,10 @@ static int ov7251_s_stream(struct v4l2_subdev *subdev, int enable)
 			goto err_power_down;
 		}
 
-		ret = ov7251_set_register_array(ov7251,
-					ov7251->current_mode->data,
-					ov7251->current_mode->data_size);
+		cci_multi_reg_write(ov7251->cci, ov7251->current_mode->data,
+				    ov7251->current_mode->data_size,
+				    &ret);
+
 		if (ret < 0) {
 			dev_err(ov7251->dev, "could not set mode %dx%d\n",
 				ov7251->current_mode->width,
@@ -1064,13 +932,13 @@ static int ov7251_s_stream(struct v4l2_subdev *subdev, int enable)
 			dev_err(ov7251->dev, "could not sync v4l2 controls\n");
 			goto err_power_down;
 		}
-		ret = ov7251_write_reg(ov7251, OV7251_SC_MODE_SELECT,
-				       OV7251_SC_MODE_SELECT_STREAMING);
+		ret = cci_write(ov7251->cci, OV7251_SC_MODE_SELECT,
+				OV7251_SC_MODE_SELECT_STREAMING, NULL);
 		if (ret)
 			goto err_power_down;
 	} else {
-		ret = ov7251_write_reg(ov7251, OV7251_SC_MODE_SELECT,
-				       OV7251_SC_MODE_SELECT_SW_STANDBY);
+		ret = cci_write(ov7251->cci, OV7251_SC_MODE_SELECT,
+				OV7251_SC_MODE_SELECT_SW_STANDBY, NULL);
 		pm_runtime_put(ov7251->dev);
 	}
 
@@ -1236,27 +1104,22 @@ out_free_bus_cfg:
 
 static int ov7251_detect_chip(struct ov7251 *ov7251)
 {
-	u8 chip_id_high, chip_id_low, chip_rev;
+	u64 chip_id, chip_rev;
 	int ret;
 
-	ret = ov7251_read_reg(ov7251, OV7251_CHIP_ID_HIGH, &chip_id_high);
-	if (ret < 0 || chip_id_high != OV7251_CHIP_ID_HIGH_BYTE)
+	ret = cci_read(ov7251->cci, OV7251_CHIP_ID, &chip_id, NULL);
+	if (ret < 0 || chip_id != OV7251_CHIP_ID_VALUE)
 		return dev_err_probe(ov7251->dev, -ENODEV,
-				     "could not read ID high\n");
+				     "could not read ID\n");
 
-	ret = ov7251_read_reg(ov7251, OV7251_CHIP_ID_LOW, &chip_id_low);
-	if (ret < 0 || chip_id_low != OV7251_CHIP_ID_LOW_BYTE)
-		return dev_err_probe(ov7251->dev, -ENODEV,
-				     "could not read ID low\n");
-
-	ret = ov7251_read_reg(ov7251, OV7251_SC_GP_IO_IN1, &chip_rev);
+	ret = cci_read(ov7251->cci, OV7251_SC_GP_IO_IN1, &chip_rev, NULL);
 	if (ret < 0)
 		return dev_err_probe(ov7251->dev, -ENODEV,
 				     "could not read revision\n");
 	chip_rev >>= 4;
 
 	dev_info(ov7251->dev,
-		 "OV7251 revision %x (%s) detected at address 0x%02x\n",
+		 "OV7251 revision %llx (%s) detected at address 0x%02x\n",
 		 chip_rev,
 		 chip_rev == 0x4 ? "1A / 1B" :
 		 chip_rev == 0x5 ? "1C / 1D" :
@@ -1344,6 +1207,7 @@ static int ov7251_probe(struct i2c_client *client)
 {
 	struct device *dev = &client->dev;
 	struct ov7251 *ov7251;
+	u64 read_reg;
 	int ret;
 	int i;
 
@@ -1353,6 +1217,8 @@ static int ov7251_probe(struct i2c_client *client)
 
 	ov7251->i2c_client = client;
 	ov7251->dev = dev;
+
+	ov7251->cci = devm_cci_regmap_init_i2c(client, 16);
 
 	ret = ov7251_check_hwcfg(ov7251);
 	if (ret)
@@ -1438,29 +1304,29 @@ static int ov7251_probe(struct i2c_client *client)
 	pm_runtime_get_noresume(&client->dev);
 	pm_runtime_enable(&client->dev);
 
-	ret = ov7251_read_reg(ov7251, OV7251_PRE_ISP_00,
-			      &ov7251->pre_isp_00);
+	ret = cci_read(ov7251->cci, OV7251_PRE_ISP_00, &read_reg, NULL);
 	if (ret < 0) {
 		dev_err(dev, "could not read test pattern value\n");
 		ret = -ENODEV;
 		goto err_pm_runtime;
 	}
+	ov7251->pre_isp_00 = read_reg;
 
-	ret = ov7251_read_reg(ov7251, OV7251_TIMING_FORMAT1,
-			      &ov7251->timing_format1);
+	ret = cci_read(ov7251->cci, OV7251_TIMING_FORMAT1, &read_reg, NULL);
 	if (ret < 0) {
 		dev_err(dev, "could not read vflip value\n");
 		ret = -ENODEV;
 		goto err_pm_runtime;
 	}
+	ov7251->timing_format1 = read_reg;
 
-	ret = ov7251_read_reg(ov7251, OV7251_TIMING_FORMAT2,
-			      &ov7251->timing_format2);
+	ret = cci_read(ov7251->cci, OV7251_TIMING_FORMAT2, &read_reg, NULL);
 	if (ret < 0) {
 		dev_err(dev, "could not read hflip value\n");
 		ret = -ENODEV;
 		goto err_pm_runtime;
 	}
+	ov7251->timing_format1 = read_reg;
 
 	pm_runtime_set_autosuspend_delay(&client->dev, 1000);
 	pm_runtime_use_autosuspend(&client->dev);
