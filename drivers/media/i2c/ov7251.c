@@ -71,7 +71,8 @@
 #define OV7251_ACTIVE_HEIGHT		488
 
 #define OV7251_TIMING_HTS_REG		CCI_REG16(0x380c)
-#define OV7251_TIMING_MIN_HTS		928
+#define OV7251_TIMING_MIN_HTS		824
+#define OV7251_TIMING_DEF_HTS		928
 #define OV7251_TIMING_MAX_HTS		0xffff
 #define OV7251_TIMING_VTS_REG		CCI_REG16(0x380e)
 #define OV7251_TIMING_MIN_VTS		41
@@ -1103,7 +1104,7 @@ static int ov7251_set_frame_interval(struct v4l2_subdev *subdev,
 		if (ret < 0)
 			return ret;
 
-		ret = __v4l2_ctrl_s_ctrl(ov7251->hblank, OV7251_TIMING_MIN_HTS -
+		ret = __v4l2_ctrl_s_ctrl(ov7251->hblank, OV7251_TIMING_DEF_HTS -
 							new_mode->width);
 		if (ret < 0)
 			return ret;
@@ -1273,7 +1274,8 @@ static int ov7251_init_ctrls(struct ov7251 *ov7251)
 					   V4L2_CID_HBLANK, hblank,
 					   OV7251_TIMING_MAX_HTS -
 						ov7251->current_mode->width, 1,
-					   hblank);
+					   OV7251_TIMING_DEF_HTS -
+						ov7251->current_mode->width);
 
 	vblank_max = OV7251_TIMING_MAX_VTS - ov7251->current_mode->height;
 	vblank_def = ov7251->current_mode->vts - ov7251->current_mode->height;
